@@ -1,0 +1,45 @@
+找一个开源的基于js用户行为日志上报
+分析下日志收集机制，JS Tracker
+https://www.google.com.hk/#newwindow=1&q=JS+Tracker
+
+http://blog.csdn.net/hxyascx/article/details/53373916
+
+商业
+1. google 
+https://analytics.google.com/analytics/web/?hl=zh-CN&pli=1
+https://developers.google.com/analytics/devguides/collection/analyticsjs/accessing-trackers
+2. adobe
+http://www.adobe.com/cn/marketing-cloud/web-analytics/marketing-analytics-capabilities.html
+
+3. 百度统计
+
+
+开源：
+1. piwik
+https://developer.piwik.org/api-reference/tracking-javascript
+
+2. Open Web Analytics
+http://www.openwebanalytics.com/
+https://github.com/padams/Open-Web-Analytics/wiki
+
+http://demo.openwebanalytics.com/jstracker.php
+https://github.com/padams/Open-Web-Analytics/wiki/Tracker
+
+3. snowplow
+https://github.com/snowplow/snowplow/wiki/javascript-tracker
+
+https://github.com/segmentio/analytics.js
+
+https://github.com/mnutt/hummingbird
+https://github.com/snowplow/snowplow/wiki/Canonical-event-model
+
+
+database schema
+
+
+组件：
+1. js-tracker 前端js日志上报
+2. t.gif server代码？
+pb日志格式等
+
+3. server端打点？ 

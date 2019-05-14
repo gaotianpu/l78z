@@ -1,0 +1,46 @@
+Mac + MySQL + PHP7 + Nginx 
+1. 安装Homebrew
+	https://brew.sh/
+
+2. 安装MySQL+Nginx+PHP7
+	brew install nginx php70 mysql
+
+3. 配置MySQL
+	Q：ERROR 2002 (HY000): Can't connect to local MySQL server through socket '/tmp/mysql.sock' (2)
+	A：mysql.server start | stop | restart
+
+	Q：MySQL创建新用户
+	A: CREATE USER 'hive'@'localhost' IDENTIFIED BY 'hive'; 
+	GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, ALTER, CREATE TEMPORARY TABLES,
+	LOCK TABLES ON *.* TO 'hive'@'localhost';
+
+	Q: MySQL后台进程？
+	brew services start mysql
+
+4. PHP7
+# 在Mac中如何安装PHP7
+	http://bbs.earnp.com/article/316
+		php.ini中	/usr/local/etc/php/7.1/php.ini 
+		php-fpm.conf /usr/local/etc/php/7.1/php-fpm.conf
+
+	https://www.zybuluo.com/phper/note/313803
+	
+	安装完后需重启shell
+# 下载安装 Composer
+	http://www.jianshu.com/p/3b736c52d5fa  
+	curl -sS https://getcomposer.org/installer | php 
+	php composer.phar install
+
+5. Nginx
+	brew services start nginx #
+	/usr/local/var/www
+	/usr/local/etc/nginx/nginx.conf
+	/usr/local/etc/nginx/servers/
+	http://127.0.0.1:8080/
+
+6. phpMyAdmin
+
+7. 
+
+http://blog.csdn.net/bjash/article/details/52439174？
+

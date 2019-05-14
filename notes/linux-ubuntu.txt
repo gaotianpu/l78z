@@ -1,0 +1,160 @@
+1. 启动默认进入命令行模式
+sudo vi /etc/default/grub
+
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash text"  #add text
+
+sudo update-grub
+
+2. 在命令行模式下进入x-windows ？？？？
+startx 有问题，仅显示一个壁纸，没有状态条等
+ALT+CTRL+F7
+
+3. 从x-windows进入命令行模式
+ALT+CTRL+F1
+
+4.ubuntu命令行下中文乱码
+方案1. 默认显示英文
+sudo vim /etc/default/locale
+LANG="en_US.UTF-8"   #h_CN.UTF-8
+LANGUAGE="en_US:en"  #zh_CN:zh
+
+方案2. 支持中文
+sudo apt-get install zhcon
+zhcon --utf8 --drv=vga
+别名
+sudo vim ~/.bashrc
+alias zhcon='zhcon --utf8 --drv=vga'
+
+
+
+4. 关机
+shutdown -h now  #关机 不带-h就不会关电源
+重启 reboot
+待机 pm-suspend
+休眠 pm-hibernate
+
+5.配置：设置固定ip？
+sudo vi /etc/network/interfaces
+同一个局域网的，不用记ip，而是知道机器名字即可用ssh登录的
+
+
+6.配置：允许远程登录
+sudo apt-get install openssh-server
+sudo vi /etc/ssh/sshd_config
+PermitRootLogin yes
+sudo service ssh restart
+
+
+7.开发环境-comm
+sudo apt-get install vim  #
+sudo apt-get install python-dev
+sudo apt-get install python-setuptools
+sudo apt-get install mysql
+sudo apt-get install sqlite
+sudo apt-get install redis
+sudo apt-get install php5-cli
+sudo apt-get install nginx
+
+8. 开发环境-python
+sudo apt-get install python-mysqldb
+easy_install web.py
+apt-get install python-numpy
+apt-get install python-scipy
+
+ssh免密码登录
+http://chenlb.iteye.com/blog/211809
+
+sudo apt-get install ntpdate
+sudo ntpdate cn.pool.ntp.org
+
+tzselect无效
+sudo raspi-config
+chongqing
+
+http://blog.csdn.net/jdh99/article/details/22096479
+
+scp  /Users/gaotianpu/github/forecast/v2/daily_run.py  pi@192.168.1.100:/home/pi/workspace/stocks
+
+
+1. 启动默认进入命令行模式
+sudo vi /etc/default/grub
+
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash text"  #add text
+
+sudo update-grub
+
+2. 在命令行模式下进入x-windows ？？？？
+startx 有问题，仅显示一个壁纸，没有状态条等
+ALT+CTRL+F7
+
+3. 从x-windows进入命令行模式
+ALT+CTRL+F1
+
+4.ubuntu命令行下中文乱码
+方案1. 默认显示英文
+sudo vim /etc/default/locale
+LANG="en_US.UTF-8"   #h_CN.UTF-8
+LANGUAGE="en_US:en"  #zh_CN:zh
+
+方案2. 支持中文
+sudo apt-get install zhcon
+zhcon --utf8 --drv=vga
+别名
+sudo vim ~/.bashrc
+alias zhcon='zhcon --utf8 --drv=vga'
+
+
+
+4. 关机
+shutdown -h now  #关机 不带-h就不会关电源
+重启 reboot
+待机 pm-suspend
+休眠 pm-hibernate
+
+5.配置：设置固定ip？
+sudo vi /etc/network/interfaces
+同一个局域网的，不用记ip，而是知道机器名字即可用ssh登录的
+
+
+6.配置：允许远程登录
+sudo apt-get install openssh-server
+sudo vi /etc/ssh/sshd_config
+PermitRootLogin yes
+sudo service ssh restart
+
+
+7.开发环境-comm
+sudo apt-get install vim  #
+sudo apt-get install python-dev
+sudo apt-get install python-setuptools
+sudo apt-get install mysql
+sudo apt-get install sqlite
+sudo apt-get install redis
+sudo apt-get install php5-cli
+sudo apt-get install nginx
+
+8. 开发环境-python
+sudo apt-get install python-mysqldb
+easy_install web.py
+apt-get install python-numpy
+apt-get install python-scipy
+
+ssh免密码登录
+http://chenlb.iteye.com/blog/211809
+
+sudo apt-get install ntpdate
+sudo ntpdate cn.pool.ntp.org
+
+tzselect无效
+sudo raspi-config
+chongqing
+
+http://blog.csdn.net/jdh99/article/details/22096479
+
+scp  /Users/gaotianpu/github/forecast/v2/daily_run.py  pi@192.168.1.100:/home/pi/workspace/stocks
+
+
+
+
+
+

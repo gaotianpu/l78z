@@ -1,0 +1,63 @@
+piwik
+1. demo功能感受
+http://demo.piwik.org/
+
+2. 安装
+基础环境搭建 
+http://www.jianshu.com/p/d959e448912d
+https://developer.piwik.org/guides/getting-started-part-1
+
+php -S 0.0.0.0:8000
+http://localhost:8000/index.php
+
+部署在nginx上？
+
+3. 日志上报
+_jsGlobalVariables.twig #统计脚本加在这里
+
+http://localhost:8000/piwik.js #上报js库
+https://github.com/piwik/piwik/blob/master/js/piwik.js
+
+http://localhost:8000/piwik.php #上报server端接口
+tracker逻辑与系统界面有耦合，不容易分拆？
+
+上报内容？
+querystring：
+piwik.php?action_name=localhost%3A8000%20-%20Thursday%2C%20June%2029%2C%202017%20-%20Web%20Analytics%20Reports%20-%20Piwik&idsite=1&rec=1&r=384717&h=12&m=43&s=43&url=http%3A%2F%2Flocalhost%3A8000%2Findex.php%3Fmodule%3DCoreHome%26action%3Dindex%26idSite%3D1%26period%3Dday%26date%3Dyesterday%23%3FidSite%3D1%26period%3Dday%26date%3Dyesterday%26category%3DGeneral_Visitors%26subcategory%3DGeneral_Overview&urlref=http%3A%2F%2Flocalhost%3A8000%2Findex.php%3Fmodule%3DCoreHome%26action%3Dindex%26idSite%3D1%26period%3Dday%26date%3Dyesterday&_id=e1c54c6f02668da6&_idts=1498745311&_idvc=3&_idn=0&_refts=0&_viewts=1498797810&send_image=1&pdf=1&qt=0&realp=0&wma=0&dir=0&fla=0&java=0&gears=0&ag=0&cookie=1&res=1280x800&gt_ms=608&pv_id=o9acKk
+
+action_name:localhost:8000 - Thursday, June 29, 2017 - Web Analytics Reports - Piwik
+idsite:1
+rec:1
+r:384717
+h:12
+m:43
+s:43
+url:http://localhost:8000/index.php?module=CoreHome&action=index&idSite=1&period=day&date=yesterday#?idSite=1&period=day&date=yesterday&category=General_Visitors&subcategory=General_Overview
+urlref:http://localhost:8000/index.php?module=CoreHome&action=index&idSite=1&period=day&date=yesterday
+_id:e1c54c6f02668da6
+_idts:1498745311
+_idvc:3
+_idn:0
+_refts:0
+_viewts:1498797810
+send_image:1
+pdf:1
+qt:0
+realp:0
+wma:0
+dir:0
+fla:0
+java:0
+gears:0
+ag:0
+cookie:1
+res:1280x800
+gt_ms:608
+pv_id:o9acKk
+
+cookie:
+PIWIK_SESSID
+
+
+1. database schema
+https://developer.piwik.org/guides/persistence-and-the-mysql-backend

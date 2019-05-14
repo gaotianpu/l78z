@@ -1,0 +1,327 @@
+实践规划：
+1.sql语句性能调优 
+* 关注慢查询邮件
+* 每日sql语句执行情况，有哪些sql，只有参数不一样的归为一类
+* 读写sql区分开统计
+* 执行次数，平均执行时长，最高执行时长
+* 业务高峰期？
+* 跨机房对性能延迟的影响分析？ 记录client-ip，分别统计？
+* mysql 主、从 query log ？
+* 扩展：redis性能，每个接口的性能？http形式的，hook形式的
+* 已有的性能监控工具？
+内存、cpu等使用量占比
+
+2.mysql性能指标
+cpu,磁盘，内存，网络io，mysql
+* CPU_IDLE
+* CPU_WAIT_IO
+* 磁盘分区最大使用率
+* DISK_TOTAL_WRITE_KB (磁盘-写)
+* DISK_TOTAL_READ_KB (磁盘-读)
+* 内存使用率
+* com_reads（读流量）
+* com_writes（写流量）
+* seconds_behind_master（主从延迟）
+* threads_connected（连接数）
+* threads_running（执行线程数）
+* trx_max_active_time（最大事务时间）
+* slow_queries_pt（慢查询）
+* NET_TOTAL_IN_BITPS（整机网卡总接收比特率）
+* NET_TOTAL_OUT_BITPS（整机网卡总发送比特率）
+
+The MySQL server is running with the --secure-file-priv option so it cannot execute this statement
+SHOW VARIABLES LIKE "secure_file_priv";
+
+
+mysql 更新密码
+SET PASSWORD FOR 'root'@'localhost' = PASSWORD('newpass_is_nopass.x');
+
+#InnoDB AUTO_INCREMENT
+https://ruby-china.org/topics/26352
+https://dev.mysql.com/doc/refman/5.7/en/innodb-auto-increment-handling.html
+
+每个指标shell实现？指标意义
+show status 
+show processlist
+show innodb status 
+
+oprofile,strace,tcpdump 
+GDB堆栈跟踪 gdb附加到mysqld进程中？
+pt-pmp,pt-collect 
+
+服务器和存储引擎之间的接口协议，谁兼容谁？
+底层接口只有几十个？
+
+日期函数、视图、触发器 - 服务器完成 
+增量、逐步返回
+
+无法做到并行执行查询？
+
+左侧深度优先，平衡树
+explain每个字段的含义？
+
+3. 性能相关的工具
+
+高性能mysql 第3版
+
+第一章 mysql架构与历史
+查询处理(query processing)、其他任务(server task) 和 数据的存储提取分离。
+mysql服务器逻辑架构图 
+不同存储引擎之间是否会通信?
+存储引擎几十个底层函数？
+并发控制？
+线程池？
+锁：共享shared锁-读锁，排他exclusive锁-写锁, 优先级？
+锁操作：获得，检查，释放
+row-level lock  table
+事物acid，原子性Atomicity，一致性Consistency, 隔离性isolation，持久性durability.
+间隙锁 next-key locking
+
+隔离级别：
+1. Read uncommitted 未提交读， 脏读 dirty read, 性能不会好太多，效果也很差，不常用 
+2. Read committed 提交读 大部分其他db mvcc
+3. Repeatable read 可重复读 mysql  mvcc 
+4. Serializable 可串行化， 最高隔离级别，不常用
+
+幻读phantom read ? 多版本并发控制，MVCC Multiversion Concurrency Control，行级锁的变种
+
+死锁，多个事务以不同顺序锁定资源，多个事务锁定同一资源。死锁检测、超时
+将持有最少行级别排它锁的事务回滚
+事物日志，修改内存拷贝，持久化至硬盘的事物日志，追加方式，一小块区域的顺序io，更快，
+预写式日志write-ahead logging 
+
+mysql支持事务的innodb，ndb cluster,第三方xtradb,pbxt
+
+autocommit默认每条sql都是事务
+ddl，数据库定义语言
+设置隔离级别？
+
+隐式锁，显式锁
+避免显式锁
+
+乐观并发，悲观并发
+mvcc，两个隐藏列，创建时间，过期时间，存储的是系统版本号，大部分读操作不用加锁
+
+
+frm, schema定义
+
+聚簇索引
+插入缓冲区
+热备份
+myisam 崩溃后无法安全恢复
+
+使用innodb的优点总结
+分片？
+
+第2章 MySQL基准测试
+集成式full-stack，单组件式single-component
+
+测试指标，
+*响应时间或延迟latency，任务所需时间
+*吞吐量troughput，单位时间内事物处理数 tpc.org tps秒 tpm分钟
+*并发性，sysbench, threads_running
+*可扩展性，
+tpc-h
+
+mysql的查询日志？
+对日志中的每个连接创建独立的线程，how？
+
+cpu，磁盘io，网络流量，show global status计数器
+
+makefile？
+
+gnuplot 绘图
+
+show engine innodb status 
+show full processlist 
+
+基准测试工具
+1.集成式 
+* ab, apache http服务器基准测试工具，可以用到nginx上？
+* http_load, 一个输入文件提供多个url
+* jMeter, 可控制预热时间 
+2.单组件式
+* mysqlslap,
+* Mysql Benchmark Suite sql-bench, 提供一些sample，cpu密集型的，缺点单线程，需要perl,dbd支持
+* Super smack，复杂强大
+* Database Test Suite  osdldbt dbt2 
+* Percona's TPCC-MySQL Tool  tpcc_load 
+* sysbench，最有用 oltp,fileio 
+
+TPC-C 测试
+
+内置的benchmark()函数
+
+RAID？
+
+第3章 服务器性能剖析 profiling
+ddl , dml 
+执行时间和等待时间
+percona tookit pt-query-digest  mk-query-digest 
+等待，任务在什么地方被阻塞？
+Performance Schema ,percona server 
+优化成本大于收益
+丢失时间，任务总时间和实际测量到的时间
+New Relic 
+
+测量php应用程序
+* xhpprof,
+* xdebug,
+* Valgrind
+* cachegrind
+* Ifp instrumentation-for-php,更关注数据库的调用 
+* MySQL Enterprise Monitor 
+
+剖析MySQL查询
+* 慢查询日志  
+long_query_time，针对每个连接设置？
+日志轮转(log rotation)工具
+* 通用日志 
+* show full processlist
+* tcpdump
+
+show status 
+show profile 
+
+information_schema
+
+分片(shard)的表?
+
+诊断间歇性问题
+
+mysql 性能调优工具
+show global status ,
+show processlist 
+innotop
+
+触发器，
+误报-false positive ，漏检false negative 
+线程异常，threads_running,
+
+
+运维常见问题
+1. 高峰时段连接被断开，mysql服务器重启
+2. mysql突然遭遇大量查询，缓存失败？
+
+ps输出？
+
+索引使用次数 ？ 
+
+strace 调查系统的使用情况?
+
+
+smp架构？
+
+foat decimal 的差别？计算中decimal 转成double?
+double计算浮点数，
+
+enum, 使用枚举值，坏处？ 内部整数排序
+
+最小粒度，秒，但可以微秒级的运算
+
+bit,set等，字符串存储
+影子表
+物化视图,flexviews
+计数器表，多行，随机写某行，sum
+全部索引列的hash值
+hash索引无法用于按值排序
+自适应hash索引
+mysql优化器？
+
+crc32 冲突？
+
+myisam 空间、地理位置索引
+元数据信息表
+表达式、函数不能用索引
+索引的选择性，不重复列数/全记录数，越高查询效率越高
+left()
+前缀索引
+
+select sum(f=2),sum(f2=2) from tablename
+
+聚簇索引，一个表只能有一个聚簇索引
+节点页，叶子页，减少磁盘io
+
+代理键，自增列，
+
+只能是b-tree 做为覆盖索引
+
+左前缀匹配，like
+延迟关联？
+
+join, order by 第一个
+
+select ... for update 
+set autocommit=0;
+一级索引排他锁，二级索引共享锁
+sex in (f,m) ?
+
+sql-语句，剔除value，只剩sql template 
+5.4 索引案例学习
+范围条件> = < 等，无法使用后面的索引，使用in则不同
+
+延迟关联，覆盖索引
+
+维护 
+check repair table 
+1. 损坏的表
+2. 索引统计信息
+3. 减少碎片 b-tree 
+
+碎片
+1.行
+2. 行间
+3. 剩余空间
+
+不做任何操作的alter  
+myisamchk
+
+rsync备份导致innodb表错误？
+
+存储引擎索引值的分布信息
+record_in_range()
+info()
+analyze table 重新生成统计信息
+show index from table 索引基数
+
+优化器做哪些优化工作？
+show table status show index 会触发索引统计信息更新，锁表
+
+慢查询
+1.返回不需要的记录，行、列
+2.扫描额外的记录
+
+快速上限估计
+
+explain type：
+全表扫描
+索引扫描
+范围扫描
+唯一索引
+常数引用
+
+三种方式应用where
+1. 存储引擎，索引中
+2. 索引覆盖扫描 服务器完成，但无需再返回表查询记录
+3. 服务器，再表查
+
+flume+kafuka+es ?
+
+delete， 大变小 
+
+分解关联查询
+
+通讯协议，半双工
+
+in 和 or的 区别？
+
+
+using() join ?
+
+等值条件，范围条件
+松散索引？
+
+分区表？跟存储引擎无关？
+
+
+

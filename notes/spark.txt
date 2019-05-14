@@ -1,0 +1,94 @@
+spark
+一、了解原理
+相比hadoop的优势  迭代计算、交互计算
+基于内存，移动计算单元 > 速度更快
+mapreduce之外的更多计算模式、交互式查询、流处理
+批处理、迭代算法、交互式查询、流处理
+
+hadoop非spark的必要条件，hdfs兼容的存储系统都支持
+
+核心组件+高级组件
+sql 、流式计算、mllib、GraphX、shell(交互式）
+core: 任务调度、内存管理、错误恢复、存储系统交互
+
+集群管理器：YARN,Meos,自带的独立调度器   YARN meos的差异？
+DAG，directed acyclic graph 有向无环图
+
+stage - task
+
+Block Manager 块管理器
+
+从事数据科学应备能力：SQL,统计、预测模型(ML)、
+
+客户端模，式交互式shell，
+集群模式
+
+流式数据：网页日志、消息队列
+
+RDD， Resilient Distributed Datasets,弹性分布式数据集
+转换transformation 动作action
+转换操作 - 惰性
+tachyon?
+检查点Checkpoint机制 ?
+DAG?
+
+spark GPU计算？
+
+map,filter,groupBy,join
+scala？
+
+普通RDD, SchemaRDD 
+
+Parquet
+
+流失计算 Dstream
+
+二、实践
+1. 下载安装
+http://spark.apache.org/
+http://www.jianshu.com/p/3720656a390d
+
+http://www.cnblogs.com/ysisl/p/5979268.html
+
+2. 配置
+export SPARK_HOME=/Users/gaotianpu/Bigdata/spark-2.1.1-bin-hadoop2.7
+export PATH=$PATH:$SPARK_HOME/bin
+#export PATH=$PATH:$SPARK_HOME/sbin
+
+cp log4j.properties.template log4j.properties
+INFO ? WARN
+
+scala是否是必须的？
+
+#配置ipython？
+set IPYTHON=1 #不生效？
+
+#命令行
+pyspark  #python 
+
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+17/08/02 15:12:11 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+17/08/02 15:12:19 WARN ObjectStore: Version information not found in metastore. hive.metastore.schema.verification is not enabled so recording the schema version 1.2.0
+17/08/02 15:12:20 WARN ObjectStore: Failed to get database default, returning NoSuchObjectException
+17/08/02 15:12:20 WARN ObjectStore: Failed to get database global_temp, returning NoSuchObjectException
+
+17/04/17 10:43:54 INFO SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users  with view permissions: Set(gaotianpu); groups with view permissions: Set(); users  with modify permissions: Set(gaotianpu); groups with modify permissions: Set()
+
+http://guibin.iteye.com/blog/1999238
+
+Mac OSX 下 Hadoop 使用本地库提高效率
+http://rockyfeng.me/hadoop_native_library_mac.html
+
+spark-shell #scala
+#sparkR?
+
+3. Spark-SQL
+http://spark.apache.org/docs/latest/sql-programming-guide.html
+spark-sql shell ?
+jdbc?
+beeline?
+
+3. 运行samples
+
+
+~

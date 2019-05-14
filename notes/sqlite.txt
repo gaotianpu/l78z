@@ -1,0 +1,79 @@
+
+sqlite3
+1. 存储上限？
+Max DB size: 140 terabytes (2**47 bytes)
+Max row size: 1 gigabyte
+2. 中文支持？
+3. 支持批量导入数据？
+cur.executemany()
+4. insert ignore
+5. 不支持多线程 Multithreading
+Connection.interrupt()
+
+https://www.oschina.net/translate/limits-in-sqlite-new
+https://dev.qq.com/topic/57b57f2a0703f7d31b9a3932
+
+
+官网
+https://www.sqlite.org/about.html
+https://www.sqlite.org/csv.html
+
+python-api
+https://docs.python.org/2/library/sqlite3.html 
+http://www.runoob.com/sqlite/sqlite-python.html
+
+
+#sample codes
+from pysqlite2 import dbapi2 as sqlite3 #?
+
+# Larger example
+for t in [('2006-03-28', 'BUY', 'IBM', 1000, 45.00),
+          ('2006-04-05', 'BUY', 'MSOFT', 1000, 72.00),
+          ('2006-04-06', 'SELL', 'IBM', 500, 53.00),
+         ]:
+    c.execute('insert into stocks values (?,?,?,?,?)', t)
+
+con.create_function("md5", 1, md5sum)
+con.create_aggregate("mysum", 1, MySum)
+con.create_collation("reverse", collate_reverse)
+con.row_factory
+con.text_factory
+
+cur.execute("select name_last, age from people where name_last=:who and age=:age",
+    {"who": who, "age": age})
+cur.executemany()
+cur.executescript()
+
+cur.fetchone()
+cur.fetchall()
+cur.fetchmany()
+rowcount
+lastrowid
+
+
+Python 	SQLite 
+---------------
+None	NULL
+int	INTEGER
+long	INTEGER
+float	REAL
+str (UTF8-encoded)	TEXT
+unicode	TEXT
+buffer	BLOB
+
+SQL语法
+https://www.sqlite.org/lang.html
+
+
+
+中文教程
+http://www.runoob.com/sqlite/sqlite-tutorial.html
+http://www.runoob.com/sqlite/sqlite-commands.html
+
+
+CREATE TABLE orders (
+	date integer PRIMARY KEY NOT NULL,
+    total integer NOT NULL,
+    wise integer NOT NULL
+);
+

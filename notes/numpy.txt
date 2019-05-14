@@ -1,0 +1,50 @@
+numpy
+ndarray
+
+1. 概率统计
+平均数、众数、中位数
+标准差、方差、协方差
+相关性
+分布
+2. 线性代数
+创建矩阵
+矩阵计算 + - * 求逆 转置
+	字符串
+	numpy数组
+	单位矩阵
+	复合矩阵
+	标量？
+
+矩阵转置
+逆矩阵
+
+对数收益率
+波动率
+投资学？
+
+相关性
+协方差
+相关系数矩阵
+
+多项式拟合
+求极值
+
+加权余弦窗函数
+
+
+arange
+array
+dtype
+
+big-endian
+little-endian
+
+http://www.cnblogs.com/jasonli-01/p/6373681.html
+http://blog.csdn.net/sunpeng19960715/article/details/52777155
+http://youerning.blog.51cto.com/10513771/1714455
+http://www.cnblogs.com/sirkevin/p/5738185.html
+http://ms.csdn.net/geek/94153
+http://blog.csdn.net/liyuanbhu/article/details/28611429
+http://www.jianshu.com/p/bdb4cc476e87
+
+sed -i 'y/\t/,/' flight_orders.csv

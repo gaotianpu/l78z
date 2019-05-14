@@ -1,0 +1,121 @@
+python
+
+一、开发环境
+Mac系统下安装ipython分别支持python2和python3
+http://www.cnblogs.com/wangchaowei/p/6921191.html
+
+pip3 install virtualenv --upgrade
+virtualenv --system-site-packages ~/Documents/tensorflow
+source  bin/activate
+
+pip install jupyter tensorflow numpy matplotlib scipy scikit-image librosa nltk keras mysql-python pandas -U
+
+
+
+
+pip
+https://bootstrap.pypa.io/get-pip.py
+
+
+Google Python Style Guide
+https://google.github.io/styleguide/pyguide.html
+
+pythonic
+https://zhuanlan.zhihu.com/p/20376482
+https://www.quora.com/What-are-some-examples-of-beautiful-Pythonic-code
+http://python.net/~goodger/projects/pycon/2007/idiomatic/handout.html
+http://docs.python-guide.org/en/latest/writing/style/
+
+yes:
+for key in adict: 
+for k, v in dict.iteritems(): ...
+for line in afile
+
+no:
+for key in adict.keys(): ...
+
+类库
+traceback，cPickle，pickle
+pdb The Python Debugger
+copy
+commands
+traceback
+
+#习惯命名
+import pandas as pd
+import numpy as np
+import dask.dataframe as dd
+需要安装 pytest-runner
+
+https://www.zhihu.com/question/50477642
+
+
+ln -s /usr/local/python-2.7.6/bin/python /usr/bin/python
+
+python -m site --user-site #package位置
+
+app_from=bainuo&jp_uuid=&stats_type=show&server_v=4.0&time=1501742761293&app_v=7.3.0&os=ios&extra_info={}&page_name=fillOrderPg&os_ver=8.1&app_ver=7.3.0&client=ios&fe_v=20170802 (1x1) 
+jp_uuid=&app_from=bainuo&client=ios&os=ios&app_v=7.1.0&page_name=fillOrderPg&stats_type=click&element_name=pay&partner=1&extra_info={"is_domestic":"1","ab":"a"}&fe_v=20170720&server_v=4.0&src_from=&fr=&time=1500887165345&os_ver=9.1.0&app_ver=7.1.0 
+
+
+
+
+
+curl https://bootstrap.pypa.io/ez_setup.py -o - | sudo python
+sudo easy_install pip
+
+Traceback (most recent call last):
+  File "/usr/local/bin/easy_install", line 11, in <module>
+    load_entry_point('setuptools==33.1.1', 'console_scripts', 'easy_install')()
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/pkg_resources/__init__.py", line 565, in load_entry_point
+    return get_distribution(dist).load_entry_point(group, name)
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/pkg_resources/__init__.py", line 2697, in load_entry_point
+    return ep.load()
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/pkg_resources/__init__.py", line 2370, in load
+    return self.resolve()
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/pkg_resources/__init__.py", line 2376, in resolve
+    module = __import__(self.module_name, fromlist=['__name__'], level=0)
+  File "build/bdist.macosx-10.12-intel/egg/setuptools/__init__.py", line 10, in <module>
+  File "build/bdist.macosx-10.12-intel/egg/setuptools/extern/__init__.py", line 1, in <module>
+ImportError: No module named extern
+
+Command "/usr/bin/python -u -c "import setuptools, tokenize;__file__='/private/tmp/pip-build-wElnFN/scandir/setup.py';f=getattr(tokenize, 'open', open)(__file__);code=f.read().replace('\r\n', '\n');f.close();exec(compile(code, __file__, 'exec'))" install --record /tmp/pip-6TJK5Z-record/install-record.txt --single-version-externally-managed --compile" failed with error code 1 in /private/tmp/pip-build-wElnFN/scandir/
+xcode-select --install
+
+OSError: [Errno 1] Operation not permitted: '/System/Library/Frameworks/Python.framework/Versions/2.7/share
+http://xiaorui.cc/2016/03/27/%E8%A7%A3%E5%86%B3mac-osx%E4%B8%8Bpip%E5%AE%89%E8%A3%85ipython%E6%9D%83%E9%99%90%E7%9A%84%E9%97%AE%E9%A2%98/
+
+
+from IPython import start_ipython ImportError: No module named IPython
+
+
+
+http://www.justinablog.com/archives/1357
+安装Pandas:
+wget https://pypi.python.org/packages/ee/aa/90c06f249cf4408fa75135ad0df7d64c09cf74c9870733862491ed5f3a50/pandas-0.20.3.tar.gz#md5=4df858f28b4bf4fa07d9fbb7f2568173
+tar zxvf pandas-0.20.3.tar.gz 
+cd pandas-0.20.3
+python setup.py install
+python setup.py build_ext --inplace --force
+
+warning: #warning "Using deprecated NumPy API, 
+disable it by " "#defining NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION"
+
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+  File "pandas/__init__.py", line 35, in <module>
+    "the C extensions first.".format(module))
+ImportError: C extension: No module named tslib not built. 
+If you want to import pandas from the source directory, 
+you may need to run 'python setup.py build_ext --inplace --force' to build the C extensions first.
+
+sys:1: DtypeWarning: Columns (3) have mixed types. 
+Specify dtype option on import or set low_memory=False.
+仅仅是Warning？
+http://www.cnblogs.com/datablog/p/6127000.html
+
+*** glibc detected *** free(): invalid pointer: 0x00007f6cc349fa47 ***
+Aborted (core dumped)
+
+aaaa  bbb  cccaa
+

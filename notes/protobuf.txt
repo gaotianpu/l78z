@@ -1,0 +1,25 @@
+protobuf
+https://developers.google.com/protocol-buffers/
+
+https://www.ibm.com/developerworks/cn/linux/l-cn-gpb/
+RPC系统 和 持续数据存储系统
+结构化数据串行化，或者说序列化
+嵌套数据结构
+动态编译
+序列化原理
+
+js语言支持？
+
+http://colobu.com/2015/01/07/Protobuf-language-guide/
+https://developers.google.com/protocol-buffers/docs/pythontutorial
+
+mac安装protobuf
+    brew install protobuf
+
+protobuf to json ?
+
+python?
+php ？
+
+
+

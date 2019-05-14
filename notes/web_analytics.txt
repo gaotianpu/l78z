@@ -1,0 +1,84 @@
+1. 来源 > 网站|app > 目标
+
+指标和背后的统计方法
+
+session_id nginx日志能拿到？
+访问日志，根据自然目录结构分类？
+app组件内调取如何统计？
+
+
+
+业务背景&技术实现
+
+指标：metrics
+* ip 
+* hit 
+* pv 页面数，去重？
+* visits 访问量 基于一个session 
+启动session的时间算？
+* vistors 访客
+绝对唯一独立访客
+* 停留时间
+网页停留时间 & 网站停留时间
+* 跳出率
+单个页面访问与所有会话的占比
+整体跳出率
+热门落地页的跳出率
+反向链接的跳出率
+搜索关键词的跳出率
+新老访客的跳出率，新老的计算逻辑？
+* 退出率 
+在某个页面有多少访客退出网站
+* 转化率
+分母是visits or visitor？
+* 参与度
+
+列表页的每项的点击率？
+
+
+分析是为了指导行动
+
+收集数据的三种方式
+1.js
+2.网站日志 web logs
+3.数据包嗅探 packet sniffers ?
+4.网络信标 web beacons
+
+工具
+1.
+* Omniture
+* Coremetrics ,在线零售？
+* web trends https://www.webtrends.com/ seo
+2. 后验分析 
+* Affinium NetInsights 离线营销？
+* XiTi
+* Nedstat
+* ClickTracks
+3.
+* Google Analytics 
+* Yahoo! Web Analytics （已挂）
+
+Google Urchin （已挂）
+
+http://www.adsem.cn/503
+
+评估供应商的10个问题
+
+数据抽样？
+
+细分的维度
+
+反向链接的变化趋势
+
+第三方cookie？
+
+开源工具？
+http://piwik.org/
+http://www.openwebanalytics.com/
+
+出站链接
+
+Google Web Optimizer 
+Google Insights for search
+
+

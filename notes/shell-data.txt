@@ -1,0 +1,89 @@
+
+《命令行中的数据科学》
+https://github.com/jeroenjanssens/data-science-at-the-command-line
+http://datascienceatthecommandline.com/
+http://datasciencetoolbox.org/
+http://www.vagrantup.com/downloads.html
+
+统计概率是方法论、shell、python等是工具
+
+OSEMN：获取Obtain、清洗Scrub、探索Explore、建模Model、解释iNterpret Results
+
+一、获取
+curl
+wget
+sqldb
+
+二、清洗 
+
+三、探索
+特征、描述性统计信息、可视化图形
+gnuplot
+feedgnuplot
+ggplot2
+
+csvkit:
+json2csv
+in2csv
+sql2csv
+csvsql 对csv执行sql查询
+csvcut
+csvlook
+csvjoin
+csvstack
+csvstat
+
+less
+
+
+xml2json
+
+body,header,cols  额外实现的？
+
+sed
+awk
+
+scrape
+
+parallel
+curl
+tree
+cat
+tr (翻译，translate)
+jq
+wc -l
+cols
+cut
+R
+Rio,R input/output 在命令行中使用R
+
+tar
+vagrant
+scp
+unpack
+head
+seq
+sample 
+
+drake, n个步骤，自动判断该执行哪些步骤？ 基于java
+
+降维： tapkee,c++ 模板库
+* 局部线性嵌入
+* isomap
+* 多维标度
+* PCA, principal components analysis
+* t-SNE, t-distributed stochastic neighborembedding
+
+weka聚类，java？
+
+coreutils ?
+
+shuf
+
+BigML ?
+
+date -d "yesterday" +%Y%m%d
+sed 's/{{date}}/20170519/g' wiseps_query_click.qt
+
+
+

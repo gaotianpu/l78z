@@ -1,0 +1,6 @@
+http://www.paddlepaddle.org/index.cn.html
+
+一、下载&安装
+https://github.com/PaddlePaddle/book/blob/develop/README.cn.md#运行这本书
+
+二、经典机器学习

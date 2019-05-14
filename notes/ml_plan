@@ -1,0 +1,35 @@
+自然语言处理学习计划
+基本思路，充分借助现有nlp领域成果，搭乐高积木的方式快速解决业务问题
+
+一、分词
+
+
+二、词向量
+http://blog.csdn.net/stevenkwong/article/details/52576266
+词袋 bags of words  one-hot 稀疏矩阵
+
+
+新闻上的文本分类：机器学习大乱斗
+https://zhuanlan.zhihu.com/p/26729228
+
+
+
+Word2Vec - gensim
+
+https://zhuanlan.zhihu.com/p/21457407
+
+http://blog.csdn.net/stevenkwong/article/details/52576266
+
+3. word2vec + sklearn
+http://blog.csdn.net/u014595019/article/details/52433754
+http://blog.csdn.net/u014595019/article/details/52515616
+
+http://blog.csdn.net/u010670689/article/details/75042155
+
+http://blog.csdn.net/liugallup/article/details/51164962
+
+http://blog.csdn.net/github_38705794/article/details/75452729
+
+
+http://blog.csdn.net/lily960427/article/details/78168877
+https://www.jianshu.com/p/8acb99b6671b

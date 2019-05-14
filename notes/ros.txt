@@ -1,0 +1,109 @@
+ros
+
+官网：http://www.ros.org/
+中文博客：http://blog.csdn.net/garfielder007/article/details/51219788
+http://blog.sina.com.cn/s/articlelist_1712413141_7_1.html
+图书：《ROS机器人程序设计（原书第2版）》
+
+机器人工具箱
+Arduino
+    https://www.arduino.cc/
+ROS
+    http://www.ros.org/
+LibreCAD  #2D
+    http://librecad.org/cms/home.html
+Blender #3D
+    https://www.blender.org/
+MeshLib #网格线
+    https://github.com/mohammadul/meshlib
+
+CAD?
+https://www.oschina.net/project/tag/241/cad
+
+MAC 安装ROS？
+http://wiki.ros.org/lunar/Installation
+http://wiki.ros.org/kinetic/Installation/OSX/Homebrew/Source
+
+http://blog.csdn.net/DinnerHowe/article/details/64121955
+
+Uninstalling six-1.4.1:
+mac本身带的Python库是有问题的，重新安装下python，再安装就行了
+
+rosdep install --from-paths src --ignore-src --rosdistro kinetic -y
+
+ERROR: the following packages/stacks could not have their rosdep keys resolved to system dependencies:
+webkit_dependency: No definition of [python-qt5-bindings-webkit] for OS [osx]
+https://github.com/ros/rosdistro/issues/15117
+
+/Users/gaotianpu/.ros/rosdep/sources.cache
+
+
+
+ROS是一种分布式处理框架（又名Nodes）。这使可执行文件能被单独设计，并且在运行时松散耦合。这些过程可以封装到数据包（Packages）和堆栈（Stacks）中，以便于共享和分发。
+支持代码库的联合系统
+基于服务的同步RPC（远程过程调用）通讯、基于Topic的异步数据流通讯，本身并没有实时性。
+将所有的驱动和算法逐渐发展成为和ROS没有依赖性单独的库
+CMake工具
+
+从Player项目中借鉴了驱动、运动控制和仿真方面的代码，
+从OpenCV中借鉴了视觉算法方面的代码，
+从OpenRAVE借鉴了规划算法的内容
+
+
+计算图级，ROS处理数据的一种点对点的网络形式
+节点（node）执行运算任务的进程、
+消息（message）、
+主题（topic）、
+服务（service）, 直接点对点
+ROS的控制器（ROS Master），使所有节点有条不紊的执行
+
+文件系统级，在硬盘上面查看的ROS源代码的组织形式
+包（package）、 包含节点（Node）、ROS依赖库、数据套、配置文件、第三方软件、或者任何其他逻辑构成
+堆（stack） 堆是包的集合
+
+社区级，ROS网络上进行代码发布的一种表现形式
+
+
+常用功能
+1. rviz，3D可视化工具 机器人模型是通过urdf文件描述的
+2. tf， 坐标变换系统
+3. gazebo , 物理仿真环境 基于ODE的物理引擎
+
+
+《机器人系统设计与制作:Python语言实现》 好多技术选型比较另类
+
+I - 计算 - O
+
+Gazebo
+OpenCV
+OpenNI，手势、身体活动、表情
+PCL
+LibreCAD
+Blender
+
+rviz,3D可视化
+rxplot 
+
+
+算法：
+A*搜索算法
+SLAM
+
+Dynamixel
+
+
+正交编码器， 光电型，霍尔型
+惯性测量单元IMU
+
+菊花链，
+
+自带编码器的电机？
+
+
+wiring ?
+
+nuc intel , 类似 RaspberryPi
+TivaC 类似ardunio
+energia Ide, 类似Ardunio IDE
+
+AIML
