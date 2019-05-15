@@ -17,7 +17,7 @@ def get_rect(im, title='get_rect'):   #   (a,b) = get_rect(im, title='get_rect')
         'released_once': False}
 
     cv2.namedWindow(title)
-    cv2.moveWindow(title, 100, 100)
+    cv2.moveWindow(title, 10, 100)
 
     def onMouse(event, x, y, flags, param):
 

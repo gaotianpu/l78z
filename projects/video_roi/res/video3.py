@@ -20,7 +20,7 @@ def draw_circle(event, x, y, flags, param):
 cv2.namedWindow('img')
 cv2.setMouseCallback('img', draw_circle)
 
-cap = cv2.VideoCapture('test.mp4')
+cap = cv2.VideoCapture('../test.mp4')
 while (True):
     ret, frame = cap.read()
     cv2.imshow('Vedio', frame)
