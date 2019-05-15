@@ -1,25 +1,41 @@
-protobuf
+Protobuf，Protocol Buffers
 https://developers.google.com/protocol-buffers/
+https://www.ibm.com/developerworks/cn/linux/l-cn-gpb/index.html 
 
-https://www.ibm.com/developerworks/cn/linux/l-cn-gpb/
-RPC系统 和 持续数据存储系统
-结构化数据串行化，或者说序列化
-嵌套数据结构
-动态编译
-序列化原理
+优势：
+	结构化，体积小，速度快，跨语言，跨平台，向后兼容
+how: 
+	描述信息/varint编码/2进制
+劣势：
+	不能直接查看内容，需借助工具？
+	js能使用protobuf么？
 
-js语言支持？
+使用流程：
+	1. 编写protobuf文件
+		vscode plugin:  vscode-proto3
+	2. 使用Protobuf编译器编译
+		protoc -I=$SRC_DIR --cpp_out=$DST_DIR $SRC_DIR/addressbook.proto
+		protoc -I=$SRC_DIR --python_out=$DST_DIR $SRC_DIR/addressbook.proto
+		protoc -I=$SRC_DIR --java_out=$DST_DIR $SRC_DIR/addressbook.proto 
+	3. 开发语言引用pb编译产出
+		c++:  
+			基于CMake的项目组织？
+				http://chen-tao.github.io/2015/11/07/cmakeprotoprotobuf-cpp/
+				https://blog.argcv.com/articles/3884.c 
+				https://github.com/ttroy50/cmake-examples/tree/master/03-code-generation/protobuf
+		python: 
 
-http://colobu.com/2015/01/07/Protobuf-language-guide/
-https://developers.google.com/protocol-buffers/docs/pythontutorial
+序列化理论中的IDL(Interface description language，接口描述语言)
 
-mac安装protobuf
-    brew install protobuf
 
-protobuf to json ?
+gRPC ？
+1. python
+https://grpc.io/docs/quickstart/python/
+	pip install grpcio grpcio-tools
 
-python?
-php ？
+2. c++
+https://grpc.io/docs/quickstart/cpp/
+
 
 
 

@@ -46,7 +46,7 @@ def on_mouse(event, x, y, flags, param):
             width = abs(param['start_pos'][0] - param['end_pos'][0])
             height = abs(param['start_pos'][1] -param['end_pos'][1])
             cropped_img = param['img'][min_y:min_y+height, min_x:min_x+width] 
-            sample_img = "%s_%s.png"%(param['video_id'],i)
+            sample_img = "output/a/%s_%s.png"%(param['video_id'],i)
             cv2.imwrite(sample_img, cropped_img) 
         
 
@@ -93,7 +93,7 @@ def run(video_id,video_file):
         cv2.imshow(win_title, frame)
         if cv2.waitKey(25) & 0xFF == 27:  # 按esc键退出  # 0xFF == ord('q'):  # 按q键退出 
             # 将用户选中区域坐标数据存储起来
-            with open(video_id + ".json", 'w') as f:
+            with open("output/a/%s.json" % (video_id) , 'w') as f:
                 mouse_params['img'] = None 
                 json.dump(mouse_params, f) 
             break

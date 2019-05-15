@@ -42,11 +42,11 @@ def run(video_id,video_file):
     # 从人工选取的数据文件中加载要剪裁的区间
     sample_area = []
     selected_area = [] 
-    with open(video_id + ".json", 'r') as f: 
+    with open("output/a/%s.json" % (video_id) , 'r') as f: 
         tmp = json.load(f) 
         selected_area = tmp['selected'] 
         for i,area in enumerate(selected_area):
-            manual_img = "%s_%s.png" % (video_id,i)  
+            manual_img = "output/a/%s_%s.png" % (video_id,i)  
             # print(manual_img)
             imageA = cv2.imread(manual_img)
             grayA = cv2.cvtColor(imageA, cv2.COLOR_BGR2GRAY) 
@@ -72,7 +72,7 @@ def run(video_id,video_file):
                 score = compare_image(sample_area[i], cropped_img)
                 if score>=0.3 and score<0.95:
                     print(i,frame_index,score) 
-                    sample_img = "%s_%s_%s.png"%(video_id,i,frame_index) # media_id, selected_area_no,frame_index
+                    sample_img = "output/b/%s_%s_%s.png"%(video_id,i,frame_index) # media_id, selected_area_no,frame_index
                     cv2.imwrite(sample_img, cropped_img)  
 
         for area in selected_area: 
