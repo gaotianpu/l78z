@@ -13,6 +13,7 @@ import numpy as np
 import cv2
 import json
 
+MANUAL_DIR='output/manual'
 
 def on_mouse(event, x, y, flags, param):
     param['current_pos'] = (x, y)
@@ -30,25 +31,25 @@ def on_mouse(event, x, y, flags, param):
         cv2.imshow('frame', img2)
 
     # 拖拽结束
-    if param['is_draging'] and flags != cv2.EVENT_FLAG_LBUTTON:  # : 
+    if param['is_draging'] and flags != cv2.EVENT_FLAG_LBUTTON:  # :
         param['is_draging'] = False
 
         param['end_pos'] = param['current_pos']
-        
+
         #判断选择区域是否有效
-        if param['start_pos'][0]!=param['end_pos'][0] and param['start_pos'][1]!=param['end_pos'][1]:  
+        if param['start_pos'][0] != param['end_pos'][0] and param['start_pos'][1] != param['end_pos'][1]:
             i = len(param['selected'])
             param['selected'].append([i, param['start_pos'], param['end_pos']])
+            param['class'].append("%s_%s" %(param['video_id'], i))
 
             #裁剪选取区域保存至
-            min_x = min(param['start_pos'][0],param['end_pos'][0])     
-            min_y = min(param['start_pos'][1],param['end_pos'][1])
+            min_x = min(param['start_pos'][0], param['end_pos'][0])
+            min_y = min(param['start_pos'][1], param['end_pos'][1])
             width = abs(param['start_pos'][0] - param['end_pos'][0])
-            height = abs(param['start_pos'][1] -param['end_pos'][1])
-            cropped_img = param['img'][min_y:min_y+height, min_x:min_x+width] 
-            sample_img = "output/a/%s_%s.png"%(param['video_id'],i)
-            cv2.imwrite(sample_img, cropped_img) 
-        
+            height = abs(param['start_pos'][1] - param['end_pos'][1])
+            cropped_img = param['img'][min_y:min_y+height, min_x:min_x+width]
+            sample_img = "%s/%s_%s.png" % (MANUAL_DIR,param['video_id'], i)
+            cv2.imwrite(sample_img, cropped_img)
 
         param['start_pos'] = None
         param['end_pos'] = None
@@ -56,9 +57,10 @@ def on_mouse(event, x, y, flags, param):
     # 单击右键,撤销上一个圈圈
     if param['selected'] and event == cv2.EVENT_RBUTTONDOWN:
         param['selected'].pop()
+        param['class'].pop()
 
 
-def run(video_id,video_file): 
+def run(video_id, video_file):
     cap = cv2.VideoCapture(video_file)  # 文件名及格式
 
     frame = np.zeros((500, 500, 3), np.uint8)
@@ -66,17 +68,18 @@ def run(video_id,video_file):
     cv2.namedWindow(win_title)
     cv2.moveWindow(win_title, 10, 100)
 
-    mouse_params = {'video_id':video_id, 'img': frame, 'is_draging': None, 'start_pos': None, 'current_pos': None,
-                    'end_pos': False, 'selected': []}
+    mouse_params = {'video_id': video_id, 'img': frame, 'is_draging': None, 'class':[],
+                    'start_pos': None, 'current_pos': None, 'end_pos': False, 'size': [0,0,0], 'selected': []}
     cv2.setMouseCallback('frame', on_mouse, mouse_params)
 
     while(True):
         #capture frame-by-frame
         ret, frame = cap.read()
         if not ret:
-            break 
+            break
 
         mouse_params['img'] = frame
+        mouse_params['size'] = frame.shape #高rows、宽colums、the pixels value is made up of three primary colors
 
         # 暂停、再选取？
         if cv2.waitKey(25) & 0xFF == ord('p'):
@@ -84,18 +87,19 @@ def run(video_id,video_file):
 
         if mouse_params['start_pos'] and mouse_params['current_pos']:
             cv2.rectangle(
-                frame, mouse_params['start_pos'], mouse_params['current_pos'], (0, 255, 0), 1)
+                frame, mouse_params['start_pos'],
+                mouse_params['current_pos'], (0, 255, 0), 1)
 
         for area in mouse_params['selected']:
             cv2.rectangle(frame, area[1], area[2], (0, 255, 0), 1)
 
         #display the resulting frame
         cv2.imshow(win_title, frame)
-        if cv2.waitKey(25) & 0xFF == 27:  # 按esc键退出  # 0xFF == ord('q'):  # 按q键退出 
+        if cv2.waitKey(25) & 0xFF == 27:  # 按esc键退出  # 0xFF == ord('q'):  # 按q键退出
             # 将用户选中区域坐标数据存储起来
-            with open("output/a/%s.json" % (video_id) , 'w') as f:
-                mouse_params['img'] = None 
-                json.dump(mouse_params, f) 
+            with open("%s/%s.json" % (MANUAL_DIR,video_id), 'w') as f:
+                mouse_params['img'] = None
+                json.dump(mouse_params, f)
             break
 
     #when everything done , release the capture
@@ -105,5 +109,5 @@ def run(video_id,video_file):
 
 if __name__ == "__main__":
     video_id = sys.argv[1]
-    video_file = sys.argv[2]
-    run(video_id,video_file)
+    video_file = "output/videos/%s.mp4" % (video_id)
+    run(video_id, video_file)
