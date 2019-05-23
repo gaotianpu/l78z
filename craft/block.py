@@ -1,11 +1,11 @@
 # https://github.com/zhuowei/RaspberryJuice/blob/master/src/main/resources/mcpi/api/python/modded/mcpi/block.py
 # 方块编号
-AIR                 = Block(0)
-STONE               = Block(1)
-GRASS               = Block(2)
-DIRT                = Block(3)
-COBBLESTONE         = Block(4)
-WOOD_PLANKS         = Block(5)
+AIR                 = Block(0)  #空气
+STONE               = Block(1)  #石头
+GRASS               = Block(2)  #草
+DIRT                = Block(3)  #泥土方块
+COBBLESTONE         = Block(4)  #圆石
+WOOD_PLANKS         = Block(5)  #木板
 SAPLING             = Block(6)
 BEDROCK             = Block(7)
 WATER_FLOWING       = Block(8)
@@ -50,7 +50,7 @@ FIRE                = Block(51)
 STAIRS_WOOD         = Block(53)
 CHEST               = Block(54)
 DIAMOND_ORE         = Block(56)
-DIAMOND_BLOCK       = Block(57)
+DIAMOND_BLOCK       = Block(57) #钻石方块
 CRAFTING_TABLE      = Block(58)
 FARMLAND            = Block(60)
 FURNACE_INACTIVE    = Block(61)

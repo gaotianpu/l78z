@@ -1,10 +1,10 @@
 # https://github.com/zhuowei/RaspberryJuice/blob/master/src/main/resources/mcpi/api/python/modded/mcpi/entity.py
 # 生物
-EXPERIENCE_ORB = Entity(2, "EXPERIENCE_ORB")
-AREA_EFFECT_CLOUD = Entity(3, "AREA_EFFECT_CLOUD")
-ELDER_GUARDIAN = Entity(4, "ELDER_GUARDIAN")
-WITHER_SKELETON = Entity(5, "WITHER_SKELETON")
-STRAY = Entity(6, "STRAY")
+EXPERIENCE_ORB = Entity(2, "EXPERIENCE_ORB")    #经验球
+AREA_EFFECT_CLOUD = Entity(3, "AREA_EFFECT_CLOUD")  #区域效果云？
+ELDER_GUARDIAN = Entity(4, "ELDER_GUARDIAN")    #
+WITHER_SKELETON = Entity(5, "WITHER_SKELETON")  # 凋零骷髅
+STRAY = Entity(6, "STRAY")  #
 EGG = Entity(7, "EGG")
 LEASH_HITCH = Entity(8, "LEASH_HITCH")
 PAINTING = Entity(9, "PAINTING")

@@ -26,4 +26,27 @@ Minecraft编程相关
     3. 开源server端
     4. 开源的plugin机制 
 
+samples:
+git clone https://github.com/martinohanlon/minecraft-hs.git
+git clone https://github.com/martinohanlon/minecraft-bridge.git
+git clone https://github.com/martinohanlon/minecraft-clock.git
+git clone https://github.com/martinohanlon/minecraft-planets.git
+git clone https://github.com/martinohanlon/minecraft-snake.git
+git clone https://github.com/martinohanlon/minecraft-renderObj.git
+git clone https://github.com/martinohanlon/minecraft-cannon.git
+
+git clone https://github.com/martinohanlon/minecraft-bombs.git
+git clone https://github.com/martinohanlon/minecraft-piano.git
+git clone https://github.com/martinohanlon/minecraft-sound.git
+git clone https://github.com/martinohanlon/minecraft-music.git
+git clone https://github.com/martinohanlon/minecraft-turtle.git
+
+https://github.com/martinohanlon/minecraft-traffic.
+
+wget https://raw.github.com/martinohanlon/minecraft-stuff/master/minecraftstuff.py
+
+
+cd minecraft-bridge
+python minecraft-bridge.py
+
 
