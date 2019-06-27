@@ -1,0 +1,11 @@
+--2019-05-31 18:29:32--  http://vd3.bdstatic.com/mda-jdtd0ugu32pwa3x8/mda-jdtd0ugu32pwa3x8.mp4
+Resolving vd3.bdstatic.com... 111.206.76.40
+Connecting to vd3.bdstatic.com|111.206.76.40|:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 6520074 (6.2M) [video/mp4]
+Saving to: ‘./output/videos/14458522207022040416.mp4’
+
+             ./output/videos/  29%[=============>                                    ]   1.84M  4.57MB/s                           ./output/videos/1  53%[=========================>                        ]   3.32M  5.48MB/s                          ./output/videos/14  76%[=====================================>            ]   4.76M  5.87MB/s               ./output/videos/1445852220702 100%[=================================================>]   6.22M  6.27MB/s    in 1.0s    
+
+2019-05-31 18:29:33 (6.27 MB/s) - ‘./output/videos/14458522207022040416.mp4’ saved [6520074/6520074]
+

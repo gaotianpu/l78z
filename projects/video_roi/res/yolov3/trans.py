@@ -29,8 +29,10 @@ def convert(size, box):
 def convert_annotation(image_id,flag,savepath):
  
     if flag == 0:
-        in_file = open(savepath+'/trainImageXML/%s.xml' % (os.path.splitext(image_id)[0]))
         out_file = open(savepath+'/trainImage/%s.txt' % (os.path.splitext(image_id)[0]), 'w')
+        
+        in_file = open(savepath+'/trainImageXML/%s.xml' % (os.path.splitext(image_id)[0]))
+        
         tree = ET.parse(in_file)
         root = tree.getroot()
         size = root.find('size')

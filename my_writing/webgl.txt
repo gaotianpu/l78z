@@ -1,0 +1,36 @@
+搞一个开源的尺规作图工具?
+不必急着写代码，先把Euclidea打通关！
+
+参考：
+1. Euclidea
+    特点，像玩游戏一样设置关卡目标，通过若干关卡后可以解锁一个工具，鼓励多样性解题
+    https://www.euclidea.xyz/en/game/
+2. GeoGebra 
+    工具很强大，据说是开源的，但没找到开源的代码
+    https://www.geogebra.org/geometry
+3. 几何画板 The Geometer's Sketchpad， 简称为GSP
+    传统的商业软件~
+    http://www.jihehuaban.com.cn/
+    
+
+
+要实现的功能列表：
+基础功能：
+1. 基于 WebGL 画直线、画圆
+    https://juejin.im/post/5c1da8e16fb9a049ef2690bc
+    http://taobaofed.org/blog/2015/12/21/webgl-handbook/
+2. 计算相交点？
+3. check 给定题目是否正确
+4. 支持操作步骤的回放，编辑，录屏
+UI：
+5. 基于electron封装打包成一个跨平台的工具
+    https://github.com/electron/electron
+6. 功能多起来之后，代码如何组织
+7. 专业的UI设计 
+
+
+其他：
+HTML5 Web Audio API？
+
+http://www.w3school.com.cn/tags/html_ref_canvas.asp
+https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Basic_usage

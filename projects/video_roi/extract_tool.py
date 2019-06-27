@@ -28,7 +28,7 @@ class ExtractTool(object):
         self.__download_videos() #
 
         self.current_video_index = 0
-        self.current_frame_index = 10
+        self.current_frame_index = 50
         self.current_cap = None
 
     def get_video_file(self, vid):
@@ -75,7 +75,7 @@ class ExtractTool(object):
                 tmp_index = self.video_list_len-1
             if tmp_index != self.current_video_index:
                 self.current_video_index = tmp_index
-                self.current_frame_index = 10
+                self.current_frame_index = 50
                 change_video = True
 
         if change_video or not self.current_cap:
@@ -212,8 +212,8 @@ class ExtractTool(object):
 
 
 def main():
-    ''' python extract_tool.py output/video_list_0522.txt manual
-        python extract_tool.py output/video_list_0522.txt random 20 
+    ''' python extract_tool.py vlist_0601.txt manual
+        python extract_tool.py output/vlist_0601.txt random 30 
     '''
     video_list_file = sys.argv[1]
     extract_way = sys.argv[2]
@@ -222,7 +222,7 @@ def main():
     if extract_way == 'manual':
         tool.extract_manual()
     else:
-        need_count = sys.argv[3]
+        need_count = int(sys.argv[3])
         tool.extract_random(need_count)
 
 

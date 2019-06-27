@@ -27,8 +27,10 @@
     python yolo_train_visual.py train.0529.log
 
 
-
 其他问题：
 1. YOLO训练数据曾么增广
+2. 如何维护一套数据集
+    
+
 
 鼠标事件定义：https://blog.51cto.com/devops2016/2084084

@@ -10,7 +10,7 @@ class Voc2Yolo(object):
     def __init__(self, root_dir='./output/'):
         '''初始化'''
         self.root_dir = root_dir
-        self.voc_dir = os.path.join(root_dir, 'Annotations')
+        self.voc_dir = os.path.join(root_dir, 'images')  # JPEGImages Annotations
 
         # 产出的
         self.yolo_dir = os.path.join(root_dir, 'labels')
@@ -108,7 +108,12 @@ class Voc2Yolo(object):
                 val_file.write(img_path + "\n")
 
 
+def mktar():
+    os.system('cd output')
+    os.system('mkdir images')
+    # os.system("find  JPEGImages  -name '*.png' -exec  -exec cp {} images \; ")
+    os.system('tar zcvf tvshow_0603.tar.gz labels train.txt valid.txt voc.names') #images
  
 if __name__ == "__main__":
-    obj = Voc2Yolo()
+    obj = Voc2Yolo('./output_0531')
     obj.process() 
