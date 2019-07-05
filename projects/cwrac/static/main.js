@@ -29,7 +29,10 @@
         var current_tool = Tools.HAND; //默认 
 
         var operation_list = []; //用户的绘图记录
-        var intersect_points = []; //各种线条相交点
+
+        //各种线条相交点
+        //{'x':1,'y':2,'items':[[1,3],[5,7]]}
+        var intersect_points = [];
 
         var canvas = document.getElementById('canvas');
         var ctx = canvas.getContext('2d');
@@ -70,7 +73,58 @@
                 //TODO: 画布移动？
                 return false;
             }
-            return { 'x': Math.round(x), 'y': Math.round(y) };
+            return [{ 'x': Math.round(x), 'y': Math.round(y) }];
+        }
+
+        function calc_line_circle_intersect_point(line_item, circle) {
+            //计算线段和圆的交点
+            //https://thecodeway.com/blog/?p=932 
+            // 直线方程： y = ax + b 
+            // 圆方程： (x-x0)²+(y-y0)²=r²  //圆心坐标为(x0，y0),r半径 
+            // 推导：
+            // (x-x0)² + (ax+b-y0)²=r² //相交点x,y坐标相等，联立方程，求x值  
+            // (x²+x0²-2*x0*x) + (a²x² + (b-y0)² + 2*a*x*(b-y0) )= r²
+            // (x² + a²x²) + (2*a*(b-y0)*x-2*x0*x) + (x0² + (b-y0)²) = r²
+            // (a²+1)x² + 2*(a*(b-y0)-x0)*x + (x0² + (b-y0)²) = r²
+            // (a²+1)x² + 2*(a*(b-y0) - x0) * x = r² - (b-y0)² - x0²
+            // x² + 2*((a*(b-y0) - x0)/(a²+1)) * x = (r² - (b-y0)² - x0²)/(a²+1)
+            // x² + 2*((a*(b-y0) - x0)/(a²+1)) * x + ((a*(b-y0) - x0)/(a²+1))² = (r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²
+            // (x+ [((a*(b-y0) - x0)/(a²+1))²]开放)² = (r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²
+            // x+ [((a*(b-y0) - x0)/(a²+1))²]开放 = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放
+            // x = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放 - [((a*(b-y0) - x0)/(a²+1))²]开放
+            var line = calc_line_parameters(line_item);
+            var a = line.weight;
+            var b = line.bias;
+            var r = calc_distance(circle.x, circle.y, circle.x1, circle.y1);
+            var x0 = circle.x;
+            var y0 = circle.y;
+
+            var A = Math.pow(a, 2) + 1;
+            var B = b - y0;
+            var C = (B * a - x0) / A
+            var t = (Math.pow(r, 2) - Math.pow(x0, 2) - Math.pow(B, 2)) / (Math.pow(a, 2) + 1)
+            var f = t + Math.pow(C, 2);
+
+            if (f < 0) {
+                return false;
+            }
+
+            var l = Math.sqrt(f)
+
+            var x1 = l - C;
+            var y1 = a * x1 + b;
+
+            var x2 = - l - C;
+            var y2 = a * x2 + b;
+
+            // console.log(x1, y1, x2, y2);
+
+            return [{ 'x': Math.round(x1), 'y': Math.round(y1) },
+            { 'x': Math.round(x2), 'y': Math.round(y2) }];
+        }
+
+        function calc_circle2_intersect_point(circle, circle1) {
+            //计算直线和圆相交点
         }
 
         function get_all_intersect_points() {
@@ -90,25 +144,35 @@
 
                     if (operation_list[i].type == Tools.LINE && operation_list[j].type == Tools.LINE) {
                         //两直线相交
-                        var point = calc_line2_intersect_point(operation_list[i], operation_list[j]);
-                        if (point) {
-                            intersect_points.push(point);
+                        var points = calc_line2_intersect_point(operation_list[i], operation_list[j]);
+                        if (points) {
+                            intersect_points.push.apply(intersect_points, points);
                         }
                     }
 
                     if (operation_list[i].type == Tools.LINE && operation_list[j].type == Tools.CIRCLE) {
-                        //计算线段和圆的交点
-                        //https://thecodeway.com/blog/?p=932 
-                        // (x-x0)²+(y-y0)²=r²  //圆心坐标为(x0，y0),r半径
-                        // y = ax + b 
-                        // (x-x0)² + (ax + b-y0)²=r² 
-                        // x² + x0² - 2*x0*x + a²x² + (b-y0)² + 2*a*(b-y0)*x = r²
-                        // (a²+1)x² + 2*(a*(b-y0) - x0) * x = r² - (b-y0)²
+                        //直线&圆
+                        var points = calc_line_circle_intersect_point(operation_list[i], operation_list[j]);
+                        if (points) {
+                            intersect_points.push.apply(intersect_points, points);
+                        }
+
                     }
 
                     if (operation_list[i].type == Tools.CIRCLE && operation_list[j].type == Tools.LINE) {
+                        //圆&直线
+                        var points = calc_line_circle_intersect_point(operation_list[j], operation_list[i]);
+                        if (points) {
+                            intersect_points.push.apply(intersect_points, points);
+                        }
 
-
+                    }
+                    if (operation_list[i].type == Tools.CIRCLE && operation_list[j].type == Tools.CIRCLE) {
+                        //圆&圆
+                        var points = calc_circle2_intersect_point(operation_list[i], operation_list[j]);
+                        if (points) {
+                            intersect_points.push.apply(intersect_points, points);
+                        }
                     }
 
                     // console.log(operation_list[i], operation_list[j]);
@@ -121,12 +185,11 @@
 
 
         function render() {
+            //绘制图形
             if (current_tool == Tools.HAND) {
                 //TODO ?
                 return;
             }
-
-
 
             canvas_rect = canvas.getBoundingClientRect();
             ctx.clearRect(0, 0, canvas_rect.width, canvas_rect.height); //TODO
@@ -192,7 +255,6 @@
 
                     //绘制圆周
                     var radius = calc_distance(item.x, item.y, item.x1, item.y1);
-                    // var radius = Math.sqrt((item.x - item.x1) * (item.x - item.x1) + (item.y - item.y1) * (item.y - item.y1));
                     ctx.beginPath();
                     ctx.arc(item.x, item.y, radius, 0, Math.PI * 2);
                     ctx.closePath();
@@ -206,85 +268,89 @@
         //事件绑定
         // https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event 
 
-        //绘图工具框
-        var toolbox = document.getElementById("toolbox");
-        toolbox.addEventListener('click', function () {
-            var e = event || window.event;
-            if (e.target && e.target.nodeName.toUpperCase() == "INPUT") {
-                current_tool = e.target.value;
-            }
-        }, false);
+        function event_bindding() {
+            //绘图工具框
+            var toolbox = document.getElementById("toolbox");
+            toolbox.addEventListener('click', function () {
+                var e = event || window.event;
+                if (e.target && e.target.nodeName.toUpperCase() == "INPUT") {
+                    current_tool = e.target.value;
+                }
+            }, false);
 
-        //两种习惯：暂时先支持第一种
-        //1. 拖拽式 
-        //2. 点击式 1.鼠标点击2下确定一条直线，一个圆等  
-        var isDrawing = false;
-        var requestAnimationFrame_status = 0;
-        canvas.addEventListener('mousedown', function (e) {
-            var x = e.clientX - canvas_rect.left;
-            var y = e.clientY - canvas_rect.top;
-            isDrawing = true;
-
-            if (current_tool != Tools.HAND) {
-                var obj = { "type": current_tool, 'x': x, 'y': y, 'x1': x, 'y': y };
-                operation_list.push(obj);
-            }
-
-            requestAnimationFrame_status = window.requestAnimationFrame(render);
-        });
-        canvas.addEventListener('mousemove', function (e) {
-            var last_index = operation_list.length - 1;
-            if (last_index < 0) {
-                return;
-            }
-
-            if (isDrawing === true) {
+            //两种习惯：暂时先支持第一种
+            //1. 拖拽式 
+            //2. 点击式 1.鼠标点击2下确定一条直线，一个圆等  
+            var isDrawing = false;
+            var requestAnimationFrame_status = 0;
+            canvas.addEventListener('mousedown', function (e) {
                 var x = e.clientX - canvas_rect.left;
                 var y = e.clientY - canvas_rect.top;
+                isDrawing = true;
 
-                operation_list[last_index].x1 = x;
-                operation_list[last_index].y1 = y;
+                if (current_tool != Tools.HAND) {
+                    var obj = { "type": current_tool, 'x': x, 'y': y, 'x1': x, 'y': y };
+                    operation_list.push(obj);
+                }
 
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
-            }
-        });
-        canvas.addEventListener('mouseup', function (e) {
-            var last_index = operation_list.length - 1;
-            if (last_index < 0) {
-                return;
-            }
+            });
+            canvas.addEventListener('mousemove', function (e) {
+                var last_index = operation_list.length - 1;
+                if (last_index < 0) {
+                    return;
+                }
 
-            if (isDrawing === true) {
-                isDrawing = false;
+                if (isDrawing === true) {
+                    var x = e.clientX - canvas_rect.left;
+                    var y = e.clientY - canvas_rect.top;
 
-                var x = e.clientX - canvas_rect.left;
-                var y = e.clientY - canvas_rect.top;
-                operation_list[last_index].x1 = x;
-                operation_list[last_index].y1 = y;
+                    operation_list[last_index].x1 = x;
+                    operation_list[last_index].y1 = y;
 
-                window.cancelAnimationFrame(requestAnimationFrame_status);
-            }
-        });
+                    requestAnimationFrame_status = window.requestAnimationFrame(render);
+                }
+            });
+            canvas.addEventListener('mouseup', function (e) {
+                var last_index = operation_list.length - 1;
+                if (last_index < 0) {
+                    return;
+                }
 
-        canvas.addEventListener('click', function (e) {
-            //
-        });
-        //右键单击、取消？
+                if (isDrawing === true) {
+                    isDrawing = false;
 
-        //浏览器大小调整
-        window.addEventListener('resize', function (e) {
-            var height = document.documentElement.clientHeight;
-            var width = document.documentElement.clientWidth;
-            canvas.height = height;
-            canvas.width = width;
-            requestAnimationFrame_status = window.requestAnimationFrame(render);
-            // console.log(height, width);
-        });
+                    var x = e.clientX - canvas_rect.left;
+                    var y = e.clientY - canvas_rect.top;
+                    operation_list[last_index].x1 = x;
+                    operation_list[last_index].y1 = y;
 
-        window.addEventListener('load', function (e) {
-            //页面加载，load用户的历史操作记录，呈现给用户？
-        });
+                    window.cancelAnimationFrame(requestAnimationFrame_status);
+                }
+            });
 
+            canvas.addEventListener('click', function (e) {
+                //
+            });
+            //右键单击、取消？
+
+            //浏览器大小调整
+            window.addEventListener('resize', function (e) {
+                var height = document.documentElement.clientHeight;
+                var width = document.documentElement.clientWidth;
+                canvas.height = height;
+                canvas.width = width;
+                requestAnimationFrame_status = window.requestAnimationFrame(render);
+                // console.log(height, width);
+            });
+
+            window.addEventListener('load', function (e) {
+                //页面加载，load用户的历史操作记录，呈现给用户？
+            });
+        }
+
+
+        event_bindding();
     }
 
     main();
