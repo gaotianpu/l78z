@@ -12,6 +12,10 @@
             Object.freeze(Tools);
         }
 
+        const HIGHTLIGHT_COLOR = 'rgb(60,160,250)'; //高亮颜色
+        const DASHES_COLOR = 'rgb(60,60,60)'; //虚线颜色
+        const NORMAL_COLOR = 'rgb(30,30,30)'; //正常的颜色
+
         var canvas = document.getElementById('canvas');
         var ctx = canvas.getContext('2d');
         var canvas_rect = canvas.getBoundingClientRect();
@@ -346,6 +350,15 @@
                 }
             }
 
+            //高亮
+            var len_operation_list = operation_list.length;
+            for (var i = 0; i < len_operation_list; i++) {
+                //last_item.x1, y1是否在线上？
+
+                operation_list[i].highlight = false; 
+            }
+            last_item.highlight = true;
+
             // if (!has_same_objects(last_item)) {
             operation_list.push(last_item);
             // }
@@ -364,7 +377,11 @@
         function draw_line(start, end, strokeStyle, lineWidth) {
             ctx.beginPath();
             ctx.lineWidth = lineWidth;
-            ctx.strokeStyle = strokeStyle;
+            if (start.highlight) {
+                ctx.strokeStyle = HIGHTLIGHT_COLOR;
+            } else {
+                ctx.strokeStyle = strokeStyle;
+            }
             ctx.moveTo(start.x, start.y);
             ctx.lineTo(end.x, end.y);
             ctx.stroke();
@@ -373,7 +390,11 @@
 
         function draw_arc(item, strokeStyle) {
             ctx.beginPath();
-            ctx.strokeStyle = strokeStyle;
+            if (item.highlight) {
+                ctx.strokeStyle = HIGHTLIGHT_COLOR;
+            } else {
+                ctx.strokeStyle = strokeStyle;
+            }
             ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
             ctx.closePath();
             ctx.stroke();
@@ -397,29 +418,30 @@
             //绘制人工点
             var manual_points = get_manual_points();
             for (var item of manual_points) {
-                draw_point(item, 'black');
+                draw_point(item, NORMAL_COLOR);
             }
 
             //绘制交点
             var intersect_points = get_intersect_points();
             for (var item of intersect_points) {
-                draw_point(item, 'gray');
+                draw_point(item, DASHES_COLOR);
             }
 
             // js for 遍历数组
             //https://juejin.im/post/5a3a59e7518825698e72376b
             for (var item of operation_list) {
+
                 //线
                 if (item.type == Tools.LINE) {
                     //绘制直线 
-                    draw_line(item.left, item.right, 'gray', 0.3);
+                    draw_line(item.left, item.right, DASHES_COLOR, 0.3);
                     //绘制两点之间的线段部分
-                    draw_line(item, { 'x': item.x1, 'y': item.y1 }, 'black', 1);
+                    draw_line(item, { 'x': item.x1, 'y': item.y1 }, NORMAL_COLOR, 1);
                 }
 
                 //绘制圆
                 if (item.type == Tools.CIRCLE) {
-                    draw_arc(item, 'black');
+                    draw_arc(item, NORMAL_COLOR);
                 }
             }
 

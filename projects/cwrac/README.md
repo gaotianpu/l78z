@@ -9,7 +9,7 @@ cwrac, construction with ruler and compasses,
 4. 相交
  * 直线和直线   calc_line2_intersect_point
  * 直线和圆 calc_line_circle_intersect_point
- * 圆和圆   calc_circle2_intersect_point
+ * 圆和圆   calc_circle2_intersect_point 【TODO】
 
 ## 高级工具
 高级工具作用加速作图效率，前提是懂得如何使用基本工具达到高级工具的效果，因此，逐步解锁。
@@ -31,8 +31,10 @@ https://juejin.im/post/5c5432ca6fb9a049b82ae58a
 1. undo/redo 
 2. 操作步骤回放
 3. 配色等UI优化
-4. 
-2. 用户操作记录保存,上传？
+4. 微信小程序
+5. app
+6. 用户操作记录保存,上传？
+7. 关卡设计
 
 
 程序结构
