@@ -276,6 +276,16 @@
                 }
             }
 
+            //高亮？
+            // var len_manual_points = manual_points.length;
+            // for(var i=0; i<len_manual_points;i++){
+            //     item = manual_points[i];
+            //     if(i==(len_manual_points-1)){
+            //         item.highlight = true ;
+            //     }
+            // }
+
+
             return manual_points;
         }
 
@@ -355,7 +365,7 @@
             for (var i = 0; i < len_operation_list; i++) {
                 //last_item.x1, y1是否在线上？
 
-                operation_list[i].highlight = false; 
+                operation_list[i].highlight = false;
             }
             last_item.highlight = true;
 
@@ -367,8 +377,13 @@
 
         /// view render
         function draw_point(item, strokeStyle) {
+            //画点
             ctx.beginPath();
-            ctx.strokeStyle = strokeStyle;
+            if (item.highlight) {
+                ctx.strokeStyle = HIGHTLIGHT_COLOR;
+            } else {
+                ctx.strokeStyle = strokeStyle;
+            }
             ctx.arc(item.x, item.y, 2, 0, Math.PI * 2, true);
             ctx.closePath();
             ctx.stroke();
@@ -400,8 +415,6 @@
             ctx.stroke();
         }
 
-
-
         function render() {
             //绘制图形
             if (current_tool == Tools.HAND) {
@@ -423,6 +436,7 @@
 
             //绘制交点
             var intersect_points = get_intersect_points();
+
             for (var item of intersect_points) {
                 draw_point(item, DASHES_COLOR);
             }
