@@ -15,6 +15,7 @@
 
 //1. 有一个数组，用于记录每个步骤干嘛
 //2. 事件响应，鼠标的点击、释放
+// mvc结构，model-数据-用户的绘图对象，view-render,将用户绘制对象展现出来，control-鼠标事件，将事件操作结果转换为数据m
 ; (function () {
     function main() {
         //工具箱，枚举值
@@ -30,16 +31,15 @@
 
         var canvas = document.getElementById('canvas');
         var ctx = canvas.getContext('2d');
-        var canvas_rect = canvas.getBoundingClientRect();
+        var canvas_rect = canvas.getBoundingClientRect(); 
 
-        //定义各种变量
-        var current_tool = Tools.HAND; //当前用户选择的绘图工具，默认移动  
+        //定义各种变量 
         var operation_list = []; //用户的绘图记录 
-        //{'x':1,'y':2,'items':[[1,3],[5,7]]} 
-        var manual_points = [];  //手工绘制的点
-        var intersect_points = []; //相交点
-        var all_points = [];  //人工绘制的所有点，以及各种线条相交点
+        
+        //{'x':1,'y':2,'items':[[1,3],[5,7]]}  
+        var all_points = [];  //人工绘制的所有点以及各种线条相交点
 
+        var current_tool = Tools.HAND; //当前用户选择的绘图工具，默认移动  
         var isDrawing = false;
         var requestAnimationFrame_status = 0;
 
@@ -68,11 +68,9 @@
             // y = a0*x + b0
             // y1 = a1*x1 + b1 , 相交点，x=x1, y=y1
             // x = (b1-b0)/(a0-a1), 将x代入任一直线方程求解
-            // y = a0*x + b0 , 将x代入公式得到y 
-            var line = calc_line_parameters(item);
-            var line1 = calc_line_parameters(item1);
-            var x = (line1.bias - line.bias) / (line.weight - line1.weight);
-            var y = line.weight * x + line.bias;
+            // y = a0*x + b0 , 将x代入公式得到y  
+            var x = (item1.bias - item.bias) / (item.weight - item1.weight);
+            var y = item.weight * x + item.bias;
 
             if (x <= 0 || y <= 0 || x > canvas_rect.width || y > canvas_rect.height) {
                 //TODO: 画布平移、缩放？
@@ -94,29 +92,26 @@
             // (a²+1)x² + 2*(a*(b-y0) - x0) * x = r² - (b-y0)² - x0²
             // x² + 2*((a*(b-y0) - x0)/(a²+1)) * x = (r² - (b-y0)² - x0²)/(a²+1)
             // x² + 2*((a*(b-y0) - x0)/(a²+1)) * x + ((a*(b-y0) - x0)/(a²+1))² = (r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²
-            // (x+ [((a*(b-y0) - x0)/(a²+1))²]开放)² = (r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²
-            // x+ [((a*(b-y0) - x0)/(a²+1))²]开放 = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放
-            // x = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放 - [((a*(b-y0) - x0)/(a²+1))²]开放
-            var line = calc_line_parameters(line_item);
-            var radius = calc_distance(circle.x, circle.y, circle.x1, circle.y1);
-
-            var A = Math.pow(line.weight, 2) + 1;
-            var B = line.bias - circle.y;
-            var C = (B * line.weight - circle.x) / A
-            var t = (Math.pow(radius, 2) - Math.pow(circle.x, 2) - Math.pow(B, 2)) / (Math.pow(line.weight, 2) + 1)
+            // (x+ [((a*(b-y0) - x0)/(a²+1))²]开方)² = (r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²
+            // x+ [((a*(b-y0) - x0)/(a²+1))²]开方 = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放
+            // x = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放 - [((a*(b-y0) - x0)/(a²+1))²]开放 
+            var A = Math.pow(line_item.weight, 2) + 1;
+            var B = line_item.bias - circle.y;
+            var C = (B * line_item.weight - circle.x) / A
+            var t = (Math.pow(circle.radius, 2) - Math.pow(circle.x, 2) - Math.pow(B, 2)) / (Math.pow(line_item.weight, 2) + 1)
             var f = t + Math.pow(C, 2);
             if (f < 0) {
                 //不存在交点
                 //工程上应该允许有个误差值？误差多少合适？相切的点？
-                // 过圆心、垂直与直线的线段，线段的距离是否等于半径？
+                //过圆心、垂直与直线的线段，线段的距离是否等于半径？
                 return false;
             }
             var l = Math.sqrt(f)
 
             var x1 = l - C;
-            var y1 = line.weight * x1 + line.bias;
+            var y1 = line_item.weight * x1 + line_item.bias;
             var x2 = - l - C;
-            var y2 = line.weight * x2 + line.bias;
+            var y2 = line_item.weight * x2 + line_item.bias;
 
             return [{ 'x': Math.round(x1), 'y': Math.round(y1) },
             { 'x': Math.round(x2), 'y': Math.round(y2) }];
@@ -198,21 +193,20 @@
 
         function get_intersect_points() {
             //获取所有的相交点
-            var intersect_points = [];
+            var tmp_points = [];
 
             //计算两个图形相交的点
             var len = operation_list.length;
             if (len < 2) {
-                return intersect_points;
+                return tmp_points;
             }
             for (var i = 0; i < len; i++) {
                 for (var j = i + 1; j < len; j++) {
                     if (operation_list[i].type == Tools.LINE && operation_list[j].type == Tools.LINE) {
                         //两直线相交
                         var points = calc_line2_intersect_point(operation_list[i], operation_list[j]);
-                        if (points) {
-                            //是否需要在这里去重？
-                            intersect_points.push.apply(intersect_points, points);
+                        if (points) { 
+                            tmp_points.push.apply(tmp_points, points);
                         }
                     }
 
@@ -220,12 +214,12 @@
                         //直线&圆
                         var points = calc_line_circle_intersect_point(operation_list[i], operation_list[j]);
                         if (points) {
-                            intersect_points.push.apply(intersect_points, points);
+                            tmp_points.push.apply(tmp_points, points);
                         }
 
                         var points = calc_chuizhidian(operation_list[i], operation_list[j]);
                         if (points) {
-                            intersect_points.push.apply(intersect_points, points);
+                            tmp_points.push.apply(tmp_points, points);
                         }
 
                     }
@@ -234,11 +228,11 @@
                         //圆&直线
                         var points = calc_line_circle_intersect_point(operation_list[j], operation_list[i]);
                         if (points) {
-                            intersect_points.push.apply(intersect_points, points);
+                            tmp_points.push.apply(tmp_points, points);
                         }
                         var points = calc_chuizhidian(operation_list[j], operation_list[i]);
                         if (points) {
-                            intersect_points.push.apply(intersect_points, points);
+                            tmp_points.push.apply(tmp_points, points);
                         }
 
                     }
@@ -246,16 +240,23 @@
                         //圆&圆
                         var points = calc_circle2_intersect_point(operation_list[i], operation_list[j]);
                         if (points) {
-                            intersect_points.push.apply(intersect_points, points);
+                            tmp_points.push.apply(tmp_points, points);
                         }
-                    }
-
-                    // console.log(operation_list[i], operation_list[j]);
+                    } 
                 }
 
-            }
-
-            //点去重，1.相交点去重，2.与用户绘制的点去重 
+            } 
+            
+            //用户绘制点+相交点去重
+            var intersect_points = [];
+            var manual_points = get_manual_points(); 
+            for (var i = 0; i < tmp_points.length; i++) {  
+                var dm = get_nearest_point(tmp_points[i].x, tmp_points[i].y, manual_points);
+                var d = get_nearest_point(tmp_points[i].x, tmp_points[i].y, intersect_points);
+                if (!d && !dm) { 
+                    intersect_points.push({ 'x': tmp_points[i].x, 'y': tmp_points[i].y });
+                }
+            }  
             return intersect_points;
         }
 
@@ -281,12 +282,9 @@
 
             //去重？
             var manual_points = [];
-            for (var i = 0; i < tmp.length; i++) {
-                //TODO: 判断是否为最后一个 ？
-
+            for (var i = 0; i < tmp.length; i++) { 
                 var d = get_nearest_point(tmp[i].x, tmp[i].y, manual_points);
-                if (!d) {
-                    // console.log(tmp[i]);
+                if (!d) { 
                     manual_points.push({ 'x': tmp[i].x, 'y': tmp[i].y });
                 }
             }
@@ -296,13 +294,12 @@
 
 
 
-        function process_points() {
+        function process_data() {
             //人工point：点、线段的起始点、圆心(起点)和圆周(终点)等  
             var last_index = operation_list.length - 1;
             if (last_index < 0) {
                 return false;
-            }
-            // var last_item = operation_list[last_index];
+            } 
 
             var last_item = operation_list.pop();
 
@@ -325,19 +322,27 @@
                     last_item.y1 = nearest_point.y;
                 }
 
+                if (last_item.type == Tools.LINE) {
+                    //斜率和偏置项，左侧边界点、右侧边界点等
+                    var ret = calc_line_parameters(last_item);
+                    for (var k in ret){
+                        last_item[k] = ret[k]; 
+                    } 
+                }
+
                 if (last_item.type == Tools.CIRCLE) {
-                    var radius = calc_distance(last_item.x, last_item.y, last_item.x1, last_item.y1);
-                    last_item.radius = radius;
+                    //圆的半径 
+                    last_item.radius = calc_distance(last_item.x, last_item.y, last_item.x1, last_item.y1);
                 }
             }
 
             //线与线相交的点，如果与人工的接近，按人工的为准？
             operation_list.push(last_item);
 
+            // todo here ?
             // all_points = [];
             // all_points.push.apply(all_points, get_manual_points());  
-            // all_points.push.apply(all_points, get_intersect_points());
-
+            // all_points.push.apply(all_points, get_intersect_points()); 
         }
 
         function render() {
@@ -350,8 +355,8 @@
             canvas_rect = canvas.getBoundingClientRect();
             ctx.clearRect(0, 0, canvas_rect.width, canvas_rect.height); //TODO 
 
-            //计算所有点：人工点和交点
-            process_points();
+            //处理所有的线、点
+            process_data();
 
             //绘制人工点
             var manual_points = get_manual_points();
@@ -378,13 +383,12 @@
             for (var item of operation_list) {
                 //线
                 if (item.type == Tools.LINE) {
-                    //绘制直线
-                    var line = calc_line_parameters(item);
+                    //绘制直线 
                     ctx.beginPath();
                     ctx.lineWidth = 0.3;
                     ctx.strokeStyle = 'gray';
-                    ctx.moveTo(line.left.x, line.left.y);
-                    ctx.lineTo(line.right.x, line.right.y);
+                    ctx.moveTo(item.left.x, item.left.y);
+                    ctx.lineTo(item.right.x, item.right.y);
                     ctx.stroke();
                     ctx.closePath();
 
@@ -427,12 +431,13 @@
             //2. 点击式 1.鼠标点击2下确定一条直线，一个圆等  
             canvas.addEventListener('mousedown', function (e) {
                 if (current_tool == Tools.HAND) {
+                    //todo ?
                     return;
                 }
                 isDrawing = true;
                 var x = e.clientX - canvas_rect.left;
                 var y = e.clientY - canvas_rect.top;
-                var obj = { "type": current_tool, 'x': x, 'y': y, 'x1': x, 'y': y };
+                var obj = { "type": current_tool, 'x': x, 'y': y};  
                 operation_list.push(obj);
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
             });
