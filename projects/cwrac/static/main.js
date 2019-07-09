@@ -21,8 +21,7 @@
         var canvas_rect = canvas.getBoundingClientRect();
 
         //定义各种变量 
-        var operation_list = []; //用户的绘图记录 
-
+        var operation_list = []; //用户的绘图记录  
         //{'x':1,'y':2,'items':[[1,3],[5,7]]}  
         var all_points = [];  //人工绘制的所有点以及各种线条相交点
 
@@ -32,9 +31,12 @@
 
         //各种数学计算公式 
 
-        function calc_distance(x, y, x1, y1) {
-            //计算两点之间的距离
-            return Math.round(Math.sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1)));
+        function calc_distance(item) {
+            //计算两点之间的距离 
+            //Math.round(Math.sqrt(Math.pow(item.x - item.x1,2)+ Math.pow((item.y - item.y1,2))));
+            var ret = Math.sqrt(Math.pow(item.x - item.x1, 2) + Math.pow(item.y - item.y1, 2));
+            return ret;
+            // return Math.round();
         }
 
         function calc_line_parameters(item) {
@@ -50,14 +52,14 @@
             return { 'weight': w, 'bias': b, 'left': left, 'right': right }
         }
 
-        function calc_line2_intersect_point(item, item1) {
+        function calc_line2_intersect_point(line, line1) {
             //计算两条直线的交点
             // y = a0*x + b0
             // y1 = a1*x1 + b1 , 相交点，x=x1, y=y1
             // x = (b1-b0)/(a0-a1), 将x代入任一直线方程求解
             // y = a0*x + b0 , 将x代入公式得到y  
-            var x = (item1.bias - item.bias) / (item.weight - item1.weight);
-            var y = item.weight * x + item.bias;
+            var x = (line1.bias - line.bias) / (line.weight - line1.weight);
+            var y = line.weight * x + line.bias;
 
             if (x <= 0 || y <= 0 || x > canvas_rect.width || y > canvas_rect.height) {
                 //TODO: 画布平移、缩放？
@@ -66,7 +68,7 @@
             return [{ 'x': Math.round(x), 'y': Math.round(y) }];
         }
 
-        function calc_line_circle_intersect_point(line_item, circle) {
+        function calc_line_circle_intersect_points(line, circle) {
             //计算线段和圆的交点
             //https://thecodeway.com/blog/?p=932 
             // 直线方程： y = ax + b 
@@ -82,10 +84,10 @@
             // (x+ [((a*(b-y0) - x0)/(a²+1))²]开方)² = (r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²
             // x+ [((a*(b-y0) - x0)/(a²+1))²]开方 = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放
             // x = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放 - [((a*(b-y0) - x0)/(a²+1))²]开放 
-            var A = Math.pow(line_item.weight, 2) + 1;
-            var B = line_item.bias - circle.y;
-            var C = (B * line_item.weight - circle.x) / A
-            var t = (Math.pow(circle.radius, 2) - Math.pow(circle.x, 2) - Math.pow(B, 2)) / (Math.pow(line_item.weight, 2) + 1)
+            var A = Math.pow(line.weight, 2) + 1;
+            var B = line.bias - circle.y;
+            var C = (B * line.weight - circle.x) / A
+            var t = (Math.pow(circle.radius, 2) - Math.pow(circle.x, 2) - Math.pow(B, 2)) / (Math.pow(line.weight, 2) + 1)
             var f = t + Math.pow(C, 2);
             if (f < 0) {
                 //不存在交点
@@ -96,18 +98,66 @@
             var l = Math.sqrt(f)
 
             var x1 = l - C;
-            var y1 = line_item.weight * x1 + line_item.bias;
+            var y1 = line.weight * x1 + line.bias;
             var x2 = - l - C;
-            var y2 = line_item.weight * x2 + line_item.bias;
+            var y2 = line.weight * x2 + line.bias;
 
             return [{ 'x': Math.round(x1), 'y': Math.round(y1) },
             { 'x': Math.round(x2), 'y': Math.round(y2) }];
         }
 
-        function calc_circle2_intersect_point(circle, circle1) {
+        function calc_circle2_intersect_points(circle, circle1) {
             //计算圆和圆的相交点
-            //圆方程： (x-x0)²+(y-y0)²=r0²
-            //  (x-x1)²+(y-y1)²=r1²
+            //1. 两个圆心连线的长度，大于两圆半径和->无交点，等于半径和->1个交点，小于半径和->2个交点
+            //2. 如果有2个交点，则交点之间的连线垂直于圆心之间的连线，可计算交点连线的斜率
+            //3. 如果有1个交点
+            // 如果两个圆有交点，则交点的连线必然垂直于，两个圆心连接的直线 
+            // 圆方程： 
+            // (x-x0)²+(y-y0)²=r0²
+            // (x-x1)²+(y-y1)²=r1²
+            // (x-x1)²+(y-y1)² - ( (x-x0)² + (y-y0)² ) = r1²-r0²
+            // (x² + x1² - 2*x1*x + y²+y1²-2*y1*y) - (x² + x0² - 2*x0*x + y²+y0²-2*y0*y) = r1²-r0²
+            // x1² - 2*x1*x + y1²-2*y1*y - x0² + 2*x0*x - y0² + 2*y0*y = r1²-r0²
+            // 2*x0*x - 2*x1*x + 2*y0*y -2*y1*y = r1²-r0² + y0² + x0² - y1² - x1²
+            // (x0-x1)*x + (y0-y1)*y =  (r1²-r0² + y0² + x0² - y1² - x1²)/2 
+            // y + ((x0-x1)/(y0-y1))*x =  (r1²-r0² + y0² + x0² - y1² - x1²)/2/(y0-y1)
+            // y = - ((x0-x1)/(y0-y1))*x + (r1²-r0² + y0² + x0² - y1² - x1²)/2/(y0-y1)
+
+            // y = Ax + B ? A=((x1-x0)/(y0-y1)) B=(r1²-r0² + y0² + x0² - y1² - x1²)/2/(y0-y1) 
+
+            // x² + x0² - 2*x0*x + (Ax+B -y0)² = r0² 
+            // x² - 2*x0*x + A²*x² + 2*(B-y0)*A*x  = r0² - x0² - (B-y0)²
+            // (A²+1)*x² + 2*((B*A-y0*A-x0))*x = r0² - x0² - (B-y0)²
+            // x² + 2* ((B*A-y0*A-x0)/(A²+1) )*x = (r0² - x0² - (B-y0)²)/(A²+1) 
+            // error: (A²+1)*x² + 2*(B-y0-x0)*x = r0² - x0² - (B-y0)² 
+            // C = ((B*A-y0*A-x0)/(A²+1))
+            // x² + 2*C*x + C² = (r0² - x0² - (B-y0)²)/(A²+1) + C²  
+
+            var A = (circle1.x - circle.x) / (circle.y - circle1.y);
+            //B= (r1²-r0² + x0² - x1² + y0² - y1²)/2/(y0-y1)
+            var B0 = Math.pow(circle1.radius, 2) - Math.pow(circle.radius, 2) + Math.pow(circle.x, 2) - Math.pow(circle1.x, 2) + Math.pow(circle.y, 2) - Math.pow(circle1.y, 2);
+            var B = B0 / 2 / (circle.y - circle1.y);
+
+            //C = ((B*A-y0*A-x0)/(A²+1))
+            var C = ((B - circle.y) * A - circle.x) / (Math.pow(A, 2) + 1);
+            // d0 = (r0² - x0² - (B-y0)²)/(A²+1) 
+            var d0 = (Math.pow(circle.radius, 2) - Math.pow(circle.x, 2) - Math.pow(B - circle.y, 2)) / (Math.pow(A, 2) + 1)
+            var d1 = d0 + Math.pow(C, 2);
+            if (d1 < 0) {
+                return false;
+            }
+
+            var ret = [];
+            var D = Math.sqrt(d1);
+
+            var x = - D - C;
+            ret.push({ 'x': Math.round(x), 'y': Math.round(A * x + B) });
+            if (d1 != 0) {
+                var x1 = D - C;
+                ret.push({ 'x': Math.round(x1), 'y': Math.round(A * x1 + B) });
+            }
+
+            return ret;
 
         }
 
@@ -121,7 +171,7 @@
             // a² + b² = c²
             // c² = 
             var line = calc_line_parameters(line_item);
-            var radius = calc_distance(circle.x, circle.y, circle.x1, circle.y1);
+            var radius = calc_distance(circle);
 
             var cc = Math.pow(circle.x - line_item.x, 2) + Math.pow(circle.y - line_item.y, 2);
             var A = 2 * (Math.pow(line.weight, 2) + 1);
@@ -199,7 +249,7 @@
 
                     if (operation_list[i].type == Tools.LINE && operation_list[j].type == Tools.CIRCLE) {
                         //直线&圆
-                        var points = calc_line_circle_intersect_point(operation_list[i], operation_list[j]);
+                        var points = calc_line_circle_intersect_points(operation_list[i], operation_list[j]);
                         if (points) {
                             tmp_points.push.apply(tmp_points, points);
                         }
@@ -225,7 +275,7 @@
                     }
                     if (operation_list[i].type == Tools.CIRCLE && operation_list[j].type == Tools.CIRCLE) {
                         //圆&圆
-                        var points = calc_circle2_intersect_point(operation_list[i], operation_list[j]);
+                        var points = calc_circle2_intersect_points(operation_list[i], operation_list[j]);
                         if (points) {
                             tmp_points.push.apply(tmp_points, points);
                         }
@@ -356,7 +406,7 @@
 
                 if (last_item.type == Tools.CIRCLE) {
                     //计算圆的半径 
-                    last_item.radius = calc_distance(last_item.x, last_item.y, last_item.x1, last_item.y1);
+                    last_item.radius = calc_distance(last_item);
                 }
             }
 
@@ -375,7 +425,7 @@
         }
 
 
-        /// view render
+        /// VIEW RENDER
         function draw_point(item, strokeStyle) {
             //画点
             ctx.beginPath();
@@ -390,6 +440,7 @@
         }
 
         function draw_line(start, end, strokeStyle, lineWidth) {
+            //绘制直线
             ctx.beginPath();
             ctx.lineWidth = lineWidth;
             if (start.highlight) {
@@ -404,6 +455,7 @@
         }
 
         function draw_arc(item, strokeStyle) {
+            //绘制圆
             ctx.beginPath();
             if (item.highlight) {
                 ctx.strokeStyle = HIGHTLIGHT_COLOR;
@@ -416,7 +468,10 @@
         }
 
         function render() {
-            //绘制图形
+            //设置canvas大小
+            canvas.height = document.documentElement.clientHeight;
+            canvas.width = document.documentElement.clientWidth;
+
             if (current_tool == Tools.HAND) {
                 //TODO ?
                 return;
@@ -436,15 +491,11 @@
 
             //绘制交点
             var intersect_points = get_intersect_points();
-
             for (var item of intersect_points) {
                 draw_point(item, DASHES_COLOR);
             }
 
-            // js for 遍历数组
-            //https://juejin.im/post/5a3a59e7518825698e72376b
             for (var item of operation_list) {
-
                 //线
                 if (item.type == Tools.LINE) {
                     //绘制直线 
@@ -461,9 +512,8 @@
 
         }
 
-        //事件绑定
-        //https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event  
-        function event_bindding() {
+
+        function event_binding() {
             //绘图工具框
             var toolbox = document.getElementById("toolbox");
             toolbox.addEventListener('click', function () {
@@ -526,10 +576,6 @@
 
             //浏览器大小调整
             window.addEventListener('resize', function (e) {
-                var height = document.documentElement.clientHeight;
-                var width = document.documentElement.clientWidth;
-                canvas.height = height;
-                canvas.width = width;
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
             });
 
@@ -539,7 +585,7 @@
         }
 
 
-        event_bindding();
+        event_binding();
     }
 
     main();
