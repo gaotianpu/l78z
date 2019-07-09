@@ -1,5 +1,5 @@
 # 尺规作图
-cwrac, construction with ruler and compasses,
+cwrac, construction with ruler and compasses
 
 
 ## 基本工具
@@ -9,37 +9,36 @@ cwrac, construction with ruler and compasses,
 3. 圆   draw_arc
 4. 相交点
  * 直线和直线   calc_line2_intersect_point
- * 直线和圆 calc_line_circle_intersect_point
- * 圆和圆   calc_circle2_intersect_point 【TODO】
+ * 直线和圆 calc_line_circle_intersect_points
+ * 圆和圆   calc_circle2_intersect_points
 
 
 ### 细节：锚定、高亮、去重
 1. 锚定：用户选取起始点时，如果靠近之前用户绘制的点，用户在释放鼠标时，坐标位置应该是最接近的交点或线上
 2. 高亮：最后一个绘制对象高亮；  用户鼠标停留在线上、交点上，高亮【TODO】
 3. 去重：相同的位置画2个点(x,y距离)，2条线(w,b的差值)，2个圆(x,y,radius)，应去重？【TODO】
+4. 移动：
+5. 缩放：
+6. undo/redo:
 
 
 ## 高级工具 【TODO】
 高级工具作用加速作图效率，前提是懂得如何使用基本工具达到高级工具的效果，因此，逐步解锁。
 1. 垂直平分线 (先确定平分点[x,y]，两直线垂直，它们的斜率相乘等于负一，a_new = -1/(a), 求b)
-2. 角平分线 
+2. 角平分线 ？
 3. 过线外一点作垂线， (两直线垂直，它们的斜率相乘等于负一,斜率为0的情况？[x,y]已知，两直线垂直，它们的斜率相乘等于负一)
 4. 平行线 y=ax+b, a,x,y已知，求b=y-ax，容易
 5. 圆规, 先选取2点确定半径，第3个点为圆心，容易
 
 
-## 移动/缩放 【TODO】
-https://juejin.im/post/5c5432ca6fb9a049b82ae58a
-
-
 ## 其他: 【TODO】
-1. undo/redo 
-2. 操作步骤回放，录制视频？
-3. 配色等UI优化
-4. 微信小程序
-5. app
-6. 用户操作记录保存,上传？
-7. 关卡设计
+0. 点击2下绘图？
+1. 操作步骤回放，录制视频？
+2. 配色等UI优化
+3. 微信小程序
+4. app
+5. 用户操作记录保存,上传？
+6. 关卡设计
 
 
 ## 程序结构

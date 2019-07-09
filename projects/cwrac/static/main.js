@@ -31,16 +31,16 @@
 
         //各种数学计算公式 
 
+        //计算两点之间的距离 
         function calc_distance(item) {
-            //计算两点之间的距离 
             //Math.round(Math.sqrt(Math.pow(item.x - item.x1,2)+ Math.pow((item.y - item.y1,2))));
             var ret = Math.sqrt(Math.pow(item.x - item.x1, 2) + Math.pow(item.y - item.y1, 2));
-            return ret;
+            return Math.round(ret);
             // return Math.round();
         }
 
+        //计算直线的斜率weight、偏置量bias、直线在画布左右边界的交点
         function calc_line_parameters(item) {
-            //计算直线的斜率weight、偏置量bias、直线在画布左右边界的交点
             //y = w*x + b 
             var w = (item.y - item.y1) / (item.x - item.x1); //直线的斜率
             var b = item.y - w * item.x;  //直线的偏置项
@@ -52,8 +52,8 @@
             return { 'weight': w, 'bias': b, 'left': left, 'right': right }
         }
 
+        //计算两条直线的交点
         function calc_line2_intersect_point(line, line1) {
-            //计算两条直线的交点
             // y = a0*x + b0
             // y1 = a1*x1 + b1 , 相交点，x=x1, y=y1
             // x = (b1-b0)/(a0-a1), 将x代入任一直线方程求解
@@ -68,8 +68,8 @@
             return [{ 'x': Math.round(x), 'y': Math.round(y) }];
         }
 
+        //计算线段和圆的交点
         function calc_line_circle_intersect_points(line, circle) {
-            //计算线段和圆的交点
             //https://thecodeway.com/blog/?p=932 
             // 直线方程： y = ax + b 
             // 圆方程： (x-x0)²+(y-y0)²=r²  //圆心坐标为(x0，y0),r半径 
@@ -106,8 +106,8 @@
             { 'x': Math.round(x2), 'y': Math.round(y2) }];
         }
 
+        //计算圆和圆的相交点
         function calc_circle2_intersect_points(circle, circle1) {
-            //计算圆和圆的相交点
             //1. 两个圆心连线的长度，大于两圆半径和->无交点，等于半径和->1个交点，小于半径和->2个交点
             //2. 如果有2个交点，则交点之间的连线垂直于圆心之间的连线，可计算交点连线的斜率
             //3. 如果有1个交点
@@ -161,6 +161,7 @@
 
         }
 
+        //过圆心且垂直与线段的直线
         function calc_chuizhidian(line_item, circle) {
             return false;
             //TODO:
@@ -204,8 +205,8 @@
 
         }
 
+        //计算给定一点与所有相交点之间的距离
         function get_nearest_point(x, y, points) {
-            //计算给定一点与所有相交点之间的距离
             const DUP_POINT_DISTANCE_THRESHOLD = 10;
 
             var dist_list = []
@@ -254,23 +255,23 @@
                             tmp_points.push.apply(tmp_points, points);
                         }
 
-                        var points = calc_chuizhidian(operation_list[i], operation_list[j]);
-                        if (points) {
-                            tmp_points.push.apply(tmp_points, points);
-                        }
+                        // var points = calc_chuizhidian(operation_list[i], operation_list[j]);
+                        // if (points) {
+                        //     tmp_points.push.apply(tmp_points, points);
+                        // }
 
                     }
 
                     if (operation_list[i].type == Tools.CIRCLE && operation_list[j].type == Tools.LINE) {
                         //圆&直线
-                        var points = calc_line_circle_intersect_point(operation_list[j], operation_list[i]);
+                        var points = calc_line_circle_intersect_points(operation_list[j], operation_list[i]);
                         if (points) {
                             tmp_points.push.apply(tmp_points, points);
                         }
-                        var points = calc_chuizhidian(operation_list[j], operation_list[i]);
-                        if (points) {
-                            tmp_points.push.apply(tmp_points, points);
-                        }
+                        // var points = calc_chuizhidian(operation_list[j], operation_list[i]);
+                        // if (points) {
+                        //     tmp_points.push.apply(tmp_points, points);
+                        // }
 
                     }
                     if (operation_list[i].type == Tools.CIRCLE && operation_list[j].type == Tools.CIRCLE) {
@@ -413,9 +414,25 @@
             //高亮
             var len_operation_list = operation_list.length;
             for (var i = 0; i < len_operation_list; i++) {
-                //last_item.x1, y1是否在线上？
-
                 operation_list[i].highlight = false;
+
+                if (operation_list[i].type == Tools.LINE) {
+                    // y = ax+b
+                    var y = operation_list[i].weight * last_item.x1 + operation_list[i].bias;
+                    if (Math.abs(y - last_item.y1) < 2) {
+                        operation_list[i].highlight = true;
+                    }
+                }
+
+                if (operation_list[i].type == Tools.CIRCLE) {
+                    // (x-x0)²+(y-y0)²=r² 
+                    var r = Math.sqrt(Math.pow(last_item.x1 - operation_list[i].x, 2) + Math.pow(last_item.y1 - operation_list[i].y, 2));
+                    if (Math.abs(r - operation_list[i].radius) < 2) {
+                        operation_list[i].highlight = true;
+                    }
+                }
+
+                //接近点的处理
             }
             last_item.highlight = true;
 
@@ -426,15 +443,16 @@
 
 
         /// VIEW RENDER
-        function draw_point(item, strokeStyle) {
+        function draw_point(item, strokeStyle, lineWidth) {
             //画点
             ctx.beginPath();
+            // ctx.lineWidth = lineWidth;
             if (item.highlight) {
                 ctx.strokeStyle = HIGHTLIGHT_COLOR;
             } else {
                 ctx.strokeStyle = strokeStyle;
             }
-            ctx.arc(item.x, item.y, 2, 0, Math.PI * 2, true);
+            ctx.arc(item.x, item.y, lineWidth, 0, Math.PI * 2, true);
             ctx.closePath();
             ctx.stroke();
         }
@@ -486,13 +504,13 @@
             //绘制人工点
             var manual_points = get_manual_points();
             for (var item of manual_points) {
-                draw_point(item, NORMAL_COLOR);
+                draw_point(item, NORMAL_COLOR, 2);
             }
 
             //绘制交点
             var intersect_points = get_intersect_points();
             for (var item of intersect_points) {
-                draw_point(item, DASHES_COLOR);
+                draw_point(item, DASHES_COLOR, 1.5);
             }
 
             for (var item of operation_list) {
