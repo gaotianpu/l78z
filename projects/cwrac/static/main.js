@@ -12,16 +12,23 @@
             Object.freeze(Tools);
         }
 
+        //各种配置参数
         const HIGHTLIGHT_COLOR = 'rgb(60,160,250)'; //高亮颜色
         const DASHES_COLOR = 'rgb(60,60,60)'; //虚线颜色
         const NORMAL_COLOR = 'rgb(30,30,30)'; //正常的颜色
+
+        //页面元素
+        var toolbox = document.getElementById("toolbox");
+        var btn_undo = document.getElementById("btn_undo");
+        var btn_redo = document.getElementById("btn_redo");
 
         var canvas = document.getElementById('canvas');
         var ctx = canvas.getContext('2d');
         var canvas_rect = canvas.getBoundingClientRect();
 
         //定义各种变量 
-        var operation_list = []; //用户的绘图记录  
+        var operation_list = []; //用户的绘图记录
+        var undo_operation_list = []; //撤销操作临时保存  
         //{'x':1,'y':2,'items':[[1,3],[5,7]]}  
         var all_points = [];  //人工绘制的所有点以及各种线条相交点
 
@@ -490,6 +497,8 @@
             canvas.height = document.documentElement.clientHeight;
             canvas.width = document.documentElement.clientWidth;
 
+            //根据操作记录和撤销记录设置undo/redo按钮是否可用
+
             if (current_tool == Tools.HAND) {
                 //TODO ?
                 return;
@@ -533,13 +542,30 @@
 
         function event_binding() {
             //绘图工具框
-            var toolbox = document.getElementById("toolbox");
+
             toolbox.addEventListener('click', function () {
                 var e = event || window.event;
                 if (e.target && e.target.nodeName.toUpperCase() == "INPUT") {
                     current_tool = e.target.value;
                 }
             }, false);
+
+            //undo
+            btn_undo.addEventListener('click', function () {
+                var last = operation_list.pop();
+                if (last) {
+                    undo_operation_list.push(last);
+                    render();
+                }
+            });
+            //redo 
+            btn_redo.addEventListener('click', function () {
+                var last = undo_operation_list.pop();
+                if (last) {
+                    operation_list.push(last);
+                    render();
+                }
+            });
 
             //两种习惯：暂时先支持第一种
             //1. 拖拽式 
