@@ -59,6 +59,15 @@
             return { 'weight': w, 'bias': b, 'left': left, 'right': right }
         }
 
+        //判断给定point是否在canvas边界内
+        function in_boundary(x, y) {
+            if (x < 0 || y < 0 || x > canvas_rect.width || y > canvas_rect.height) {
+                //TODO: 画布平移、缩放？
+                return false;
+            }
+            return true;
+        }
+
         //计算两条直线的交点
         function calc_line2_intersect_point(line, line1) {
             // y = a0*x + b0
@@ -67,6 +76,14 @@
             // y = a0*x + b0 , 将x代入公式得到y  
             var x = (line1.bias - line.bias) / (line.weight - line1.weight);
             var y = line.weight * x + line.bias;
+
+            //平行或重合
+            if (line1.weight == line.weight) {
+                return false;
+            }
+            if (!in_boundary(x, y)) {
+                return false;
+            }
 
             if (x <= 0 || y <= 0 || x > canvas_rect.width || y > canvas_rect.height) {
                 //TODO: 画布平移、缩放？
@@ -104,13 +121,22 @@
             }
             var l = Math.sqrt(f)
 
+            var ret = [];
+
             var x1 = l - C;
             var y1 = line.weight * x1 + line.bias;
-            var x2 = - l - C;
-            var y2 = line.weight * x2 + line.bias;
+            if (in_boundary(x1, y1)) {
+                ret.push({ 'x': Math.round(x1), 'y': Math.round(y1) });
+            }
 
-            return [{ 'x': Math.round(x1), 'y': Math.round(y1) },
-            { 'x': Math.round(x2), 'y': Math.round(y2) }];
+            if (l != 0) {
+                var x2 = - l - C;
+                var y2 = line.weight * x2 + line.bias;
+                if (in_boundary(x2, y2)) {
+                    ret.push({ 'x': Math.round(x2), 'y': Math.round(y2) });
+                }
+            }
+            return ret;
         }
 
         //计算圆和圆的相交点
@@ -158,10 +184,17 @@
             var D = Math.sqrt(d1);
 
             var x = - D - C;
-            ret.push({ 'x': Math.round(x), 'y': Math.round(A * x + B) });
+            var y = A * x + B
+            if (in_boundary(x, y)) {
+                ret.push({ 'x': Math.round(x), 'y': Math.round(y) });
+            }
+
             if (d1 != 0) {
                 var x1 = D - C;
-                ret.push({ 'x': Math.round(x1), 'y': Math.round(A * x1 + B) });
+                var y1 = A * x1 + B;
+                if (in_boundary(x1, y1)) {
+                    ret.push({ 'x': Math.round(x1), 'y': Math.round(y1) });
+                }
             }
 
             return ret;
@@ -236,8 +269,9 @@
             return false;
         }
 
+        //获取所有的相交点
         function get_intersect_points() {
-            //获取所有的相交点
+
             var tmp_points = [];
 
             //计算两个图形相交的点
@@ -306,8 +340,9 @@
         }
 
 
+        //人工绘制的点
         function get_manual_points() {
-            //人工绘制的点
+
             var tmp = [];
             var len_operation_list = operation_list.length;
             for (var i = 0; i < len_operation_list; i++) {
@@ -609,6 +644,7 @@
                 }
 
                 //如果两点的距离<n,则认为是无效的操作？ 
+                undo_operation_list = [];
                 isDrawing = false;
                 window.cancelAnimationFrame(requestAnimationFrame_status);
             });
