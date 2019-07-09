@@ -16,12 +16,12 @@
         const HIGHTLIGHT_COLOR = 'rgb(60,160,250)'; //高亮颜色
         const DASHES_COLOR = 'rgb(60,60,60)'; //虚线颜色
         const NORMAL_COLOR = 'rgb(30,30,30)'; //正常的颜色
+        const DUP_POINT_DISTANCE_THRESHOLD = 10; //磁吸距离
 
         //页面元素
         var toolbox = document.getElementById("toolbox");
         var btn_undo = document.getElementById("btn_undo");
-        var btn_redo = document.getElementById("btn_redo");
-
+        var btn_redo = document.getElementById("btn_redo"); 
         var canvas = document.getElementById('canvas');
         var ctx = canvas.getContext('2d');
         var canvas_rect = canvas.getBoundingClientRect();
@@ -40,10 +40,8 @@
 
         //计算两点之间的距离 
         function calc_distance(item) {
-            //Math.round(Math.sqrt(Math.pow(item.x - item.x1,2)+ Math.pow((item.y - item.y1,2))));
             var ret = Math.sqrt(Math.pow(item.x - item.x1, 2) + Math.pow(item.y - item.y1, 2));
             return Math.round(ret);
-            // return Math.round();
         }
 
         //计算直线的斜率weight、偏置量bias、直线在画布左右边界的交点
@@ -247,8 +245,6 @@
 
         //计算给定一点与所有相交点之间的距离
         function get_nearest_point(x, y, points) {
-            const DUP_POINT_DISTANCE_THRESHOLD = 10;
-
             var dist_list = []
             for (var item of points) {
                 var d = Math.sqrt((x - item.x) * (x - item.x) + (y - item.y) * (y - item.y));
@@ -271,7 +267,6 @@
 
         //获取所有的相交点
         function get_intersect_points() {
-
             var tmp_points = [];
 
             //计算两个图形相交的点
@@ -342,7 +337,6 @@
 
         //人工绘制的点
         function get_manual_points() {
-
             var tmp = [];
             var len_operation_list = operation_list.length;
             for (var i = 0; i < len_operation_list; i++) {
@@ -411,7 +405,7 @@
             return false;
         }
 
-
+        //数据处理，类似mvc里的controler
         function process_data() {
             //人工point：点、线段的起始点、圆心(起点)和圆周(终点)等  
             var last_index = operation_list.length - 1;
@@ -453,10 +447,13 @@
                 }
             }
 
-            //高亮
+            //高亮 
             var len_operation_list = operation_list.length;
             for (var i = 0; i < len_operation_list; i++) {
                 operation_list[i].highlight = false;
+                if (!isDrawing) {
+                    continue;
+                }
 
                 if (operation_list[i].type == Tools.LINE) {
                     // y = ax+b
@@ -476,7 +473,13 @@
 
                 //接近点的处理
             }
-            last_item.highlight = true;
+
+            if (isDrawing) {
+                last_item.highlight = true;
+            } else {
+                last_item.highlight = false;
+            }
+
 
             // if (!has_same_objects(last_item)) {
             operation_list.push(last_item);
@@ -485,8 +488,9 @@
 
 
         /// VIEW RENDER
+        //画点
         function draw_point(item, strokeStyle, lineWidth) {
-            //画点
+
             ctx.beginPath();
             // ctx.lineWidth = lineWidth;
             if (item.highlight) {
@@ -499,8 +503,9 @@
             ctx.stroke();
         }
 
+        //绘制直线
         function draw_line(start, end, strokeStyle, lineWidth) {
-            //绘制直线
+
             ctx.beginPath();
             ctx.lineWidth = lineWidth;
             if (start.highlight) {
@@ -514,8 +519,8 @@
             ctx.closePath();
         }
 
+        //绘制圆
         function draw_arc(item, strokeStyle) {
-            //绘制圆
             ctx.beginPath();
             if (item.highlight) {
                 ctx.strokeStyle = HIGHTLIGHT_COLOR;
@@ -574,10 +579,9 @@
 
         }
 
-
+        //事件绑定
         function event_binding() {
-            //绘图工具框
-
+            //绘图工具框 
             toolbox.addEventListener('click', function () {
                 var e = event || window.event;
                 if (e.target && e.target.nodeName.toUpperCase() == "INPUT") {
@@ -593,6 +597,7 @@
                     render();
                 }
             });
+
             //redo 
             btn_redo.addEventListener('click', function () {
                 var last = undo_operation_list.pop();
@@ -643,10 +648,15 @@
                     return false;
                 }
 
+                // operation_list[last_index].x1 = e.clientX - canvas_rect.left;
+                // operation_list[last_index].y1 = e.clientY - canvas_rect.top;
+
                 //如果两点的距离<n,则认为是无效的操作？ 
                 undo_operation_list = [];
                 isDrawing = false;
+
                 window.cancelAnimationFrame(requestAnimationFrame_status);
+                render();
             });
 
             canvas.addEventListener('click', function (e) {
