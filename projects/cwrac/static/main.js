@@ -21,7 +21,7 @@
         //页面元素
         var toolbox = document.getElementById("toolbox");
         var btn_undo = document.getElementById("btn_undo");
-        var btn_redo = document.getElementById("btn_redo"); 
+        var btn_redo = document.getElementById("btn_redo");
         var canvas = document.getElementById('canvas');
         var ctx = canvas.getContext('2d');
         var canvas_rect = canvas.getBoundingClientRect();
@@ -35,6 +35,7 @@
         var current_tool = Tools.HAND; //当前用户选择的绘图工具，默认移动  
         var isDrawing = false;
         var requestAnimationFrame_status = 0;
+        var movie_points = { 'x': 0, 'y': 0, 'x_movie': 0, 'y_movie': 0 };
 
         //各种数学计算公式 
 
@@ -266,13 +267,16 @@
         }
 
         //获取所有的相交点
-        function get_intersect_points() {
+        function get_intersect_points(include_last=true) {
             var tmp_points = [];
 
             //计算两个图形相交的点
             var len = operation_list.length;
             if (len < 2) {
                 return tmp_points;
+            }
+            if(!include_last){
+                len = len - 1 ;
             }
             for (var i = 0; i < len; i++) {
                 for (var j = i + 1; j < len; j++) {
@@ -323,7 +327,7 @@
 
             //用户绘制点+相交点去重
             var intersect_points = [];
-            var manual_points = get_manual_points();
+            var manual_points = get_manual_points(false);
             for (var i = 0; i < tmp_points.length; i++) {
                 var dm = get_nearest_point(tmp_points[i].x, tmp_points[i].y, manual_points);
                 var d = get_nearest_point(tmp_points[i].x, tmp_points[i].y, intersect_points);
@@ -336,9 +340,13 @@
 
 
         //人工绘制的点
-        function get_manual_points() {
+        function get_manual_points(include_last=true) {
             var tmp = [];
             var len_operation_list = operation_list.length;
+            if(!include_last){
+                len_operation_list = len_operation_list - 1 ;
+            }
+
             for (var i = 0; i < len_operation_list; i++) {
                 var item = operation_list[i];
 
@@ -361,17 +369,7 @@
                 if (!d) {
                     manual_points.push({ 'x': tmp[i].x, 'y': tmp[i].y });
                 }
-            }
-
-            //高亮？
-            // var len_manual_points = manual_points.length;
-            // for(var i=0; i<len_manual_points;i++){
-            //     item = manual_points[i];
-            //     if(i==(len_manual_points-1)){
-            //         item.highlight = true ;
-            //     }
-            // }
-
+            } 
 
             return manual_points;
         }
@@ -407,84 +405,84 @@
 
         //数据处理，类似mvc里的controler
         function process_data() {
-            //人工point：点、线段的起始点、圆心(起点)和圆周(终点)等  
-            var last_index = operation_list.length - 1;
-            if (last_index < 0) {
+            var len_operation_list = operation_list.length; 
+            if (len_operation_list < 1) {
                 return false;
             }
 
-            var last_item = operation_list.pop();
+            var last_index = len_operation_list - 1; 
+            var last_item = operation_list[last_index];
 
-            all_points = get_manual_points();
-            all_points.push.apply(all_points, get_intersect_points());
+            for (var i = 0; i < len_operation_list; i++) {
+                var item = operation_list[i];
+
+                //移动画布
+                if (current_tool == Tools.HAND) {
+                    //item的数据结构要改改？
+                    item.x = item.x + movie_points.x_movie;
+                    item.y = item.y + movie_points.y_movie;
+                    item.x1 = item.x1 + movie_points.x_movie;
+                    item.y1 = item.y1 + movie_points.y_movie;
+                }
+
+                //计算直线的斜率和偏置项，左侧边界点、右侧边界点等
+                if (item.type == Tools.LINE) {
+                    var ret = calc_line_parameters(item);
+                    for (var k in ret) {
+                        item[k] = ret[k];
+                    }
+                }
+
+                //计算圆的半径 
+                if (item.type == Tools.CIRCLE) {
+                    item.radius = calc_distance(item);
+                }
+
+                //高亮
+                item.highlight = false; 
+                if (isDrawing ) {
+                    if (item.type == Tools.LINE && current_tool != Tools.HAND) {
+                        // y = ax+b
+                        var y = item.weight * last_item.x1 + item.bias;
+                        if (Math.abs(y - last_item.y1) < 2) {
+                            item.highlight = true; 
+                        } 
+                    }
+
+                    if (item.type == Tools.CIRCLE) {
+                        // (x-x0)²+(y-y0)²=r² 
+                        var r = Math.sqrt(Math.pow(last_item.x1 - item.x, 2) + Math.pow(last_item.y1 - item.y, 2));
+                        if (Math.abs(r - item.radius) < 2) {
+                            item.highlight = true;
+                        }
+                    } 
+                } 
+            } 
+
+            //磁吸线？
+
+            //磁吸点
+            var points = get_manual_points(false);
+            points.push.apply(points, get_intersect_points(false)); 
 
             // 判断起始点
-            var nearest_point = get_nearest_point(last_item.x, last_item.y, all_points);
-            if (nearest_point) {
-                last_item.x = nearest_point.x;
-                last_item.y = nearest_point.y;
-            }
-
-            // 判断终点
-            if (last_item.type == Tools.LINE || last_item.type == Tools.CIRCLE) {
-                var nearest_point = get_nearest_point(last_item.x1, last_item.y1, all_points);
+            if(isDrawing && current_tool!=Tools.HAND){
+                var nearest_point = get_nearest_point(last_item.x, last_item.y, points);
                 if (nearest_point) {
-                    last_item.x1 = nearest_point.x;
-                    last_item.y1 = nearest_point.y;
+                    last_item.x = nearest_point.x;
+                    last_item.y = nearest_point.y;
                 }
 
-                if (last_item.type == Tools.LINE) {
-                    //计算直线的斜率和偏置项，左侧边界点、右侧边界点等
-                    var ret = calc_line_parameters(last_item);
-                    for (var k in ret) {
-                        last_item[k] = ret[k];
-                    }
-                }
-
-                if (last_item.type == Tools.CIRCLE) {
-                    //计算圆的半径 
-                    last_item.radius = calc_distance(last_item);
+                // 判断终点
+                if (last_item.type == Tools.LINE || last_item.type == Tools.CIRCLE) {
+                    var nearest_point = get_nearest_point(last_item.x1, last_item.y1, points);
+                    if (nearest_point) {
+                        last_item.x1 = nearest_point.x;
+                        last_item.y1 = nearest_point.y;
+                    } 
                 }
             }
-
-            //高亮 
-            var len_operation_list = operation_list.length;
-            for (var i = 0; i < len_operation_list; i++) {
-                operation_list[i].highlight = false;
-                if (!isDrawing) {
-                    continue;
-                }
-
-                if (operation_list[i].type == Tools.LINE) {
-                    // y = ax+b
-                    var y = operation_list[i].weight * last_item.x1 + operation_list[i].bias;
-                    if (Math.abs(y - last_item.y1) < 2) {
-                        operation_list[i].highlight = true;
-                    }
-                }
-
-                if (operation_list[i].type == Tools.CIRCLE) {
-                    // (x-x0)²+(y-y0)²=r² 
-                    var r = Math.sqrt(Math.pow(last_item.x1 - operation_list[i].x, 2) + Math.pow(last_item.y1 - operation_list[i].y, 2));
-                    if (Math.abs(r - operation_list[i].radius) < 2) {
-                        operation_list[i].highlight = true;
-                    }
-                }
-
-                //接近点的处理
-            }
-
-            if (isDrawing) {
-                last_item.highlight = true;
-            } else {
-                last_item.highlight = false;
-            }
-
-
-            // if (!has_same_objects(last_item)) {
-            operation_list.push(last_item);
-            // }
-        }
+        } 
 
 
         /// VIEW RENDER
@@ -537,12 +535,8 @@
             canvas.height = document.documentElement.clientHeight;
             canvas.width = document.documentElement.clientWidth;
 
-            //根据操作记录和撤销记录设置undo/redo按钮是否可用
+            //根据操作记录和撤销记录设置undo/redo按钮是否可用 
 
-            if (current_tool == Tools.HAND) {
-                //TODO ?
-                return;
-            }
 
             //处理所有的线、点
             process_data();
@@ -611,50 +605,58 @@
             //1. 拖拽式 
             //2. 点击式 1.鼠标点击2下确定一条直线，一个圆等  
             canvas.addEventListener('mousedown', function (e) {
-                if (current_tool == Tools.HAND) {
-                    //todo ?
-                    return;
-                }
-                isDrawing = true;
                 var x = e.clientX - canvas_rect.left;
                 var y = e.clientY - canvas_rect.top;
-                var obj = { "type": current_tool, 'x': x, 'y': y };
-                operation_list.push(obj);
+
+                isDrawing = true;
+
+                if (current_tool == Tools.HAND) { 
+                    movie_points.x = x;
+                    movie_points.y = y; 
+                } else {
+                    var obj = { "type": current_tool, 'x': x, 'y': y };
+                    operation_list.push(obj);
+                }
+
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
             });
             canvas.addEventListener('mousemove', function (e) {
-                if (!isDrawing) {
-                    return false;
-                }
-
                 var last_index = operation_list.length - 1;
                 if (last_index < 0) {
                     return false;
                 }
+                if (!isDrawing) {
+                    return false;
+                }
 
-                operation_list[last_index].x1 = e.clientX - canvas_rect.left;
-                operation_list[last_index].y1 = e.clientY - canvas_rect.top;
+                var x = e.clientX - canvas_rect.left;
+                var y = e.clientY - canvas_rect.top;
+
+                if (current_tool == Tools.HAND) {
+                    //移动画布
+                    movie_points.x_movie = x - movie_points.x;
+                    movie_points.y_movie = y - movie_points.y;
+                    movie_points.x = x;
+                    movie_points.y = y; 
+                } else {
+                    operation_list[last_index].x1 = x;
+                    operation_list[last_index].y1 = y;
+                }
 
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
 
             });
             canvas.addEventListener('mouseup', function (e) {
-                if (!isDrawing) {
-                    return false;
-                }
-
                 var last_index = operation_list.length - 1;
                 if (last_index < 0) {
                     return false;
                 }
 
-                // operation_list[last_index].x1 = e.clientX - canvas_rect.left;
-                // operation_list[last_index].y1 = e.clientY - canvas_rect.top;
-
-                //如果两点的距离<n,则认为是无效的操作？ 
-                undo_operation_list = [];
-                isDrawing = false;
-
+                if (isDrawing) { 
+                    undo_operation_list = []; 
+                }
+                isDrawing = false;  
+                
                 window.cancelAnimationFrame(requestAnimationFrame_status);
                 render();
             });
