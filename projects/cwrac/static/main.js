@@ -11,23 +11,53 @@
                 this.text = text;
             }
 
-            //是否在canvas边界内？
-            get in_boundary() {
+            serialize() {
+                return "{x:,y:,text}";
             }
+
+            //与另外一点的距离
+            distance(point) {
+                return Math.hypot(this.x - point.x, this.y - point.y);
+            }
+
+            //是否在canvas边界内？
+            in_boundary(canvas_rect) {
+                if (this.x < 0 || this.y < 0 || x > canvas_rect.width || y > canvas_rect.height) {
+                    //TODO: 画布平移、缩放？
+                    return false;
+                }
+                return true;
+            }
+
+            //绘制操作是否应该放置在这里？ 不应该放在这里model与view分离的原则
+            // draw(ctx) {
+            // } 
         }
 
         //线
         class Line {
-            constructor(start, end, max_x) {
+            constructor(start, end) {
                 this.points = []
                 this.points.push(start);
                 this.points.push(end);
-                this.max_x = max_x;
+
+                this.x_diff = this.points[0].x - this.points[1].x;
+                this.y_diff = this.points[0].y - this.points[1].y;
             }
+
+            // get x_diff(){
+            //     return this.points[0].x - this.points[1].x;
+            // }
+
+            // get y_diff(){
+            //     return this.points[0].y - this.points[1].y;
+            // }
 
             //线段长度
             get segment_length() {
-                return Math.hypot(this.points[0].x - this.points[1].x, this.points[0].y - this.points[1].y);
+                return this.points[0].distance(this.points[1]);
+
+                // return Math.hypot(this.x_diff, this.y_diff);
             }
 
             //直线的斜率
@@ -37,10 +67,11 @@
 
             //直线的偏置项
             get bias() {
+                // y = wx + b -> b = y-wx
                 return this.points[0].y - this.weight * this.points[0].x;
             }
 
-            //边界点是直线的属性吗？ 
+            //边界点是直线的属性吗？ 需要引入外部依赖？
 
             //左边界点
             get left_point() {
@@ -48,12 +79,19 @@
             }
 
             //右边界点
-            get right_point() {
+            right_point(max_x) {
                 return new Point(max_x, Math.round(this.weight * max_x + this.bias));
             }
 
+            //与另外一条直线的交点
+            line_intersect_point(line) {
+
+            }
+
+            //与圆的交点
+
             //给定某点是否在这条直线上,线段里？
-            // function distance(point){ 
+            // distance(point){ 
             // }
 
             //绘制方式，是否高亮等，非直线的固有属性？ 
@@ -61,21 +99,27 @@
 
         //圆
         class Circle {
-            constructor(center, end, max_x) {
+            constructor(circle_center, end_point_on_circle) {
                 this.points = []
-                this.points.push(center);
-                this.points.push(end);
+                this.points.push(circle_center);
+                this.points.push(end_point_on_circle);
             }
 
             //半径
             get radius() {
-                return Math.hypot(this.points[0].x - this.points[1].x, this.points[0].y - this.points[1].y);
+                return this.points[0].distance(this.points[1]);
+                // return Math.hypot(this.points[0].x - this.points[1].x, this.points[0].y - this.points[1].y);
+            }
+
+            //与另外一条直线的交点
+            circle_intersect_point(circle) {
+
             }
         }
 
         //工具箱，枚举值
         var Tools = {
-            HAND: 0, //0-移动
+            MOVE: 0, //0-移动
             POINT: 1, //点
             LINE: 2, //直线
             CIRCLE: 3, //圆 
@@ -109,7 +153,7 @@
         //{'x':1,'y':2,'items':[[1,3],[5,7]]}  
         var all_points = [];  //人工绘制的所有点以及各种线条相交点
 
-        var current_tool = Tools.HAND; //当前用户选择的绘图工具，默认移动  
+        var current_tool = Tools.MOVE; //当前用户选择的绘图工具，默认移动  
         var isDrawing = false;
         var requestAnimationFrame_status = 0;
         var movie_points = { 'x': 0, 'y': 0, 'x_movie': 0, 'y_movie': 0 };
@@ -496,7 +540,7 @@
                 var item = operation_list[i];
 
                 //移动画布
-                if (current_tool == Tools.HAND) {
+                if (current_tool == Tools.MOVE) {
                     //item的数据结构要改改？
                     item.x = item.x + movie_points.x_movie;
                     item.y = item.y + movie_points.y_movie;
@@ -519,8 +563,8 @@
 
                 //高亮
                 item.highlight = false;
-                if (isDrawing) {
-                    if (item.type == Tools.LINE && current_tool != Tools.HAND) {
+                if (isDrawing && current_tool != Tools.MOVE) {
+                    if (item.type == Tools.LINE) {
                         // y = ax+b
                         var y = item.weight * last_item.x1 + item.bias;
                         if (Math.abs(y - last_item.y1) < 2) {
@@ -541,7 +585,7 @@
             //重合
 
             //磁吸点
-            if (isDrawing && current_tool != Tools.HAND) {
+            if (isDrawing && current_tool != Tools.MOVE) {
                 var points = get_manual_points(false);
                 points.push.apply(points, get_intersect_points(false));
 
@@ -568,8 +612,7 @@
 
         /// VIEW RENDER
         //画点
-        function draw_point(item, strokeStyle, lineWidth) {
-
+        function draw_point(item, strokeStyle, lineWidth) { 
             ctx.beginPath();
             // ctx.lineWidth = lineWidth;
             if (item.highlight) {
@@ -580,6 +623,8 @@
             ctx.arc(item.x, item.y, lineWidth, 0, Math.PI * 2, true);
             ctx.closePath();
             ctx.stroke();
+
+            //如果点需要标记文本
         }
 
         //绘制直线
@@ -691,29 +736,25 @@
 
                 isDrawing = true;
 
-                if (current_tool == Tools.HAND) {
+                if (current_tool == Tools.MOVE) {
                     movie_points.x = x;
                     movie_points.y = y;
                 } else {
                     var obj = { "type": current_tool, 'x': x, 'y': y };
                     operation_list.push(obj);
                 }
-
-                requestAnimationFrame_status = window.requestAnimationFrame(render);
+                render();
             });
             canvas.addEventListener('mousemove', function (e) {
                 var last_index = operation_list.length - 1;
-                if (last_index < 0) {
-                    return false;
-                }
-                if (!isDrawing) {
+                if (last_index < 0 || !isDrawing) {
                     return false;
                 }
 
                 var x = e.clientX - canvas_rect.left;
                 var y = e.clientY - canvas_rect.top;
 
-                if (current_tool == Tools.HAND) {
+                if (current_tool == Tools.MOVE) {
                     //移动画布
                     movie_points.x_movie = x - movie_points.x;
                     movie_points.y_movie = y - movie_points.y;
@@ -729,20 +770,19 @@
             });
             canvas.addEventListener('mouseup', function (e) {
                 var last_index = operation_list.length - 1;
-                if (last_index < 0) {
+                if (last_index < 0 || !isDrawing) {
                     return false;
                 }
 
-                if (isDrawing) {
-                    undo_operation_list = [];
+                //清空undo记录
+                undo_operation_list = [];
 
-                    //如果距离太短，非有效绘图
-                    if (calc_distance(operation_list[last_index]) < 8) {
-                        operation_list.pop();
-                    }
+                //如果距离太短，非有效绘图
+                if (calc_distance(operation_list[last_index]) < 8) {
+                    operation_list.pop();
                 }
-                isDrawing = false;
 
+                isDrawing = false; 
                 window.cancelAnimationFrame(requestAnimationFrame_status);
                 render();
             });
@@ -754,7 +794,7 @@
 
             //浏览器大小调整
             window.addEventListener('resize', function (e) {
-                requestAnimationFrame_status = window.requestAnimationFrame(render);
+                // requestAnimationFrame_status = window.requestAnimationFrame(render);
             });
 
             window.addEventListener('load', function (e) {
