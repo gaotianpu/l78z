@@ -196,12 +196,6 @@ class Line {
         var y = this.weight * x + this.bias;
 
         return new Point(x, y);
-        // return [point];
-
-        // if (!in_boundary(x, y)) {
-        //     return false;
-        // }
-        // return [{ 'x': Math.round(x), 'y': Math.round(y) }]; 
     }
 
     //与圆的交点
@@ -696,9 +690,6 @@ class Circle {
         }
 
         function render() {
-            canvas.height = document.documentElement.clientHeight;
-            canvas.width = document.documentElement.clientWidth;
-            canvas_rect = canvas.getBoundingClientRect();
             ctx.clearRect(0, 0, canvas_rect.width, canvas_rect.height); //TODO 
 
             //根据操作记录和撤销记录设置undo/redo按钮是否可用   
@@ -806,10 +797,6 @@ class Circle {
                     movie_points.y = y;
                 } else {
                     operation_list[last_index].update_last_point(x, y);
-
-                    // if (current_tool != Tools.POINT) {
-
-                    // }
                 }
 
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
@@ -823,14 +810,11 @@ class Circle {
 
                 //清空undo记录
                 undo_operation_list = [];
+
+                //起止距离太短等，非有效绘图
                 if (!operation_list[last_index].is_ok) {
                     operation_list.pop();
                 }
-
-                //如果距离太短，非有效绘图
-                // if (calc_distance(operation_list[last_index]) < 8) {
-                //     operation_list.pop();
-                // }
 
                 isDrawing = false;
                 window.cancelAnimationFrame(requestAnimationFrame_status);
@@ -845,6 +829,9 @@ class Circle {
             //浏览器大小调整
             window.addEventListener('resize', function (e) {
                 //设置canvas大小 
+                canvas.height = document.documentElement.clientHeight;
+                canvas.width = document.documentElement.clientWidth;
+                canvas_rect = canvas.getBoundingClientRect();
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
             });
 
