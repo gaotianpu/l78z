@@ -1,7 +1,7 @@
 # 平面几何 - 尺规作图工具
 cwrac, construction with ruler and compasses
 
-<img src="https://github.com/gaotianpu/l78z/blob/master/projects/cwrac/static/images/cwrac.png?raw=true" alt="平面几何 - 尺规作图工具" width="200">
+<img src="https://github.com/gaotianpu/l78z/blob/master/projects/cwrac/static/images/cwrac.png?raw=true" alt="平面几何 - 尺规作图工具" width="400">
 
 
 ## 一、基本工具
