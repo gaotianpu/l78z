@@ -6,7 +6,7 @@ const DASHES_COLOR = 'rgb(60,60,60)'; //虚线颜色
 const NORMAL_COLOR = 'rgb(30,30,30)'; //正常的颜色
 const DUP_POINT_DISTANCE_THRESHOLD = 10; //磁吸距离
 
-const POINT_CHARS=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
+const POINT_CHARS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
 
 ////////////////工具箱，枚举值
 var Tools = {
@@ -388,7 +388,7 @@ class Circle {
 }
 
 //中垂线
-class PerpendicularBisector{
+class PerpendicularBisector {
     constructor(start) {
         this.points = [];
         this.points.push(start);
@@ -401,7 +401,7 @@ class PerpendicularBisector{
 }
 
 //角平分线
-class AngularBisector{
+class AngularBisector {
     constructor(start) {
         this.points = [];
         this.points.push(start);
@@ -414,7 +414,7 @@ class AngularBisector{
 }
 
 //过点垂线 
-class VerticalLineThroughPoint{
+class VerticalLineThroughPoint {
     constructor(start) {
         this.points = [];
         this.points.push(start);
@@ -471,7 +471,7 @@ class VerticalLineThroughPoint{
 }
 
 //平行线
-class ParallelLine{
+class ParallelLine {
     constructor(start) {
         this.points = [];
         this.points.push(start);
@@ -483,7 +483,7 @@ class ParallelLine{
 }
 
 //圆规
-class Compasses{
+class Compasses {
     constructor(start) {
         this.points = [];
         this.points.push(start);
@@ -521,7 +521,7 @@ class Compasses{
         var undo_operation_list = []; //撤销操作临时保存    
 
         //人工绘制的点
-        function get_manual_points(include_last = true) { 
+        function get_manual_points(include_last = true) {
             var len_operation_list = operation_list.length;
             if (!include_last) {
                 len_operation_list = len_operation_list - 1;
@@ -531,12 +531,12 @@ class Compasses{
 
             //人工绘制点
             for (var i = 0; i < len_operation_list; i++) {
-                if(operation_list[i].type==Tools.POINT){
-                    for (var point of operation_list[i].points){ 
+                if (operation_list[i].type == Tools.POINT) {
+                    for (var point of operation_list[i].points) {
                         //人工手绘点的文本
-                        var num = parseInt(manual_points.length/POINT_CHARS.length); 
-                        var text = POINT_CHARS[manual_points.length%POINT_CHARS.length];
-                        if(num>0){
+                        var num = parseInt(manual_points.length / POINT_CHARS.length);
+                        var text = POINT_CHARS[manual_points.length % POINT_CHARS.length];
+                        if (num > 0) {
                             text = text + num.toString();
                         }
                         point.text = text;
@@ -544,8 +544,8 @@ class Compasses{
                         var d = point.get_nearest_point(manual_points);
                         if (!d) {
                             manual_points.push(point);
-                        } 
-                    } 
+                        }
+                    }
                 }
             }
 
@@ -559,7 +559,7 @@ class Compasses{
                         }
                     }
                 }
-            } 
+            }
 
             return manual_points;
         }
@@ -625,7 +625,7 @@ class Compasses{
                 }
             }
             return intersect_points;
-        } 
+        }
 
         function has_same_objects(last_item) {
             //判断是否存在重复的绘图对象 
@@ -707,8 +707,8 @@ class Compasses{
                 var p0 = last_item.first.get_nearest_point(points);
                 if (p0) {
                     last_item.points[0].x = p0.x;
-                    last_item.points[0].y = p0.y; 
-                } 
+                    last_item.points[0].y = p0.y;
+                }
 
                 // 判断终点
                 if (last_item.type != Tools.POINT) {
@@ -719,7 +719,7 @@ class Compasses{
                 }
 
                 //手绘点的文本标记
-                if(last_item.type == Tools.POINT){
+                if (last_item.type == Tools.POINT) {
                     //上一个手绘点的文本？
                     last_item.text = "A";
                 }
@@ -745,7 +745,7 @@ class Compasses{
             //如果Point需要标记文本 
             if (point.text) {
                 ctx.font = "15px Verdana";
-                ctx.fillText(point.text, point.x + 3, point.y-2);
+                ctx.fillText(point.text, point.x + 3, point.y - 2);
             }
 
         }
@@ -770,6 +770,7 @@ class Compasses{
         //绘制圆
         function draw_arc(circle, strokeStyle) {
             ctx.beginPath();
+            ctx.lineWidth = 2; //容易出锯齿？
             if (circle.highlight) {
                 ctx.strokeStyle = HIGHTLIGHT_COLOR;
             } else {
@@ -791,7 +792,7 @@ class Compasses{
             //绘制人工点
             var manual_points = get_manual_points();
             for (var item of manual_points) {
-                if(item.in_boundary(canvas_rect)){
+                if (item.in_boundary(canvas_rect)) {
                     draw_point(item, NORMAL_COLOR, 2);
                 }
             }
@@ -799,10 +800,10 @@ class Compasses{
             //绘制交点
             var intersect_points = get_intersect_points();
             for (var item of intersect_points) {
-                if(item.in_boundary(canvas_rect)){
-                    draw_point(item, DASHES_COLOR, 1.5);
+                if (item.in_boundary(canvas_rect)) {
+                    draw_point(item, DASHES_COLOR, 1.6);
                 }
-            } 
+            }
 
             for (var item of operation_list) {
                 //线 
@@ -810,7 +811,7 @@ class Compasses{
                     //绘制线段外虚直线部分 
                     draw_line(item.left, item.right_point(canvas_rect.width), item.highlight, DASHES_COLOR, 0.2);
                     //绘制线段
-                    draw_line(item.first, item.last, item.highlight, NORMAL_COLOR, 1);
+                    draw_line(item.first, item.last, item.highlight, NORMAL_COLOR, 2);
                 }
 
                 //圆
@@ -819,6 +820,31 @@ class Compasses{
                 }
             }
 
+        }
+
+        //事件公共函数
+        function start_drawing(x, y) {
+            // 再优化？
+            var point = new Point(x, y);
+
+            var obj = false;
+            if (current_tool == Tools.POINT) {
+                // point.text = "A";
+                obj = point;
+            }
+            if (current_tool == Tools.LINE) {
+                obj = new Line(point);
+            }
+            if (current_tool == Tools.CIRCLE) {
+                obj = new Circle(point);
+            }
+            if (obj) {
+                operation_list.push(obj);
+            }
+        }
+
+        function stop_drawing(x, y) {
+            operation_list[last_index].update_last_point(x, y);
         }
 
         //事件绑定
@@ -853,33 +879,21 @@ class Compasses{
             //1. 拖拽式 
             //2. 点击式 1.鼠标点击2下确定一条直线，一个圆等  
             canvas.addEventListener('mousedown', function (e) {
-                var x = e.clientX - canvas_rect.left;
-                var y = e.clientY - canvas_rect.top;
+                if (isDrawing) {
+                    return;
+                }
 
-                isDrawing = true;
+                var x = e.clientX - canvas_rect.left;
+                var y = e.clientY - canvas_rect.top; 
 
                 if (current_tool == Tools.MOVE) {
                     movie_points.x = x;
                     movie_points.y = y;
                 } else {
-                    // 再优化？
-                    var point = new Point(x, y);
-
-                    var obj = false;
-                    if (current_tool == Tools.POINT) {
-                        // point.text = "A";
-                        obj = point; 
-                    }
-                    if (current_tool == Tools.LINE) {
-                        obj = new Line(point);
-                    }
-                    if (current_tool == Tools.CIRCLE) {
-                        obj = new Circle(point);
-                    }
-                    if(obj){
-                        operation_list.push(obj);
-                    }
+                    start_drawing(x, y);
                 }
+
+                isDrawing = true; 
                 render();
             });
             canvas.addEventListener('mousemove', function (e) {
@@ -910,22 +924,17 @@ class Compasses{
                     return false;
                 }
 
-                //清空undo记录
-                undo_operation_list = [];
+                if (operation_list[last_index].is_ok) {
+                    //operation_list.pop();
+                    //清空undo记录
+                    undo_operation_list = [];
+                    window.cancelAnimationFrame(requestAnimationFrame_status); 
+                    isDrawing = false;
+                } 
 
-                //起止距离太短等，非有效绘图
-                if (!operation_list[last_index].is_ok) {
-                    operation_list.pop();
-                }
-
-                isDrawing = false;
-                window.cancelAnimationFrame(requestAnimationFrame_status);
                 render();
             });
 
-            canvas.addEventListener('click', function (e) {
-                //
-            });
             //右键单击、取消？
 
             //浏览器大小调整
@@ -942,7 +951,7 @@ class Compasses{
                 //页面加载，load用户的历史操作记录，呈现给用户？
                 canvas.height = document.documentElement.clientHeight;
                 canvas.width = document.documentElement.clientWidth;
-                canvas_rect = canvas.getBoundingClientRect(); 
+                canvas_rect = canvas.getBoundingClientRect();
             });
         }
 
