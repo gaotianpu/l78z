@@ -6,6 +6,8 @@ const DASHES_COLOR = 'rgb(60,60,60)'; //虚线颜色
 const NORMAL_COLOR = 'rgb(30,30,30)'; //正常的颜色
 const DUP_POINT_DISTANCE_THRESHOLD = 10; //磁吸距离
 
+const POINT_CHARS=['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z']
+
 ////////////////工具箱，枚举值
 var Tools = {
     MOVE: 0, //0-移动
@@ -65,7 +67,7 @@ class Point {
 
     //是否在canvas边界内？
     in_boundary(canvas_rect) {
-        if (this.x < 0 || this.y < 0 || x > canvas_rect.width || y > canvas_rect.height) {
+        if (this.x < 0 || this.y < 0 || this.x > canvas_rect.width || this.y > canvas_rect.height) {
             //TODO: 画布平移、缩放？
             return false;
         }
@@ -385,6 +387,116 @@ class Circle {
     }
 }
 
+//中垂线
+class PerpendicularBisector{
+    constructor(start) {
+        this.points = [];
+        this.points.push(start);
+        this.points.push(new Point(start.x, start.y));
+    }
+
+    get type() {
+        return Tools.PERPENDICULAR_BISECTOR;
+    }
+}
+
+//角平分线
+class AngularBisector{
+    constructor(start) {
+        this.points = [];
+        this.points.push(start);
+        this.points.push(new Point(start.x, start.y));
+    }
+
+    get type() {
+        return Tools.ANGULAR_BISECTOR;
+    }
+}
+
+//过点垂线 
+class VerticalLineThroughPoint{
+    constructor(start) {
+        this.points = [];
+        this.points.push(start);
+        this.points.push(new Point(start.x, start.y));
+    }
+
+    get type() {
+        return Tools.VERTICAL_LINE_THROUGH_POINT;
+    }
+
+    //过圆心且垂直与线段的直线
+    calc_chuizhidian(line_item, circle) {
+        // return false;
+        // //TODO:
+        // //过圆心且垂直与线段的直线，与
+        // //计算直线上、距离圆心最近的点, 可以用来判断圆的切线
+        // //设该点为x,y
+        // //圆心-线段端点 距离
+        // // a² + b² = c²
+        // // c² = 
+        // var line = calc_line_parameters(line_item);
+        // var radius = calc_distance(circle);
+
+        // var cc = Math.pow(circle.x - line_item.x, 2) + Math.pow(circle.y - line_item.y, 2);
+        // var A = 2 * (Math.pow(line.weight, 2) + 1);
+        // var B = (2 * line.bias - circle.x - circle.y - line_item.x - line_item.y) / A;
+        // var C = Math.pow(circle.x, 2) + Math.pow(line.bias - circle.y, 2) + Math.pow(line_item.x, 2) + Math.pow(line.bias - line_item.y, 2);
+
+        // var D = (cc - C) / A;
+        // var E = (cc - C) / A + Math.pow(B, 2);
+
+
+
+        // if (E < 0) {
+        //     //不存在交点
+        //     //工程上应该允许有个误差值？误差多少合适？相切的点？
+        //     // 过圆心、垂直与直线的线段，线段的距离是否等于半径？
+        //     return false;
+        // }
+        // var l = Math.sqrt(E)
+
+        // var x1 = l - B
+        // var y1 = line.weight * x1 + line.bias;
+
+        // var x2 = -l - B
+        // var y2 = line.weight * x1 + line.bias;
+
+        // var ret = [{ 'x': Math.round(x1), 'y': Math.round(y1) },
+        // { 'x': Math.round(x2), 'y': Math.round(y2) }];
+
+        // return ret;
+
+    }
+}
+
+//平行线
+class ParallelLine{
+    constructor(start) {
+        this.points = [];
+        this.points.push(start);
+        this.points.push(new Point(start.x, start.y));
+    }
+    get type() {
+        return Tools.PARALLEL_LINE;
+    }
+}
+
+//圆规
+class Compasses{
+    constructor(start) {
+        this.points = [];
+        this.points.push(start);
+        this.points.push(new Point(start.x, start.y));
+    }
+    get type() {
+        return Tools.COMPASSES;
+    }
+}
+
+
+
+
 ////////////// main 主函数 ////
 ; (function () {
     function main() {
@@ -406,73 +518,48 @@ class Circle {
         var movie_points = { 'x': 0, 'y': 0, 'x_movie': 0, 'y_movie': 0 };
 
         var operation_list = []; //用户的绘图记录
-        var undo_operation_list = []; //撤销操作临时保存   
-
-
-        //过圆心且垂直与线段的直线
-        function calc_chuizhidian(line_item, circle) {
-            // return false;
-            // //TODO:
-            // //过圆心且垂直与线段的直线，与
-            // //计算直线上、距离圆心最近的点, 可以用来判断圆的切线
-            // //设该点为x,y
-            // //圆心-线段端点 距离
-            // // a² + b² = c²
-            // // c² = 
-            // var line = calc_line_parameters(line_item);
-            // var radius = calc_distance(circle);
-
-            // var cc = Math.pow(circle.x - line_item.x, 2) + Math.pow(circle.y - line_item.y, 2);
-            // var A = 2 * (Math.pow(line.weight, 2) + 1);
-            // var B = (2 * line.bias - circle.x - circle.y - line_item.x - line_item.y) / A;
-            // var C = Math.pow(circle.x, 2) + Math.pow(line.bias - circle.y, 2) + Math.pow(line_item.x, 2) + Math.pow(line.bias - line_item.y, 2);
-
-            // var D = (cc - C) / A;
-            // var E = (cc - C) / A + Math.pow(B, 2);
-
-
-
-            // if (E < 0) {
-            //     //不存在交点
-            //     //工程上应该允许有个误差值？误差多少合适？相切的点？
-            //     // 过圆心、垂直与直线的线段，线段的距离是否等于半径？
-            //     return false;
-            // }
-            // var l = Math.sqrt(E)
-
-            // var x1 = l - B
-            // var y1 = line.weight * x1 + line.bias;
-
-            // var x2 = -l - B
-            // var y2 = line.weight * x1 + line.bias;
-
-            // var ret = [{ 'x': Math.round(x1), 'y': Math.round(y1) },
-            // { 'x': Math.round(x2), 'y': Math.round(y2) }];
-
-            // return ret;
-
-        }
+        var undo_operation_list = []; //撤销操作临时保存    
 
         //人工绘制的点
-        function get_manual_points(include_last = true) {
-            var tmp = [];
+        function get_manual_points(include_last = true) { 
             var len_operation_list = operation_list.length;
             if (!include_last) {
                 len_operation_list = len_operation_list - 1;
             }
 
-            for (var i = 0; i < len_operation_list; i++) {
-                tmp.push.apply(tmp, operation_list[i].points);
-            }
-
-            //去重？
             var manual_points = [];
-            for (var i = 0; i < tmp.length; i++) {
-                var d = tmp[i].get_nearest_point(manual_points);
-                if (!d) {
-                    manual_points.push(tmp[i]);
+
+            //人工绘制点
+            for (var i = 0; i < len_operation_list; i++) {
+                if(operation_list[i].type==Tools.POINT){
+                    for (var point of operation_list[i].points){ 
+                        //人工手绘点的文本
+                        var num = parseInt(manual_points.length/POINT_CHARS.length); 
+                        var text = POINT_CHARS[manual_points.length%POINT_CHARS.length];
+                        if(num>0){
+                            text = text + num.toString();
+                        }
+                        point.text = text;
+
+                        var d = point.get_nearest_point(manual_points);
+                        if (!d) {
+                            manual_points.push(point);
+                        } 
+                    } 
                 }
             }
+
+            //线段端点、圆心等
+            for (var i = 0; i < len_operation_list; i++) {
+                if (operation_list[i].type != Tools.POINT) {
+                    for (var point of operation_list[i].points) {
+                        var d = point.get_nearest_point(manual_points);
+                        if (!d) {
+                            manual_points.push(point);
+                        }
+                    }
+                }
+            } 
 
             return manual_points;
         }
@@ -622,15 +709,21 @@ class Circle {
                 var p0 = last_item.first.get_nearest_point(points);
                 if (p0) {
                     last_item.points[0].x = p0.x;
-                    last_item.points[0].y = p0.y;
-                }
+                    last_item.points[0].y = p0.y; 
+                } 
 
                 // 判断终点
-                if (last_item.type == Tools.LINE || last_item.type == Tools.CIRCLE) {
+                if (last_item.type != Tools.POINT) {
                     var p1 = last_item.last.get_nearest_point(points);
                     if (p1) {
                         last_item.update_last_point(p1.x, p1.y);
                     }
+                }
+
+                //手绘点的文本标记
+                if(last_item.type == Tools.POINT){
+                    //上一个手绘点的文本？
+                    last_item.text = "A";
                 }
             }
 
@@ -700,14 +793,18 @@ class Circle {
             //绘制人工点
             var manual_points = get_manual_points();
             for (var item of manual_points) {
-                draw_point(item, NORMAL_COLOR, 2);
+                if(item.in_boundary(canvas_rect)){
+                    draw_point(item, NORMAL_COLOR, 2);
+                }
             }
 
             //绘制交点
             var intersect_points = get_intersect_points();
             for (var item of intersect_points) {
-                draw_point(item, DASHES_COLOR, 1.5);
-            }
+                if(item.in_boundary(canvas_rect)){
+                    draw_point(item, DASHES_COLOR, 1.5);
+                }
+            } 
 
             for (var item of operation_list) {
                 //线 
@@ -767,16 +864,23 @@ class Circle {
                     movie_points.x = x;
                     movie_points.y = y;
                 } else {
+                    // 再优化？
                     var point = new Point(x, y);
 
-                    var obj = point;
+                    var obj = false;
+                    if (current_tool == Tools.POINT) {
+                        // point.text = "A";
+                        obj = point; 
+                    }
                     if (current_tool == Tools.LINE) {
                         obj = new Line(point);
                     }
                     if (current_tool == Tools.CIRCLE) {
                         obj = new Circle(point);
                     }
-                    operation_list.push(obj);
+                    if(obj){
+                        operation_list.push(obj);
+                    }
                 }
                 render();
             });
@@ -832,11 +936,15 @@ class Circle {
                 canvas.height = document.documentElement.clientHeight;
                 canvas.width = document.documentElement.clientWidth;
                 canvas_rect = canvas.getBoundingClientRect();
+
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
             });
 
             window.addEventListener('load', function (e) {
                 //页面加载，load用户的历史操作记录，呈现给用户？
+                canvas.height = document.documentElement.clientHeight;
+                canvas.width = document.documentElement.clientWidth;
+                canvas_rect = canvas.getBoundingClientRect(); 
             });
         }
 
