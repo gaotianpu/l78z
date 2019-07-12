@@ -16,3 +16,5 @@ https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes
 
 x,y,radius
 x1,y1,radius1
+
+https://www.shuxuele.com/algebra/line-midpoint.html

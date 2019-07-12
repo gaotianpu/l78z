@@ -3,7 +3,7 @@
 //各种配置参数
 const HIGHTLIGHT_COLOR = 'rgb(60,160,250)'; //高亮颜色
 const DASHES_COLOR = 'rgb(60,60,60)'; //虚线颜色
-const NORMAL_COLOR = 'rgb(30,30,30)'; //正常的颜色
+const NORMAL_COLOR = 'rgb(45,45,45)'; //正常的颜色
 const DUP_POINT_DISTANCE_THRESHOLD = 10; //磁吸距离
 
 const POINT_CHARS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
@@ -108,10 +108,15 @@ class Point {
 
 //线
 class Line {
-    constructor(start) {
+    constructor(start, end = false) {
         this.points = [];
         this.points.push(start);
-        this.points.push(new Point(start.x, start.y));
+        if (end) {
+            this.points.push(end);
+        } else {
+            this.points.push(new Point(start.x, start.y));
+        }
+
     }
 
     get type() {
@@ -159,21 +164,57 @@ class Line {
     }
 
     //直线的斜率
-    get weight() {
+    get slope() {
         return this.y_diff / this.x_diff;
     }
 
     //直线的偏置项
     get bias() {
         // y = wx + b -> b = y-wx
-        return this.points[0].y - this.weight * this.points[0].x;
+        return this.points[0].y - this.slope * this.points[0].x;
     }
 
-    //线段的中心点
-    get center() {
-
+    //线段的中点
+    get midpoint() {
+        return new Point((this.points[0].x + this.points[1].x) / 2, (this.points[0].y + this.points[1].y) / 2)
     }
 
+    //线段的中垂线
+    get perpendicular_bisector() {
+        var w = -1 / this.slope;
+        // var b = this.midpoint.y - w* this.midpoint.x ; 
+        // var p = new Point(0, this.midpoint.y - w* this.midpoint.x);
+
+        return new Line(this.midpoint, new Point(0, this.midpoint.y - w * this.midpoint.x));
+    }
+
+    //经过point的垂线
+    vertical_line_through_point(point) {
+        var w = -1 / this.slope;
+        return new Line(point, new Point(0, point.y - w * point.x));
+    }
+
+    //经过point的平行线
+    parallel_line(point) {
+        return new Line(point, new Point(0, point.y - this.slope * point.x));
+    }
+
+    //圆规工具
+    compasses(point) {
+        //(x-x0)²+(y-y0)²=r²
+        // (y-y0)² = r² - (x-x0)²
+        // y = sqrt( r² - (x-x0)²  ) + y0
+        // x=x0
+        // y = r + y0 
+        return new Circle(point, new Point(point.x, this.segment_length + point.y));
+    }
+
+    //与另外一条相交直线的角平分线
+    angular_bisector(line){
+        //https://www.ditutor.com/line/equation_bisector.html
+        
+    }
+    
     //边界点是直线的属性吗？ 需要引入外部依赖？
 
     //左边界点
@@ -184,18 +225,18 @@ class Line {
     //右边界点
 
     right_point(max_x) {
-        return new Point(max_x, this.weight * max_x + this.bias);
+        return new Point(max_x, this.slope * max_x + this.bias);
     }
 
     //与另外一条直线的交点
     line_intersect_point(line) {
         //平行或重合
-        if (this.weight == line.weight) {
+        if (this.slope == line.slope) {
             return false;
         }
 
-        var x = (this.bias - line.bias) / (line.weight - this.weight);
-        var y = this.weight * x + this.bias;
+        var x = (this.bias - line.bias) / (line.slope - this.slope);
+        var y = this.slope * x + this.bias;
 
         return new Point(x, y);
     }
@@ -211,10 +252,14 @@ class Line {
 
 //圆
 class Circle {
-    constructor(circle_center) {
+    constructor(circle_center, end = false) {
         this.points = []
         this.points.push(circle_center);
-        this.points.push(new Point(circle_center.x, circle_center.y));
+        if (end) {
+            this.points.push(end);
+        } else {
+            this.points.push(new Point(circle_center.x, circle_center.y));
+        }
     }
 
     get type() {
@@ -279,10 +324,10 @@ class Circle {
         // (x+ [((a*(b-y0) - x0)/(a²+1))²]开方)² = (r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²
         // x+ [((a*(b-y0) - x0)/(a²+1))²]开方 = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放
         // x = [(r² - (b-y0)² - x0²)/(a²+1) + ((a*(b-y0) - x0)/(a²+1))²]开放 - [((a*(b-y0) - x0)/(a²+1))²]开放 
-        var A = Math.pow(line.weight, 2) + 1;
+        var A = Math.pow(line.slope, 2) + 1;
         var B = line.bias - this.y;
-        var C = (B * line.weight - this.x) / A
-        var t = (Math.pow(this.radius, 2) - Math.pow(this.x, 2) - Math.pow(B, 2)) / (Math.pow(line.weight, 2) + 1)
+        var C = (B * line.slope - this.x) / A
+        var t = (Math.pow(this.radius, 2) - Math.pow(this.x, 2) - Math.pow(B, 2)) / (Math.pow(line.slope, 2) + 1)
         var f = t + Math.pow(C, 2);
         if (f < 0) {
             //不存在交点
@@ -295,7 +340,7 @@ class Circle {
         var ret = [];
 
         var x1 = l - C;
-        var y1 = line.weight * x1 + line.bias;
+        var y1 = line.slope * x1 + line.bias;
         // if (in_boundary(x1, y1)) {
         // ret.push(  { 'x': Math.round(x1), 'y': Math.round(y1) });
         ret.push(new Point(x1, y1));
@@ -303,7 +348,7 @@ class Circle {
 
         if (l != 0) {
             var x2 = - l - C;
-            var y2 = line.weight * x2 + line.bias;
+            var y2 = line.slope * x2 + line.bias;
             // if (in_boundary(x2, y2)) {
             ret.push(new Point(x2, y2));
 
@@ -439,7 +484,7 @@ class VerticalLineThroughPoint {
         // var radius = calc_distance(circle);
 
         // var cc = Math.pow(circle.x - line_item.x, 2) + Math.pow(circle.y - line_item.y, 2);
-        // var A = 2 * (Math.pow(line.weight, 2) + 1);
+        // var A = 2 * (Math.pow(line.slope, 2) + 1);
         // var B = (2 * line.bias - circle.x - circle.y - line_item.x - line_item.y) / A;
         // var C = Math.pow(circle.x, 2) + Math.pow(line.bias - circle.y, 2) + Math.pow(line_item.x, 2) + Math.pow(line.bias - line_item.y, 2);
 
@@ -457,10 +502,10 @@ class VerticalLineThroughPoint {
         // var l = Math.sqrt(E)
 
         // var x1 = l - B
-        // var y1 = line.weight * x1 + line.bias;
+        // var y1 = line.slope * x1 + line.bias;
 
         // var x2 = -l - B
-        // var y2 = line.weight * x1 + line.bias;
+        // var y2 = line.slope * x1 + line.bias;
 
         // var ret = [{ 'x': Math.round(x1), 'y': Math.round(y1) },
         // { 'x': Math.round(x2), 'y': Math.round(y2) }];
@@ -635,7 +680,7 @@ class Compasses {
 
                 //2条线(w,b的差值)，
                 if (last_item.type == Tools.LINE) {
-                    if (Math.abs(last_item.weight - item.weight) < 0.01 ||
+                    if (Math.abs(last_item.slope - item.slope) < 0.01 ||
                         Math.abs(last_item.bias - item.bias) < 2) {
                         return true;
                     }
@@ -663,6 +708,17 @@ class Compasses {
             var last_item = operation_list[last_index];
             var last_item_point = last_item.last;
 
+            //撤销部分的也要改、防止再redo
+            for (var item of undo_operation_list) {
+                //移动画布
+                if (current_tool == Tools.MOVE) {
+                    for (var point of item.points) {
+                        point.x = point.x + movie_points.x_movie;
+                        point.y = point.y + movie_points.y_movie;
+                    }
+                }
+            }
+
             for (var item of operation_list) {
                 //移动画布
                 if (current_tool == Tools.MOVE) {
@@ -677,7 +733,7 @@ class Compasses {
                 if (isDrawing && current_tool != Tools.MOVE) {
                     if (item.type == Tools.LINE) {
                         // y = ax+b
-                        var y = item.weight * last_item_point.x + item.bias;
+                        var y = item.slope * last_item_point.x + item.bias;
                         if (Math.abs(y - last_item_point.y) < 2) {
                             item.highlight = true;
                         }
@@ -764,7 +820,6 @@ class Compasses {
             ctx.lineTo(end.x, end.y);
             ctx.closePath();
             ctx.stroke();
-
         }
 
         //绘制圆
@@ -801,7 +856,7 @@ class Compasses {
             var intersect_points = get_intersect_points();
             for (var item of intersect_points) {
                 if (item.in_boundary(canvas_rect)) {
-                    draw_point(item, DASHES_COLOR, 1.6);
+                    draw_point(item, DASHES_COLOR, 1.4);
                 }
             }
 
@@ -812,6 +867,12 @@ class Compasses {
                     draw_line(item.left, item.right_point(canvas_rect.width), item.highlight, DASHES_COLOR, 0.2);
                     //绘制线段
                     draw_line(item.first, item.last, item.highlight, NORMAL_COLOR, 2);
+
+                    //线段中点
+                    // draw_point(item.midpoint, NORMAL_COLOR, 2);
+                    //绘制线段的中垂线
+                    // draw_line(item.perpendicular_bisector.left,item.perpendicular_bisector.right_point(canvas_rect.width),item.highlight, DASHES_COLOR, 2)
+
                 }
 
                 //圆
@@ -884,7 +945,7 @@ class Compasses {
                 }
 
                 var x = e.clientX - canvas_rect.left;
-                var y = e.clientY - canvas_rect.top; 
+                var y = e.clientY - canvas_rect.top;
 
                 if (current_tool == Tools.MOVE) {
                     movie_points.x = x;
@@ -893,7 +954,7 @@ class Compasses {
                     start_drawing(x, y);
                 }
 
-                isDrawing = true; 
+                isDrawing = true;
                 render();
             });
             canvas.addEventListener('mousemove', function (e) {
@@ -927,10 +988,12 @@ class Compasses {
                 if (operation_list[last_index].is_ok) {
                     //operation_list.pop();
                     //清空undo记录
-                    undo_operation_list = [];
-                    window.cancelAnimationFrame(requestAnimationFrame_status); 
+                    if (current_tool != Tools.MOVE) {
+                        undo_operation_list = [];
+                    }
+                    window.cancelAnimationFrame(requestAnimationFrame_status);
                     isDrawing = false;
-                } 
+                }
 
                 render();
             });
