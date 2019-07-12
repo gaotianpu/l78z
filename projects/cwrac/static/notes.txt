@@ -1,0 +1,18 @@
+// js for 遍历数组
+//https://juejin.im/post/5a3a59e7518825698e72376b
+
+
+js event binding
+//https://developer.mozilla.org/en-US/docs/Web/API/Element/mousemove_event 
+
+js math
+//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math
+
+https://developer.mozilla.org/zh-CN/docs/Web/JavaScript
+
+js class
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes
+
+
+x,y,radius
+x1,y1,radius1

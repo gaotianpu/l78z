@@ -625,9 +625,7 @@ class Compasses{
                 }
             }
             return intersect_points;
-        }
-
-
+        } 
 
         function has_same_objects(last_item) {
             //判断是否存在重复的绘图对象 
@@ -747,7 +745,7 @@ class Compasses{
             //如果Point需要标记文本 
             if (point.text) {
                 ctx.font = "15px Verdana";
-                ctx.fillText(point.text, point.x + 3, point.y);
+                ctx.fillText(point.text, point.x + 3, point.y-2);
             }
 
         }
