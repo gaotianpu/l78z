@@ -214,7 +214,7 @@ class Line {
         //https://www.ditutor.com/line/equation_bisector.html
         
     }
-    
+
     //边界点是直线的属性吗？ 需要引入外部依赖？
 
     //左边界点
@@ -222,8 +222,7 @@ class Line {
         return new Point(0, this.bias);
     }
 
-    //右边界点
-
+    //右边界点 
     right_point(max_x) {
         return new Point(max_x, this.slope * max_x + this.bias);
     }
@@ -434,96 +433,113 @@ class Circle {
 
 //中垂线
 class PerpendicularBisector {
-    constructor(start) {
+    constructor(point) {
         this.points = [];
         this.points.push(start);
-        this.points.push(new Point(start.x, start.y));
+        // this.points.push(new Point(start.x, start.y)); 
     }
 
     get type() {
         return Tools.PERPENDICULAR_BISECTOR;
     }
+
+    add_point(point){
+        if(!this.is_finish){
+            this.points.push(point);
+        }  
+    }
+
+    is_finish(){
+        return this.points.length==3;
+    }
+
+    //用户选取的线段
+    get selected_line_segment(){
+        this.selected_line_segment_value = new Line(this.points[0],this.points[1]);
+        return this.selected_line_segment_value;
+    }
+
+    //中垂线
+    get line(){
+        return this.selected_line_segment.perpendicular_bisector;
+    } 
+
 }
 
 //角平分线
 class AngularBisector {
     constructor(start) {
+        //需要3个点，边1上的任意点、顶点、边2上的任意点
         this.points = [];
         this.points.push(start);
+        this.points.push(new Point(start.x, start.y));
         this.points.push(new Point(start.x, start.y));
     }
 
     get type() {
         return Tools.ANGULAR_BISECTOR;
     }
+
+    //顶点
+    get vertex(){
+        return this.points[1];
+    }
+
+    //一条边    
+    get line1(){
+
+    }
+
+    //另一条边
+    get line2(){
+
+    }
+
+    //角平分线
+    get line(){
+
+    }
 }
 
 //过点垂线 
 class VerticalLineThroughPoint {
-    constructor(start) {
+    constructor(point) {
         this.points = [];
-        this.points.push(start);
-        this.points.push(new Point(start.x, start.y));
+        this.points.push(point); 
     }
 
     get type() {
         return Tools.VERTICAL_LINE_THROUGH_POINT;
     }
 
-    //过圆心且垂直与线段的直线
-    calc_chuizhidian(line_item, circle) {
-        // return false;
-        // //TODO:
-        // //过圆心且垂直与线段的直线，与
-        // //计算直线上、距离圆心最近的点, 可以用来判断圆的切线
-        // //设该点为x,y
-        // //圆心-线段端点 距离
-        // // a² + b² = c²
-        // // c² = 
-        // var line = calc_line_parameters(line_item);
-        // var radius = calc_distance(circle);
+    set_selected_line(line){
+        this.selected_line = line;
+    } 
 
-        // var cc = Math.pow(circle.x - line_item.x, 2) + Math.pow(circle.y - line_item.y, 2);
-        // var A = 2 * (Math.pow(line.slope, 2) + 1);
-        // var B = (2 * line.bias - circle.x - circle.y - line_item.x - line_item.y) / A;
-        // var C = Math.pow(circle.x, 2) + Math.pow(line.bias - circle.y, 2) + Math.pow(line_item.x, 2) + Math.pow(line.bias - line_item.y, 2);
-
-        // var D = (cc - C) / A;
-        // var E = (cc - C) / A + Math.pow(B, 2);
-
-
-
-        // if (E < 0) {
-        //     //不存在交点
-        //     //工程上应该允许有个误差值？误差多少合适？相切的点？
-        //     // 过圆心、垂直与直线的线段，线段的距离是否等于半径？
-        //     return false;
-        // }
-        // var l = Math.sqrt(E)
-
-        // var x1 = l - B
-        // var y1 = line.slope * x1 + line.bias;
-
-        // var x2 = -l - B
-        // var y2 = line.slope * x1 + line.bias;
-
-        // var ret = [{ 'x': Math.round(x1), 'y': Math.round(y1) },
-        // { 'x': Math.round(x2), 'y': Math.round(y2) }];
-
-        // return ret;
-
-    }
+    //过点垂线
+    get line(){
+        return this.selected_line.vertical_line_through_point(this.points[0]);
+    } 
+     
 }
 
 //平行线
 class ParallelLine {
-    constructor(start) {
+    constructor(point) {
         this.points = [];
-        this.points.push(start);
-        this.points.push(new Point(start.x, start.y));
+        this.points.push(point); 
     }
     get type() {
         return Tools.PARALLEL_LINE;
+    }
+
+    set_selected_line(line){
+        this.selected_line = line;
+    } 
+
+    //过点垂线
+    get line(){
+        return this.selected_line.parallel_line(this.points[0]);
     }
 }
 
@@ -531,11 +547,32 @@ class ParallelLine {
 class Compasses {
     constructor(start) {
         this.points = [];
-        this.points.push(start);
-        this.points.push(new Point(start.x, start.y));
+        this.points.push(start); //线段a点
+        // this.points.push(new Point(start.x, start.y)); //线段b点
+        // this.points.push(new Point(start.x, start.y)); //圆心
     }
+
+    add_point(point){
+        if(!this.is_finish){
+            this.points.push(point);
+        }  
+    }
+
+    is_finish(){
+        return this.points.length==3;
+    }
+
     get type() {
         return Tools.COMPASSES;
+    }
+
+    get selected_line_segment(){
+        this.selected_line_segment_value = new Line(this.points[0],this.points[1]);
+        return this.selected_line_segment_value;
+    }
+
+    get circle(){
+        return this.selected_line_segment.compasses(this.points[2]);
     }
 }
 

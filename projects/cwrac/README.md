@@ -67,17 +67,19 @@ cwrac, construction with ruler and compasses
 
 
 ## 五、渠道&推广
-基本功能搞完后，可以先发布一版？
-1. 微信小程序
+基本功能搞完后，可以先发布一版？云功能是否必须？
+1. 独立网页
+2. 微信小程序
     https://developers.weixin.qq.com/miniprogram/dev/framework/
-2. 头条小程序
+3. 头条小程序
     https://developer.toutiao.com/docs/
-3. 手百小程序
-    https://smartprogram.baidu.com/docs/develop/tutorial/codedir/
-4. 独立网页
+4. Windows/Mac/Linux App
+    https://electronjs.org/
 5. Android App
-6. Windows App
-7. iOS 
+6. iOS    
+7. 手百小程序
+    https://smartprogram.baidu.com/docs/develop/tutorial/codedir/
+
 
 
 ## 六、总结
