@@ -174,19 +174,7 @@ class Line {
         return this.points[0].y - this.slope * this.points[0].x;
     }
 
-    //线段的中点
-    get midpoint() {
-        return new Point((this.points[0].x + this.points[1].x) / 2, (this.points[0].y + this.points[1].y) / 2)
-    }
-
-    //线段的中垂线
-    get perpendicular_bisector() {
-        var w = -1 / this.slope;
-        // var b = this.midpoint.y - w* this.midpoint.x ; 
-        // var p = new Point(0, this.midpoint.y - w* this.midpoint.x);
-
-        return new Line(this.midpoint, new Point(0, this.midpoint.y - w * this.midpoint.x));
-    }
+    
 
     //经过point的垂线
     vertical_line_through_point(point) {
@@ -432,10 +420,12 @@ class Circle {
 }
 
 //中垂线
-class PerpendicularBisector {
-    constructor(point) {
-        this.points = [];
-        this.points.push(start);
+class PerpendicularBisector extends Line{
+    constructor(start) {
+        super(start);
+ 
+        // this.points = [];
+        // this.points.push(start);
         // this.points.push(new Point(start.x, start.y)); 
     }
 
@@ -443,28 +433,62 @@ class PerpendicularBisector {
         return Tools.PERPENDICULAR_BISECTOR;
     }
 
-    add_point(point){
-        if(!this.is_finish){
-            this.points.push(point);
-        }  
+    //线段的中点
+    get midpoint() {
+        return new Point((this.points[0].x + this.points[1].x) / 2, (this.points[0].y + this.points[1].y) / 2)
     }
 
-    is_finish(){
-        return this.points.length==3;
-    }
+    //线段的中垂线
+    get perpendicular_bisector() {
+        var w = -1 / this.slope;
+        // var b = this.midpoint.y - w* this.midpoint.x ; 
+        // var p = new Point(0, this.midpoint.y - w* this.midpoint.x);
 
-    //用户选取的线段
-    get selected_line_segment(){
-        this.selected_line_segment_value = new Line(this.points[0],this.points[1]);
-        return this.selected_line_segment_value;
+        return new Line(this.midpoint, new Point(0, this.midpoint.y - w * this.midpoint.x));
     }
-
-    //中垂线
-    get line(){
-        return this.selected_line_segment.perpendicular_bisector;
-    } 
 
 }
+
+// class PerpendicularBisector {
+//     constructor(start) {
+//         this.points = [];
+//         this.points.push(start);
+//         this.points.push(new Point(start.x, start.y)); 
+//     }
+
+//     get type() {
+//         return Tools.PERPENDICULAR_BISECTOR;
+//     }
+
+//     get last() {
+//         return this.points[this.points.length - 1];
+//     }
+
+//     update_last_point(x, y) {
+//         this.last.x = x;
+//         this.last.y = y;
+//     }
+
+//     //用户选取的线段
+//     get selected_line_segment(){
+//         this.selected_line_segment_value = new Line(this.points[0],this.points[1]);
+//         return this.selected_line_segment_value;
+//     }
+
+//     get is_ok() {
+//         var d = this.selected_line_segment_value.segment_length;
+//         if (d > 10) {
+//             return true;
+//         }
+//         return false;
+//     } 
+
+//     //中垂线
+//     get line(){
+//         return this.selected_line_segment.perpendicular_bisector;
+//     } 
+
+// }
 
 //角平分线
 class AngularBisector {
@@ -631,7 +655,7 @@ class Compasses {
                 }
             }
 
-            //线段端点、圆心等
+            //线段端点、圆心等，中垂线的线段中点
             for (var i = 0; i < len_operation_list; i++) {
                 if (operation_list[i].type != Tools.POINT) {
                     for (var point of operation_list[i].points) {
@@ -903,18 +927,21 @@ class Compasses {
                     //绘制线段外虚直线部分 
                     draw_line(item.left, item.right_point(canvas_rect.width), item.highlight, DASHES_COLOR, 0.2);
                     //绘制线段
-                    draw_line(item.first, item.last, item.highlight, NORMAL_COLOR, 2);
-
-                    //线段中点
-                    // draw_point(item.midpoint, NORMAL_COLOR, 2);
-                    //绘制线段的中垂线
-                    // draw_line(item.perpendicular_bisector.left,item.perpendicular_bisector.right_point(canvas_rect.width),item.highlight, DASHES_COLOR, 2)
-
+                    draw_line(item.first, item.last, item.highlight, NORMAL_COLOR, 2); 
                 }
 
                 //圆
                 if (item.type == Tools.CIRCLE) {
                     draw_arc(item, NORMAL_COLOR);
+                }
+
+                //中垂线
+                if (item.type == Tools.PERPENDICULAR_BISECTOR) {
+                    var line = item.perpendicular_bisector;
+                    // 用户选中起止点构成的线段
+                    draw_line(item.first, item.last, item.highlight, DASHES_COLOR, 0.2);
+                    //绘制中垂线
+                    draw_line(line.left, line.right_point(canvas_rect.width), item.highlight, DASHES_COLOR, 2); 
                 }
             }
 
@@ -936,6 +963,12 @@ class Compasses {
             if (current_tool == Tools.CIRCLE) {
                 obj = new Circle(point);
             }
+            console.log(current_tool);
+            if (current_tool == Tools.PERPENDICULAR_BISECTOR) {
+                console.log(point);
+                obj = new PerpendicularBisector(point);
+            }
+
             if (obj) {
                 operation_list.push(obj);
             }
@@ -1016,9 +1049,13 @@ class Compasses {
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
 
             });
-            canvas.addEventListener('mouseup', function (e) {
+            canvas.addEventListener('mouseup', function (e) {  
                 var last_index = operation_list.length - 1;
                 if (last_index < 0 || !isDrawing) {
+                    if(current_tool == Tools.MOVE){
+                        isDrawing = false;
+                    }
+                    
                     return false;
                 }
 
@@ -1030,7 +1067,7 @@ class Compasses {
                     }
                     window.cancelAnimationFrame(requestAnimationFrame_status);
                     isDrawing = false;
-                }
+                } 
 
                 render();
             });
