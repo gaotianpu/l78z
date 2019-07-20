@@ -174,7 +174,7 @@ class Line {
         return this.points[0].y - this.slope * this.points[0].x;
     }
 
-    
+
 
     //经过point的垂线
     vertical_line_through_point(point) {
@@ -198,9 +198,9 @@ class Line {
     }
 
     //与另外一条相交直线的角平分线
-    angular_bisector(line){
+    angular_bisector(line) {
         //https://www.ditutor.com/line/equation_bisector.html
-        
+
     }
 
     //边界点是直线的属性吗？ 需要引入外部依赖？
@@ -420,10 +420,10 @@ class Circle {
 }
 
 //中垂线
-class PerpendicularBisector extends Line{
+class PerpendicularBisector extends Line {
     constructor(start) {
         super(start);
- 
+
         // this.points = [];
         // this.points.push(start);
         // this.points.push(new Point(start.x, start.y)); 
@@ -505,22 +505,22 @@ class AngularBisector {
     }
 
     //顶点
-    get vertex(){
+    get vertex() {
         return this.points[1];
     }
 
     //一条边    
-    get line1(){
+    get line1() {
 
     }
 
     //另一条边
-    get line2(){
+    get line2() {
 
     }
 
     //角平分线
-    get line(){
+    get line() {
 
     }
 }
@@ -529,40 +529,40 @@ class AngularBisector {
 class VerticalLineThroughPoint {
     constructor(point) {
         this.points = [];
-        this.points.push(point); 
+        this.points.push(point);
     }
 
     get type() {
         return Tools.VERTICAL_LINE_THROUGH_POINT;
     }
 
-    set_selected_line(line){
+    set_selected_line(line) {
         this.selected_line = line;
-    } 
+    }
 
     //过点垂线
-    get line(){
+    get line() {
         return this.selected_line.vertical_line_through_point(this.points[0]);
-    } 
-     
+    }
+
 }
 
 //平行线
 class ParallelLine {
     constructor(point) {
         this.points = [];
-        this.points.push(point); 
+        this.points.push(point);
     }
     get type() {
         return Tools.PARALLEL_LINE;
     }
 
-    set_selected_line(line){
+    set_selected_line(line) {
         this.selected_line = line;
-    } 
+    }
 
     //过点垂线
-    get line(){
+    get line() {
         return this.selected_line.parallel_line(this.points[0]);
     }
 }
@@ -576,26 +576,26 @@ class Compasses {
         // this.points.push(new Point(start.x, start.y)); //圆心
     }
 
-    add_point(point){
-        if(!this.is_finish){
+    add_point(point) {
+        if (!this.is_finish) {
             this.points.push(point);
-        }  
+        }
     }
 
-    is_finish(){
-        return this.points.length==3;
+    is_finish() {
+        return this.points.length == 3;
     }
 
     get type() {
         return Tools.COMPASSES;
     }
 
-    get selected_line_segment(){
-        this.selected_line_segment_value = new Line(this.points[0],this.points[1]);
+    get selected_line_segment() {
+        this.selected_line_segment_value = new Line(this.points[0], this.points[1]);
         return this.selected_line_segment_value;
     }
 
-    get circle(){
+    get circle() {
         return this.selected_line_segment.compasses(this.points[2]);
     }
 }
@@ -927,7 +927,7 @@ class Compasses {
                     //绘制线段外虚直线部分 
                     draw_line(item.left, item.right_point(canvas_rect.width), item.highlight, DASHES_COLOR, 0.2);
                     //绘制线段
-                    draw_line(item.first, item.last, item.highlight, NORMAL_COLOR, 2); 
+                    draw_line(item.first, item.last, item.highlight, NORMAL_COLOR, 2);
                 }
 
                 //圆
@@ -941,42 +941,13 @@ class Compasses {
                     // 用户选中起止点构成的线段
                     draw_line(item.first, item.last, item.highlight, DASHES_COLOR, 0.2);
                     //绘制中垂线
-                    draw_line(line.left, line.right_point(canvas_rect.width), item.highlight, DASHES_COLOR, 2); 
+                    draw_line(line.left, line.right_point(canvas_rect.width), item.highlight, DASHES_COLOR, 2);
                 }
             }
 
         }
 
-        //事件公共函数
-        function start_drawing(x, y) {
-            // 再优化？
-            var point = new Point(x, y);
 
-            var obj = false;
-            if (current_tool == Tools.POINT) {
-                // point.text = "A";
-                obj = point;
-            }
-            if (current_tool == Tools.LINE) {
-                obj = new Line(point);
-            }
-            if (current_tool == Tools.CIRCLE) {
-                obj = new Circle(point);
-            }
-            console.log(current_tool);
-            if (current_tool == Tools.PERPENDICULAR_BISECTOR) {
-                console.log(point);
-                obj = new PerpendicularBisector(point);
-            }
-
-            if (obj) {
-                operation_list.push(obj);
-            }
-        }
-
-        function stop_drawing(x, y) {
-            operation_list[last_index].update_last_point(x, y);
-        }
 
         //事件绑定
         function event_binding() {
@@ -1006,16 +977,38 @@ class Compasses {
                 }
             });
 
-            //两种习惯：暂时先支持第一种
-            //1. 拖拽式 
-            //2. 点击式 1.鼠标点击2下确定一条直线，一个圆等  
-            canvas.addEventListener('mousedown', function (e) {
+            //start,doing,end
+            //事件公共函数
+            function start_drawing(x, y) {
+                // 再优化？
+                var point = new Point(x, y);
+
+                var obj = false;
+                if (current_tool == Tools.POINT) {
+                    // point.text = "A";
+                    obj = point;
+                }
+                if (current_tool == Tools.LINE) {
+                    obj = new Line(point);
+                }
+                if (current_tool == Tools.CIRCLE) {
+                    obj = new Circle(point);
+                }
+                // console.log(current_tool);
+                if (current_tool == Tools.PERPENDICULAR_BISECTOR) {
+                    // console.log(point);
+                    obj = new PerpendicularBisector(point);
+                }
+
+                if (obj) {
+                    operation_list.push(obj);
+                }
+            }
+
+            function start(x, y) {
                 if (isDrawing) {
                     return;
                 }
-
-                var x = e.clientX - canvas_rect.left;
-                var y = e.clientY - canvas_rect.top;
 
                 if (current_tool == Tools.MOVE) {
                     movie_points.x = x;
@@ -1026,15 +1019,13 @@ class Compasses {
 
                 isDrawing = true;
                 render();
-            });
-            canvas.addEventListener('mousemove', function (e) {
+            }
+
+            function move(x, y) {
                 var last_index = operation_list.length - 1;
                 if (last_index < 0 || !isDrawing) {
                     return false;
                 }
-
-                var x = e.clientX - canvas_rect.left;
-                var y = e.clientY - canvas_rect.top;
 
                 if (current_tool == Tools.MOVE) {
                     //移动画布
@@ -1047,15 +1038,15 @@ class Compasses {
                 }
 
                 requestAnimationFrame_status = window.requestAnimationFrame(render);
+            }
 
-            });
-            canvas.addEventListener('mouseup', function (e) {  
+            function end(x, y) {
                 var last_index = operation_list.length - 1;
                 if (last_index < 0 || !isDrawing) {
-                    if(current_tool == Tools.MOVE){
+                    if (current_tool == Tools.MOVE) {
                         isDrawing = false;
                     }
-                    
+
                     return false;
                 }
 
@@ -1067,9 +1058,53 @@ class Compasses {
                     }
                     window.cancelAnimationFrame(requestAnimationFrame_status);
                     isDrawing = false;
-                } 
+                }
 
                 render();
+            }
+
+            //两种习惯：暂时先支持第一种
+            //1. 拖拽式 
+            //2. 点击式 1.鼠标点击2下确定一条直线，一个圆等  
+            canvas.addEventListener('mousedown', function (e) {
+                var x = e.clientX - canvas_rect.left;
+                var y = e.clientY - canvas_rect.top;
+                start(x, y);
+            });
+            //当手指接触屏幕时触发
+            canvas.addEventListener('touchstart', function (e) {
+                var touch = e.touches[0];
+                var x = touch.clientX - canvas_rect.left;
+                var y = touch.clientY - canvas_rect.top;
+                start(x, y);
+            });
+
+            canvas.addEventListener('mousemove', function (e) {
+                var x = e.clientX - canvas_rect.left;
+                var y = e.clientY - canvas_rect.top;
+                move(x, y)
+            });
+            //当已经接触屏幕的手指开始移动后触发
+            canvas.addEventListener('touchmove', function (e) {
+                var touch = e.touches[0];
+                var x = touch.clientX - canvas_rect.left;
+                var y = touch.clientY - canvas_rect.top;
+                move(x, y)
+            });
+
+            canvas.addEventListener('mouseup', function (e) {
+                var x = e.clientX - canvas_rect.left;
+                var y = e.clientY - canvas_rect.top;
+                end(x, y);
+            });
+            //当手指离开屏幕时触发
+            canvas.addEventListener('touchend', function (e) {
+                // var touch = e.touches[0];
+                // var x = touch.clientX - canvas_rect.left;
+                // var y = touch.clientY - canvas_rect.top;
+                var x=0;
+                var y=0;
+                end(x, y);
             });
 
             //右键单击、取消？
