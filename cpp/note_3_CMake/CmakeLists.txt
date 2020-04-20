@@ -1,0 +1,8 @@
+project (note_3_CMake)
+cmake_minimum_required (VERSION 2.6)
+
+FIND_PACKAGE(Boost 1.65.1 COMPONENTS program_options REQUIRED) 
+INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
+
+add_executable(note_3_CMake.run boost_test.cpp)
+TARGET_LINK_LIBRARIES(note_3_CMake.run LINK_PUBLIC ${Boost_LIBRARIES} )

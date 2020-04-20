@@ -8,3 +8,11 @@
 
 output_0531/
 output/
+
+#cmake
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+CMakeFiles/
+*.run
+*.o
