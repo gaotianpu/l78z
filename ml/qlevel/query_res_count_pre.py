@@ -9,16 +9,22 @@ import joblib
 # from sklearn.naive_bayes import MultinomialNB
 import scipy as sp
 
+#for py2, not for py3
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
+
 tfidf_vect = joblib.load('model/TfidfVectorizer.res_count.joblib')
 clf = joblib.load('model/GradientBoostingClassifier.res_count.joblib')
 # clf = joblib.load('model/MultinomialNB.res_count.joblib')
 
 # tfidf_vect = pickle.load(open('model/TfidfVectorizer.res_count.pickle', 'rb'))
-# clf = pickle.load(open('model/MultinomialNB.res_count.pickle', 'rb'))
-# clf = pickle.load(open('model/GradientBoostingClassifier.res_count..pickle', 'rb'))
+# # clf = pickle.load(open('model/MultinomialNB.res_count.pickle', 'rb'))
+# clf = pickle.load(open('model/GradientBoostingClassifier.res_count.pickle', 'rb'))
 
 if __name__ == "__main__":
-    df = pd.read_csv('data/query.after_level', sep="\t", header=None, names=['query'])
+    df = pd.read_csv('data/query.after_level', sep="\t", quotechar=None, quoting=3, header=None, names=['query'])
 
     X = tfidf_vect.transform(df["query"].values.astype('U'))
     quey_len_list = np.array([[len(q)] for q in df['query'].values.astype('U')]) 
@@ -31,6 +37,7 @@ if __name__ == "__main__":
     for i, proba in enumerate(predicted_proba):
         if proba[1] > 0.45:
             query = df['query'].values[i] 
-            print(query,predicted_proba[i][1])
+            print(query)
+            # print(query,predicted_proba[i][1])
         # label = df['label'].values[i]
         # print( "%s\t%s\t%s\t%s" % (query,pred_label,predicted_proba[i][1],label)) 

@@ -17,7 +17,7 @@ int main() {
 
 int has_item(int a, int& index) {
     const int items_length = 6;
-    uint32_t srcid_list[items_length] = {23, 85, 28243, 28204, 28236, 28532};
+    const uint32_t srcid_list[items_length] = {23, 85, 28243, 28204, 28236, 28532};
     for (int i = 0; i < items_length; i++) {
         if (a == srcid_list[i]) {
             index = i;

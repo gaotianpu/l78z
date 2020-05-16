@@ -30,14 +30,14 @@ int main(int argc, char *argv[]) {
 
     // std::vector<std::string> split;
 
-    const int SPLITOR_LEN = 5;
-    std::string split[] = {",", "，", "。", "、", "】"};
+    const int SPLITOR_LEN = 6;
+    std::string split[] = {",", "，", "。", "、", "】","！"};
     const int min = 20;
     const int max = 30;
 
-    std::string cn_str =
-        "今天下午香港太古广场，高唱国歌、爱国香港市民有约集会，高喊“支持香港警"
-        "察”、“中国香港加油”、“祖国生日快乐”";
+    std::string cn_str ;
+    cn_str = "#香港首家房企宣布无偿捐地#【记住这家企业！香港首家房企宣布无偿捐地[赞]】9月25日，新世界发展覿";
+    std::cout << cn_sub_str(cn_str, split, SPLITOR_LEN, min, max) << std::endl;
 
     // cn_str =
     //     "【苹果宣布新Mac "
@@ -70,8 +70,7 @@ int main(int argc, char *argv[]) {
     // cn_str = "国庆临近，机场全线停飞… 伟大祖国";
     // std::cout << cn_sub_str(cn_str, split, SPLITOR_LEN, min, max) << std::endl;
 
-    cn_str = "香港暴露出的问题，为我们去掉了一个错误答案观视频工作室，的秒拍视频";
-    std::cout << cn_sub_str(cn_str, split, SPLITOR_LEN, min, max) << std::endl;
+    
 
     // std::cout << is_zh_cn(cn_str.at(0)) << std::endl;
     // std::cout << is_zh_cn(cn_str.at(1)) << std::endl;
