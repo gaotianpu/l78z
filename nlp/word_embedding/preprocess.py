@@ -9,10 +9,10 @@ import time
 
 
 class CorpusData():
-    def __init__(self, corpus_file, line_count=None,allow_cache=True):
+    def __init__(self, corpus_file, line_count=None, allow_cache=True):
         self.corpus_file = corpus_file
         self.line_count = line_count
-        self.allow_cache = allow_cache 
+        self.allow_cache = allow_cache
 
         self.idx2word_file = 'data/idx2word.pickle'
         self.word2idx_file = 'data/word2idx.pickle'
@@ -34,8 +34,8 @@ class CorpusData():
         vocab_set = set()
         with open(self.corpus_file, 'r') as f:
             for i, line in enumerate(f):
-                if self.line_count and i>self.line_count:
-                    break 
+                if self.line_count and i > self.line_count:
+                    break
                 l = line.replace(" ", "").strip()
                 for char in l:
                     if char not in vocab_set:
@@ -75,13 +75,13 @@ class CorpusData():
             with open(self.bagwords_file, 'r') as f:
                 for line in f:
                     context_tuple_list.append(line.strip().split("\t"))
-            return context_tuple_list 
-        
+            return context_tuple_list
+
         with open(self.corpus_file, 'r') as f:
             with open(self.bagwords_file, 'w') as fw:
                 for i, line in enumerate(f):
-                    if self.line_count and i>self.line_count:
-                        break 
+                    if self.line_count and i > self.line_count:
+                        break
                     txt = line.replace(" ", "").strip()
                     for ii, char in enumerate(txt):
                         start_idx = max(0, ii-context_size)
@@ -95,41 +95,54 @@ class CorpusData():
         return context_tuple_list
 
 
+def generate_cbow_data(raw_text,context_size=2):
+    """一段分词好的wordlist，产出cbow需要的训练数据"""
+    data = []
+    for i in range(context_size, len(raw_text) - context_size):
+        context = []
+        for ii in range(-context_size,context_size+1):
+            if ii!=0:
+                context.append(raw_text[i+ii]) 
+        target = raw_text[i]
+        data.append((context, target))
+    return data
+
+def sample_negative():
+    pass 
+
 def unit_test():
-    corpus = ["中华人民共和国","印度阿三骚扰边境啦"]
-    context_tuple_list = []
-    w = 4
-
-    for text in corpus:
-        for i, word in enumerate(text):
-            first_context_word_index = max(0,i-w)
-            last_context_word_index = min(i+w, len(text))
-            for j in range(first_context_word_index, last_context_word_index):
-                if i!=j:
-                    context_tuple_list.append((word, text[j]))
-    print("There are {} pairs of target and context words".format(len(context_tuple_list)))
-    print(context_tuple_list)
-    return 
-
+    CONTEXT_SIZE = 2  # 2 words to the left, 2 to the right
     raw_text = """We are about to study the idea of a computational process.
-Computational processes are abstract beings that inhabit computers.
-As they evolve, processes manipulate other abstract things called data.
-The evolution of a process is directed by a pattern of rules
-called a program. People create programs to direct processes. In effect,
-we conjure the spirits of the computer with our spells.""".split()
+    Computational processes are abstract beings that inhabit computers.
+    As they evolve, processes manipulate other abstract things called data.
+    The evolution of a process is directed by a pattern of rules
+    called a program. People create programs to direct processes. In effect,
+    we conjure the spirits of the computer with our spells.""".split()
+    raw_text = "i love china forever !".split()
 
     # By deriving a set from `raw_text`, we deduplicate the array
     vocab = set(raw_text)
     vocab_size = len(vocab)
 
-    word_to_ix = {word: i for i, word in enumerate(vocab)}
-    data = []
-    for i in range(2, len(raw_text) - 2):
-        context = [raw_text[i - 2], raw_text[i - 1],
-                raw_text[i + 1], raw_text[i + 2]]
-        target = raw_text[i]
-        data.append((context, target))
+    word_to_ix = {word: i for i, word in enumerate(vocab)} 
+    data = generate_cbow_data(raw_text)
     print(data[:5])
+    return
+
+    corpus = ["中华人民共和国", "印度阿三骚扰边境啦"]
+    context_tuple_list = []
+    w = 4
+
+    for text in corpus:
+        for i, word in enumerate(text):
+            first_context_word_index = max(0, i-w)
+            last_context_word_index = min(i+w, len(text))
+            for j in range(first_context_word_index, last_context_word_index):
+                if i != j:
+                    context_tuple_list.append((word, text[j]))
+    print("There are {} pairs of target and context words".format(
+        len(context_tuple_list)))
+    print(context_tuple_list)
     return 
 
     test_sentence = """When forty winters shall besiege thy brow,
@@ -152,7 +165,7 @@ And see thy blood warm when thou feel'st it cold.""".split()
                 for i in range(len(test_sentence) - 2)]
     # print the first 3, just so you can see what they look like
     print(trigrams[:3])
-    return 
+    return
 
     # word_to_ix = {"hello": 0, "world": 1}
     # embeds = nn.Embedding(2, 5)  # 2 words in vocab, 5 dimensional embeddings
@@ -161,16 +174,16 @@ And see thy blood warm when thou feel'st it cold.""".split()
     # print(hello_embed)
     # return
 
-    o = CorpusData(corpus_file="data/zhihu.txt",line_count=10,allow_cache=False)
+    o = CorpusData(corpus_file="data/zhihu.txt",
+                   line_count=10, allow_cache=False)
     start_time = time.time()
     o.load_corpus()
     # o.get_bag_words()
     print(o.idx2word)
     print("--- %s seconds ---" % (time.time() - start_time))
-    # whitout cache: 10.6s, 
+    # whitout cache: 10.6s,
     return
 
-    
     print(o.idx2word)
     print(o.word2idx)
     print(o.get_word_by_idx(4))
