@@ -6,6 +6,27 @@
 import os
 import pickle
 import time
+from torch.utils.data import Dataset, DataLoader
+
+
+class CorpusDataset(Dataset):
+    """#DEVELOPING CUSTOM PYTORCH DATALOADERS
+    https://pytorch.org/tutorials/recipes/recipes/custom_dataset_transforms_loader.html"""
+    def __init__(self, corp_file):
+        pass
+
+    def __len__(self):
+        pass
+
+    def __getitem__(self, idx):
+        pass
+
+
+corpus_dataset = CorpusDataset(corp_file="data/zhihu.txt")
+dataloader = DataLoader(corpus_dataset, batch_size=4,
+                        shuffle=True, num_workers=4)
+for i_batch, sample_batched in enumerate(dataloader):
+    pass
 
 
 class CorpusData():
@@ -65,7 +86,7 @@ class CorpusData():
             if idx < 0:
                 idx = self.vocab_len
             l.append(idx)
-        return l 
+        return l
 
     def get_one_hot(self, word):
         idx = self.get_idx_by_words(word)
@@ -76,16 +97,16 @@ class CorpusData():
         if self.allow_cache and os.path.exists(self.bagwords_file):
             # print("cache")
             with open(self.bagwords_file, 'r') as f:
-                for i,line in enumerate(f):
+                for i, line in enumerate(f):
                     if self.line_count and i > self.line_count:
                         break
                     parts = line.strip().split("\t")
                     # print(parts)
                     # print(parts[:-1],parts[-1])
-                    context_tuple_list.append( [tuple(parts[:-1]),parts[-1]] )
+                    context_tuple_list.append([tuple(parts[:-1]), parts[-1]])
             return context_tuple_list
-        
-        return 
+
+        return
 
         with open(self.corpus_file, 'r') as f:
             # with open(self.bagwords_file, 'w') as fw:
@@ -93,12 +114,12 @@ class CorpusData():
                 if self.line_count and i > self.line_count:
                     break
                 txt = line.replace(" ", "").strip()
-                data = self.generate_cbow_data(txt, context_size) 
-                for ctx,t in data:
+                data = self.generate_cbow_data(txt, context_size)
+                for ctx, t in data:
                     ctx.append(t)
                     print('\t'.join(ctx))
 
-                context_tuple_list = context_tuple_list + data 
+                context_tuple_list = context_tuple_list + data
                 # for ii, char in enumerate(txt):
                 #     start_idx = max(0, ii-context_size)
                 #     end_idx = min(ii+context_size, len(txt))
@@ -110,27 +131,28 @@ class CorpusData():
                 #             fw.write("\n")
         return context_tuple_list
 
-
-    def generate_cbow_data(self, raw_text,context_size=2):
+    def generate_cbow_data(self, raw_text, context_size=2):
         """一段分词好的wordlist，产出cbow需要的训练数据"""
         data = []
         for i in range(context_size, len(raw_text) - context_size):
             context = []
-            for ii in range(-context_size,context_size+1):
-                if ii!=0:
-                    context.append(raw_text[i+ii]) 
+            for ii in range(-context_size, context_size+1):
+                if ii != 0:
+                    context.append(raw_text[i+ii])
             target = raw_text[i]
             data.append((context, target))
         return data
 
+
 def sample_negative():
-    pass 
+    pass
+
 
 def unit_test():
     # o = CorpusData(corpus_file="data/zhihu.txt",
     #                line_count=5, allow_cache=True)
     # o.load_corpus()
-    # start_time = time.time() 
+    # start_time = time.time()
     # rows = o.get_bag_words(4)
     # for r in rows:
     #     print(r)
@@ -152,14 +174,14 @@ def unit_test():
     # vocab = set(raw_text)
     # vocab_size = len(vocab)
 
-    # word_to_ix = {word: i for i, word in enumerate(vocab)} 
+    # word_to_ix = {word: i for i, word in enumerate(vocab)}
     # data = generate_cbow_data(raw_text)
     # print(data[:5])
     # return
 
     corpus = ["中华人民共和国", "印度阿三骚扰边境啦"]
     context_tuple_list = []
-    w = 4 
+    w = 4
     for text in corpus:
         for i, word in enumerate(text):
             first_context_word_index = max(0, i-w)
@@ -170,7 +192,7 @@ def unit_test():
     print("There are {} pairs of target and context words".format(
         len(context_tuple_list)))
     print(context_tuple_list)
-    return 
+    return
 
     test_sentence = """When forty winters shall besiege thy brow,
 And dig deep trenches in thy beauty's field,
@@ -200,8 +222,6 @@ And see thy blood warm when thou feel'st it cold.""".split()
     # hello_embed = embeds(lookup_tensor)
     # print(hello_embed)
     # return
-
-    
 
     print(o.idx2word)
     print(o.word2idx)
