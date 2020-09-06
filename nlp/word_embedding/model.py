@@ -63,7 +63,7 @@ class SkipGram(nn.Module):
     https://github.com/PengFoo/word2vec-pytorch/blob/master/word2vec/model.py
     """
 
-    def __init__(self, vocab_size, embedding_size):
+    def __init__(self, vocab_size, embedding_size, context_size):
         super(SkipGram, self).__init__()
         # self.emb_size = emb_size
         # self.emb_dimension = emb_dimension
@@ -91,7 +91,7 @@ class SkipGram(nn.Module):
 
 
 class Word2Vec(nn.Module):
-    def __init__(self, embedding_size, vocab_size):
+    def __init__(self, embedding_size, vocab_size, context_size):
         super(Word2Vec, self).__init__()
         self.embeddings = nn.Embedding(vocab_size, embedding_size)
         self.linear = nn.Linear(embedding_size, vocab_size)
@@ -106,6 +106,11 @@ class Word2Vec(nn.Module):
 def unit_test():
     word_to_ix = {"hello": 0, "world": 1}
     embeds = nn.Embedding(2, 5)  # 2 words in vocab, 5 dimensional embeddings
+    # print(dir(embeds.weight))
+    # print(embeds.state_dict)
+    return 
+    x,y = embeds.weight.shape
+    print(x,y)
     lookup_tensor = torch.tensor([word_to_ix["world"]], dtype=torch.long)
     print(lookup_tensor)
     hello_embed = embeds(lookup_tensor)
