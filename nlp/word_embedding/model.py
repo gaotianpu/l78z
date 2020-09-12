@@ -3,7 +3,6 @@
 """
 字符级别的词嵌入
 https://github.com/weberrr/pytorch_word2vec
-
 """
 import torch
 import torch.nn as nn

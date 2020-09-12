@@ -7,11 +7,10 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader
 
 from model import Word2Vec, CBOW
-from corp_dataset import CbowDataSet
-# from preprocess import CorpusData
+from corp_dataset import CbowDataSet 
 
-embedding_size = 8
 context_size = 4
+embedding_size = 256
 epoch_size = 10
 batch_size = 500
 
@@ -22,8 +21,8 @@ dataloader = DataLoader(data, batch_size=batch_size,
                         shuffle=True, num_workers=0)
 
 model = CBOW(data.get_vocab_size(), embedding_size, context_size)
-optimizer = optim.SGD(model.parameters(), lr=0.01)
-loss_function = nn.NLLLoss()
+optimizer = optim.SGD(model.parameters(), lr=0.01) 
+criterion = nn.NLLLoss()
 
 
 # 使用 TensorBoard 可视化模型，数据和训练
@@ -75,15 +74,20 @@ class EarlyStopping():
 def train():
     for epoch in range(epoch_size):
         total_loss = 0
+        i = 0
         for context, target in data:
-            model.zero_grad()
+            optimizer.zero_grad()
             log_probs = model(context)
-            loss = loss_function(log_probs, target)
+            loss = criterion(log_probs, target)
             loss.backward()
-            optimizer.step()
-
+            optimizer.step() 
             total_loss += loss.item()
-            print(epoch, total_loss)
+            
+            if i % 300 == 0:
+                print(epoch, i, total_loss/(i+1))
+            i = i + 1 
+        
+
     print("final")
 
 
@@ -92,23 +96,49 @@ def train_2():
         for i_batch, (context, target) in enumerate(dataloader):
             total_loss = 0
             for i, txt in enumerate(context):
-                model.zero_grad()
+                optimizer.zero_grad()
                 log_probs = model(txt)
-                loss = loss_function(log_probs, target[i])
+                loss = criterion(log_probs, target[i])
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()
 
-            print(epoch, i_batch, total_loss/i)
+            print(epoch, i_batch, total_loss/batch_size)
             save_embedding(embeddings=model.embeddings,
                            id2word_dict=data.word_li, file_name="out/embddings")
             writer.add_scalar('training loss',
-                              total_loss/i,
-                              i_batch * i)
+                              total_loss/batch_size,
+                              i_batch * batch_size)
 
         break
 
+def train_3():
+    for epoch in range(epoch_size):
+        for i_batch, (context, target) in enumerate(dataloader):
+            total_loss = 0.0
+            # for i, txt in enumerate(context):
+            optimizer.zero_grad()
+            log_probs = model(context)
+            loss = criterion(log_probs, target)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            
+            if i_batch % 20 == 19:    # print every 2000 mini-batches
+                print('[%d, %5d] loss: %.3f' %
+                    (epoch + 1, i_batch + 1, total_loss / 2000))
+                total_loss = 0.0
+
+            # print(epoch, i_batch, total_loss/i)
+            # save_embedding(embeddings=model.embeddings,
+            #                id2word_dict=data.word_li, file_name="out/embddings")
+            # writer.add_scalar('training loss',
+            #                   total_loss/i,
+            #                   i_batch * i)
+
+        break
 
 if __name__ == "__main__":
     train()
     # train_2()
+    # train_3()
