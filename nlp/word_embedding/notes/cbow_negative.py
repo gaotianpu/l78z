@@ -44,16 +44,23 @@ index_to_word = {idx: w for (idx, w) in enumerate(vocabulary)}
 def sample_negative(corpus, sample_size):
     sample_probability = {}
     word_counts = dict(Counter(list(itertools.chain.from_iterable(corpus))))
+    print("word_counts:",word_counts)
     normalizing_factor = sum([v**0.75 for v in word_counts.values()])
+    print("normalizing_factor:",normalizing_factor)
+    print("normalizing_factor_without:",sum(word_counts.values()))
     for word in word_counts:
         sample_probability[word] = word_counts[word]**0.75 / normalizing_factor
+    # print(sample_probability)
     words = np.array(list(word_counts.keys()))
     while True:
         word_list = []
         sampled_index = np.array(multinomial(
             sample_size, list(sample_probability.values())))
-        for index, count in enumerate(sampled_index):
+        print('len(sampled_index):',len(sampled_index))
+        print(sampled_index[:5])
+        for index, count in enumerate(sampled_index): 
             for _ in range(count):
+                print(index,count)
                 word_list.append(words[index])
         yield word_list
 
@@ -171,6 +178,12 @@ def train():
 
 
 if __name__ == "__main__":
-    train()
+    words = sample_negative(corpus,4)
+    print(next(words))
+    # for i,word in enumerate(words):
+    #     if i>5: break 
+    #     print(word)
+
+    # train()
     # x = get_context_tuple_list(corpus,4)
     # print(x[:5])

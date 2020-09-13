@@ -7,33 +7,34 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader
 
 from model import Word2Vec, CBOW
-from corp_dataset import CbowDataSet 
+from corp_dataset import CbowDataSet
 
-context_size = 4
-embedding_size = 256
-epoch_size = 10
-batch_size = 500
+CONTEXT_SIZE = 4
+EMBEDDING_SIZE = 256
+BATCH_SIZE = 100
+EPOCH_SIZE = 10
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-data = CbowDataSet('data/cbow4.txt', "data/vocab.txt", context_size)
-dataloader = DataLoader(data, batch_size=batch_size,
+data = CbowDataSet('data/cbow4.txt', "data/vocab.txt", CONTEXT_SIZE)
+dataloader = DataLoader(data, batch_size=BATCH_SIZE,
                         shuffle=True, num_workers=0)
 
-model = CBOW(data.get_vocab_size(), embedding_size, context_size)
-optimizer = optim.SGD(model.parameters(), lr=0.01) 
+model = CBOW(vocab_size=data.get_vocab_size(), embedding_size=EMBEDDING_SIZE,
+             context_size=CONTEXT_SIZE)
+optimizer = optim.SGD(model.parameters(), lr=0.001)
 criterion = nn.NLLLoss()
 
 
 # 使用 TensorBoard 可视化模型，数据和训练
 # https://pytorch.apachecn.org/docs/1.4/6.html
 # https://pytorch.org/tutorials/intermediate/tensorboard_tutorial.html
-writer = SummaryWriter('out/cbow')
-
-# 存储embedding
+# tensorboard --logdir=out/cbow/ --bind_all
+tb_writer = SummaryWriter('out/cbow')
 
 
 def save_embedding(embeddings, id2word_dict, file_name):
+    """存储embedding"""
     emb_size, emb_dimension = embeddings.weight.shape
     embedding = embeddings.weight.data.numpy()
     # file_output = open(file_name, 'w')
@@ -72,27 +73,32 @@ class EarlyStopping():
 
 
 def train():
-    for epoch in range(epoch_size):
+    """only dataset"""
+    for epoch in range(EPOCH_SIZE):
         total_loss = 0
         i = 0
         for context, target in data:
+            print(context, target)
+            print(context.shape, target.shape)
+
             optimizer.zero_grad()
             log_probs = model(context)
             loss = criterion(log_probs, target)
             loss.backward()
-            optimizer.step() 
+            optimizer.step()
             total_loss += loss.item()
-            
+
             if i % 300 == 0:
                 print(epoch, i, total_loss/(i+1))
-            i = i + 1 
-        
+            i = i + 1
 
+            break
+        break
     print("final")
 
 
 def train_2():
-    for epoch in range(epoch_size):
+    for epoch in range(EPOCH_SIZE):
         for i_batch, (context, target) in enumerate(dataloader):
             total_loss = 0
             for i, txt in enumerate(context):
@@ -102,43 +108,37 @@ def train_2():
                 loss.backward()
                 optimizer.step()
                 total_loss += loss.item()
-
-            print(epoch, i_batch, total_loss/batch_size)
+            print(epoch, i_batch, total_loss/BATCH_SIZE)
+            tb_writer.add_scalar('training loss v2',
+                                 total_loss/BATCH_SIZE,
+                                 i_batch * BATCH_SIZE)
             save_embedding(embeddings=model.embeddings,
                            id2word_dict=data.word_li, file_name="out/embddings")
-            writer.add_scalar('training loss',
-                              total_loss/batch_size,
-                              i_batch * batch_size)
 
-        break
 
 def train_3():
-    for epoch in range(epoch_size):
+    for epoch in range(EPOCH_SIZE):
+        total_loss = 0.0
         for i_batch, (context, target) in enumerate(dataloader):
-            total_loss = 0.0
-            # for i, txt in enumerate(context):
             optimizer.zero_grad()
             log_probs = model(context)
-            loss = criterion(log_probs, target)
+            loss = criterion(log_probs, target.squeeze())
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-            
-            if i_batch % 20 == 19:    # print every 2000 mini-batches
-                print('[%d, %5d] loss: %.3f' %
-                    (epoch + 1, i_batch + 1, total_loss / 2000))
-                total_loss = 0.0
 
-            # print(epoch, i_batch, total_loss/i)
-            # save_embedding(embeddings=model.embeddings,
-            #                id2word_dict=data.word_li, file_name="out/embddings")
-            # writer.add_scalar('training loss',
-            #                   total_loss/i,
-            #                   i_batch * i)
+            if i_batch % 20 == 1:
+                print(epoch, i_batch, loss.item(), total_loss/(i_batch+1))
+                tb_writer.add_scalar('training loss v3',
+                                     loss.item(),
+                                     epoch*len(dataloader) + i_batch)
 
-        break
+        save_embedding(embeddings=model.embeddings,
+                       id2word_dict=data.word_li, 
+                       file_name="out/embddings_2")
+
 
 if __name__ == "__main__":
-    train()
+    # train()
     # train_2()
-    # train_3()
+    train_3()

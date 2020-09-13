@@ -23,6 +23,7 @@ class CbowDataSet(Dataset):
         self.rows = self.load_data()
 
     def load_vocab(self):
+        """加载词典"""
         word_li = []
         word_dict = {}
         with open(self.vocab_file, 'r') as f:
@@ -33,9 +34,11 @@ class CbowDataSet(Dataset):
         return word_li, word_dict
     
     def get_vocab_size(self):
+        """词典大小"""
         return self.vocab_size
 
     def word2idx(self, words):
+        """根据词列表找到对应"""
         idx_li = []
         for word in words:
             # 不存在的情况, 默认0-Unkown
@@ -43,6 +46,7 @@ class CbowDataSet(Dataset):
         return idx_li
 
     def load_data(self):
+        """加载训练数据"""
         rows = []
         with open(self.corp_file, 'r') as f:
             for i, line in enumerate(f):

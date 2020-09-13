@@ -19,26 +19,9 @@ https://github.com/FraLotito/pytorch-continuous-bag-of-words/blob/master/cbow.py
 j. 除了损失函数，效果如何衡量？
 h. tensorbard 显示训练进度？
 2. 中文分词
+3. 词性标注 
 
-"fullwei:%u dx_0:%d dx_1:%d dx_2:%d dx_3:%d dx_4:%d",
-_ugc_data->ugc_result[i].res.full_weight.m_calibrated_model_score,
-_ugc_data->ugc_result[i].res.full_weight.m_dx_reference_value[0],
-_ugc_data->ugc_result[i].res.full_weight.m_dx_reference_value[1],
-_ugc_data->ugc_result[i].res.full_weight.m_dx_reference_value[2],
-_ugc_data->ugc_result[i].res.full_weight.m_dx_reference_value[3],
-_ugc_data->ugc_result[i].res.full_weight.m_dx_reference_value[4]
+torch.mul
 
 
-ResultQueue_t* final_queue = multiple_queue->GetFinalQueue();
-
-recall_by_mining_before_cut_off
-
-get_scs
-
-ResultQueue_t* queue = p_multi_queue->GetQueueByQuery(QUERY_REALTIME_UGC);
-
-queue->merged_data.bs_out[i]  res
-queue->merged_data.real_res = _final_res_num;
-
-queue->merged_data.real_res = _final_res_num;
-queue->merged_data.disp_res = _final_res_num;
+RuntimeError: stack expects each tensor to be equal size, but got [8] at entry 0 and [0] at entry 1

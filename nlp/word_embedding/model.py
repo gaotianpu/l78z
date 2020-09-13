@@ -36,19 +36,20 @@ class CBOW(nn.Module):
         embedding_size: 词向量维度
         context_size: 上下文大小
         """
-        super(CBOW, self).__init__()
+        super(CBOW, self).__init__() 
         HIDDEN_SIZE = 512
         self.embeddings = nn.Embedding(vocab_size, embedding_size)
-        self.fc1 = nn.Linear(context_size * 2 *
-                             embedding_size, HIDDEN_SIZE)
+        self.fc1 = nn.Linear(context_size * 2 * embedding_size, HIDDEN_SIZE)
         self.fc2 = nn.Linear(HIDDEN_SIZE, vocab_size)
 
     def forward(self, inputs):
-        out = self.embeddings(inputs).view(1, -1)
-        out = self.fc1(out)
-        out = F.relu(out)
-        out = self.fc2(out)
-        out = F.log_softmax(out, dim=1)
+        batch_size = inputs.shape[0] 
+        out = self.embeddings(inputs) 
+        out = out.view(batch_size, -1) 
+        out = self.fc1(out) 
+        out = F.relu(out) 
+        out = self.fc2(out) 
+        out = F.log_softmax(out, dim=1) 
         return out
 
 
