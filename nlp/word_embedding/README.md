@@ -18,8 +18,6 @@ https://github.com/smafjal/continuous-bag-of-words-pytorch/blob/master/cbow_mode
 https://github.com/FraLotito/pytorch-continuous-bag-of-words/blob/master/cbow.py 
 j. 除了损失函数，效果如何衡量？
 h. tensorbard 显示训练进度？
-2. 中文分词
-3. 词性标注 
 
 torch.mul
 

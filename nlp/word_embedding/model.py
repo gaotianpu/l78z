@@ -36,21 +36,45 @@ class CBOW(nn.Module):
         embedding_size: 词向量维度
         context_size: 上下文大小
         """
-        super(CBOW, self).__init__() 
+        super(CBOW, self).__init__()
         HIDDEN_SIZE = 512
         self.embeddings = nn.Embedding(vocab_size, embedding_size)
         self.fc1 = nn.Linear(context_size * 2 * embedding_size, HIDDEN_SIZE)
         self.fc2 = nn.Linear(HIDDEN_SIZE, vocab_size)
 
     def forward(self, inputs):
-        batch_size = inputs.shape[0] 
-        out = self.embeddings(inputs) 
-        out = out.view(batch_size, -1) 
-        out = self.fc1(out) 
-        out = F.relu(out) 
-        out = self.fc2(out) 
-        out = F.log_softmax(out, dim=1) 
+        batch_size = inputs.shape[0]
+        out = self.embeddings(inputs)
+        out = out.view(batch_size, -1)
+        out = self.fc1(out)
+        out = F.relu(out)
+        out = self.fc2(out)
+        out = F.log_softmax(out, dim=1)
         return out
+
+class Word2Vec(nn.Module):
+    """https://rguigoures.github.io/word2vec_pytorch/
+    https://github.com/Andras7/word2vec-pytorch/blob/master/word2vec/model.py
+    """
+    def __init__(self, embedding_size, vocab_size):
+        super(Word2Vec, self).__init__()
+        self.embeddings_target = nn.Embedding(vocab_size, embedding_size)
+        self.embeddings_context = nn.Embedding(vocab_size, embedding_size)
+
+    def forward(self, target_word, context_word, negative_example):
+        emb_target = self.embeddings_target(target_word)
+
+        emb_context = self.embeddings_context(context_word)
+        emb_product = torch.mul(emb_target, emb_context)
+        emb_product = torch.sum(emb_product, dim=1)
+        out = torch.sum(F.logsigmoid(emb_product))
+
+        emb_negative = self.embeddings_context(negative_example)
+        emb_product = torch.bmm(emb_negative, emb_target.unsqueeze(2))
+        emb_product = torch.sum(emb_product, dim=1) 
+        out += torch.sum(F.logsigmoid(-emb_product))
+
+        return -out
 
 
 class SkipGram(nn.Module):
@@ -67,8 +91,10 @@ class SkipGram(nn.Module):
         super(SkipGram, self).__init__()
         # self.emb_size = emb_size
         # self.emb_dimension = emb_dimension
-        self.u_embeddings = nn.Embedding(vocab_size, embedding_size, sparse=True)
-        self.v_embeddings = nn.Embedding(vocab_size, embedding_size, sparse=True)
+        self.u_embeddings = nn.Embedding(
+            vocab_size, embedding_size, sparse=True)
+        self.v_embeddings = nn.Embedding(
+            vocab_size, embedding_size, sparse=True)
 
         initrange = 1.0 / self.embedding_size
         init.uniform_(self.u_embeddings.weight.data, -initrange, initrange)
@@ -90,27 +116,14 @@ class SkipGram(nn.Module):
         return torch.mean(score + neg_score)
 
 
-class Word2Vec(nn.Module):
-    def __init__(self, embedding_size, vocab_size, context_size):
-        super(Word2Vec, self).__init__()
-        self.embeddings = nn.Embedding(vocab_size, embedding_size)
-        self.linear = nn.Linear(embedding_size, vocab_size)
-
-    def forward(self, context_word):
-        emb = self.embeddings(context_word)
-        hidden = self.linear(emb)
-        out = F.log_softmax(hidden, dim=1)
-        return out
-
-
 def unit_test():
     word_to_ix = {"hello": 0, "world": 1}
     embeds = nn.Embedding(2, 5)  # 2 words in vocab, 5 dimensional embeddings
     # print(dir(embeds.weight))
     # print(embeds.state_dict)
-    return 
-    x,y = embeds.weight.shape
-    print(x,y)
+    return
+    x, y = embeds.weight.shape
+    print(x, y)
     lookup_tensor = torch.tensor([word_to_ix["world"]], dtype=torch.long)
     print(lookup_tensor)
     hello_embed = embeds(lookup_tensor)
