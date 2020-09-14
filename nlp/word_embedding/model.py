@@ -52,10 +52,12 @@ class CBOW(nn.Module):
         out = F.log_softmax(out, dim=1)
         return out
 
+
 class Word2Vec(nn.Module):
     """https://rguigoures.github.io/word2vec_pytorch/
     https://github.com/Andras7/word2vec-pytorch/blob/master/word2vec/model.py
     """
+
     def __init__(self, embedding_size, vocab_size):
         super(Word2Vec, self).__init__()
         self.embeddings_target = nn.Embedding(vocab_size, embedding_size)
@@ -71,7 +73,7 @@ class Word2Vec(nn.Module):
 
         emb_negative = self.embeddings_context(negative_example)
         emb_product = torch.bmm(emb_negative, emb_target.unsqueeze(2))
-        emb_product = torch.sum(emb_product, dim=1) 
+        emb_product = torch.sum(emb_product, dim=1)
         out += torch.sum(F.logsigmoid(-emb_product))
 
         return -out

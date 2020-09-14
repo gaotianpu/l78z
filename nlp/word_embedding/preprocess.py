@@ -5,8 +5,8 @@
 """
 import os
 import random
-import math
 import numpy as np
+import math
 from collections import Counter
 import pickle
 import time
@@ -18,21 +18,35 @@ class Preprocess():
         self.out_root = out_root
         self.context_size = context_size
         self.vocab_file = self.out_root + "vocab.txt"
-        self.cbow_file = self.out_root + "cbow4.txt" 
+        self.cbow_file = self.out_root + "cbow4.txt"
         self.word_counts = {}
 
     def gen_vocabulary(self):
-        """生成词典"""  
+        """生成词典
+        语料库很大情况下统计？
+        """
         with open(self.corp_file, 'r') as f:
-            corp_content = f.read().replace(" ", "").replace("\n",'')
-            # corp_content = "".join(
-            #     [line.replace(" ", "").strip() for line in f])
-            self.word_counts = dict(Counter(corp_content)) 
+            corp_content = f.read().replace(" ", "").replace("\n", '')
+            self.word_counts = dict(Counter(corp_content))
 
-        words = sorted(set(self.word_counts.keys()))
-        words.insert(0, "UNK")
+        # word  word_count  doc_count
+        # https://blog.csdn.net/qq_21997625/article/details/85641246
+        # word_info = {}
+        # with open(self.corp_file, 'r') as f:
+        #     for i,line in enumerate(f):
+        #         line = line.replace(" ", "")
+        #         line_word_count = dict(Counter(line))
+        #         for k,v in line_word_count.items():
+        #             word_count,doc_count = word_info.get(k,[0,0])
+        #             word_count = word_count + v
+        #             doc_count = doc_count + 1
+        #             word_info[k] = [word_count,doc_count]
+
         with open(self.vocab_file, 'w') as f:
-            f.write("\n".join(words))
+            li = ["\t".join([word, str(count)])
+                  for word, count in self.word_counts.items()]
+            li.insert(0, "\t".join(["UNK", "0"]))
+            f.write("\n".join(li))
 
     def generate_cbow_data(self, raw_text):
         """一段分词好的wordlist，产出cbow需要的训练数据"""
@@ -57,23 +71,6 @@ class Preprocess():
                         fw.write("\n".join(["\t".join(d) for d in data]))
                         fw.write("\n")
 
-    def sample_negative(self, sample_size):
-        """负样本采样"""
-        sample_probability = {}
-        normalizing_factor = sum([v**0.75 for v in self.word_counts.values()])
-        for word in self.word_counts:
-            sample_probability[word] = self.word_counts[word]**0.75 / \
-                normalizing_factor
-        words = np.array(list(self.word_counts.keys()))
-        while True:
-            word_list = []
-            sampled_index = np.array(np.random.multinomial(
-                sample_size, list(sample_probability.values())))
-            for index, count in enumerate(sampled_index):
-                for _ in range(count):
-                    word_list.append(words[index])
-            yield word_list
-
     def generate(self):
         self.gen_vocabulary()
         self.gen_cbow_data()
@@ -82,8 +79,6 @@ class Preprocess():
 def run():
     p = Preprocess("data/zhihu.txt", "data/")
     p.generate()
-    x = p.sample_negative(8)
-    print(next(x))
 
 
 if __name__ == "__main__":
