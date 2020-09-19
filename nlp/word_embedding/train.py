@@ -77,7 +77,7 @@ def train():
     for epoch in range(EPOCH_SIZE):
         total_loss = 0
         i = 0
-        for context, target in data:
+        for neg_ctx, context, target in data:
             print(context, target)
             print(context.shape, target.shape)
 
@@ -99,7 +99,7 @@ def train():
 
 def train_2():
     for epoch in range(EPOCH_SIZE):
-        for i_batch, (context, target) in enumerate(dataloader):
+        for i_batch, (neg_ctx, context, target) in enumerate(dataloader):
             total_loss = 0
             for i, txt in enumerate(context):
                 optimizer.zero_grad()
@@ -119,7 +119,7 @@ def train_2():
 def train_3():
     for epoch in range(EPOCH_SIZE):
         total_loss = 0.0
-        for i_batch, (context, target) in enumerate(dataloader):
+        for i_batch, (neg_ctx, context, target) in enumerate(dataloader):
             optimizer.zero_grad()
             log_probs = model(context)
             loss = criterion(log_probs, target.squeeze())
@@ -134,7 +134,7 @@ def train_3():
                                      epoch*len(dataloader) + i_batch)
 
         save_embedding(embeddings=model.embeddings,
-                       id2word_dict=data.word_li, 
+                       id2word_dict=data.word_li,
                        file_name="out/embddings_2")
 
 
