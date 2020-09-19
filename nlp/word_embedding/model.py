@@ -58,23 +58,23 @@ class Word2Vec(nn.Module):
     https://github.com/Andras7/word2vec-pytorch/blob/master/word2vec/model.py
     """
 
-    def __init__(self, embedding_size, vocab_size):
+    def __init__(self, vocab_size, embedding_size):
         super(Word2Vec, self).__init__()
         self.embeddings_target = nn.Embedding(vocab_size, embedding_size)
         self.embeddings_context = nn.Embedding(vocab_size, embedding_size)
 
-    def forward(self, target_word, context_word, negative_example):
-        emb_target = self.embeddings_target(target_word)
-
+    def forward(self, target_word, context_word, negative_example): 
+        emb_target = self.embeddings_target(target_word) 
         emb_context = self.embeddings_context(context_word)
-        emb_product = torch.mul(emb_target, emb_context)
-        emb_product = torch.sum(emb_product, dim=1)
-        out = torch.sum(F.logsigmoid(emb_product))
+        emb_negative = self.embeddings_context(negative_example) 
 
-        emb_negative = self.embeddings_context(negative_example)
-        emb_product = torch.bmm(emb_negative, emb_target.unsqueeze(2))
-        emb_product = torch.sum(emb_product, dim=1)
-        out += torch.sum(F.logsigmoid(-emb_product))
+        emb_product = torch.mul(emb_target, emb_context)  
+        emb_product = torch.sum(emb_product, dim=2)  
+        out = torch.sum(F.logsigmoid(emb_product))   
+
+        emb_product = torch.bmm(emb_negative, emb_target.permute(0,2,1)) 
+        emb_product = torch.sum(emb_product, dim=2) 
+        out += torch.sum(F.logsigmoid(-emb_product)) 
 
         return -out
 
