@@ -11,7 +11,7 @@ from corp_dataset import CbowDataSet
 
 CONTEXT_SIZE = 4
 EMBEDDING_SIZE = 256
-BATCH_SIZE = 100
+BATCH_SIZE = 64
 EPOCH_SIZE = 10
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -22,9 +22,12 @@ dataloader = DataLoader(data, batch_size=BATCH_SIZE,
 
 model = CBOW(vocab_size=data.get_vocab_size(), embedding_size=EMBEDDING_SIZE,
              context_size=CONTEXT_SIZE)
-optimizer = optim.SGD(model.parameters(), lr=0.001)
+optimizer = optim.SGD(model.parameters(), lr=0.1)
 criterion = nn.NLLLoss()
 
+# use gpu
+# https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html?highlight=gpu
+# https://pytorch.org/tutorials/beginner/saving_loading_models.html?highlight=gpu
 
 # 使用 TensorBoard 可视化模型，数据和训练
 # https://pytorch.apachecn.org/docs/1.4/6.html
@@ -137,8 +140,35 @@ def train_3():
                        id2word_dict=data.word_li,
                        file_name="out/embddings_2")
 
+def train_4():
+    model = Word2Vec(vocab_size=data.get_vocab_size(), embedding_size=EMBEDDING_SIZE)
+    model.to(device)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    criterion1 = nn.CrossEntropyLoss()
+
+    for epoch in range(EPOCH_SIZE):
+        total_loss = 0.0
+        for i_batch, (neg_ctx, context, target) in enumerate(dataloader):
+            optimizer.zero_grad()
+            log_probs = model(target.to(device),context.to(device),neg_ctx.to(device))
+            # loss = criterion1(log_probs)
+            loss = log_probs
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            # break
+            if i_batch % 20 == 1:
+                print(epoch, i_batch, loss.item()/BATCH_SIZE, total_loss/(i_batch+1)/BATCH_SIZE)
+                tb_writer.add_scalar('training loss v4',
+                                     loss.item(),
+                                     epoch*len(dataloader) + i_batch) 
+        save_embedding(embeddings=model.embeddings_target,
+                       id2word_dict=data.word_li,
+                       file_name="out/embddings_4")
+        break 
 
 if __name__ == "__main__":
     # train()
     # train_2()
-    train_3()
+    # train_3()
+    train_4()
