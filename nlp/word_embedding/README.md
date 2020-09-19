@@ -21,7 +21,14 @@ h. tensorbard 显示训练进度？
 2. 中文分词
 3. 词性标注 
 
-torch.mul
+1. torch.mul(a, b) 矩阵a和b对应位相乘，a和b的维度必须相等，比如a的维度是(1, 2)，b的维度是(1, 2)，返回的仍是(1, 2)的矩阵
+    https://pytorch.org/docs/master/generated/torch.mul.html
+2. torch.mm(a, b) 矩阵a和b矩阵相乘，比如a的维度是(1, 2)，b的维度是(2, 3)，返回的就是(1, 3)的矩阵
+3. torch.bmm(a,b) a 的size为(b,h,w), b的size为(b,w,h), 注意a,b的维度必须为3. bmm的b意思是批量？
+4. torch.sum
+https://pytorch.org/docs/master/generated/torch.sum.html
+
+
 
 
 RuntimeError: stack expects each tensor to be equal size, but got [8] at entry 0 and [0] at entry 1
