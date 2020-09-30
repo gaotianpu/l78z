@@ -25,39 +25,40 @@ tb_writer = SummaryWriter('out/antispam')
 def tokenizer(text):  # create a tokenizer function
     return list(text)
 
-LABELS = data.Field(sequential=False, use_vocab=False) 
-TEXT = data.Field(sequential=True, tokenize=tokenizer,
-        fix_length=200,
-                     lower=True)
-fields = [('label', LABELS), ('res_url', None),
-              ('user_url', None), ('text', TEXT)]
 
-train, val, test = data.TabularDataset.splits(path='data/',
-                                     train='train.tsv',
-                                     validation='val.tsv',
-                                     test='test.tsv',
-                                     format='csv',
-                                     csv_reader_params={"delimiter": "\t"},
-                                     fields=fields,
-                                     skip_header=False)
+def load_data(): 
+    LABELS = data.Field(sequential=False, use_vocab=False) 
+    TEXT = data.Field(sequential=True, tokenize=tokenizer,
+            fix_length=200,
+                        lower=True)
+    fields = [('label', LABELS), ('res_url', None),
+                ('user_url', None), ('text', TEXT)]
 
-train_len = len(train)
-val_len = len(val)
-# print(train_len)
+    train, val, test = data.TabularDataset.splits(path='data/',
+                                        train='train.tsv',
+                                        validation='val.tsv',
+                                        test='test.tsv',
+                                        format='csv',
+                                        csv_reader_params={"delimiter": "\t"},
+                                        fields=fields,
+                                        skip_header=False)
 
+    TEXT.build_vocab(train)
+    LABELS.build_vocab(train) 
 
+    VOCAB_SIZE = len(TEXT.vocab) 
+    train_len = len(train)
+    val_len = len(val) 
 
-train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
-        (train, val, test),
-        batch_size=BATCH_SIZE,
-        sort_within_batch=True,
-        sort_key=lambda x: len(x.text),
-        device=device)
+    train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
+            (train, val, test),
+            batch_size=BATCH_SIZE,
+            sort_within_batch=True,
+            sort_key=lambda x: len(x.text),
+            device=device) 
+    return train_iterator, valid_iterator, test_iterator, VOCAB_SIZE,train_len,val_len
 
-TEXT.build_vocab(train)
-LABELS.build_vocab(train)
-
-VOCAB_SIZE = len(TEXT.vocab)
+train_iterator, valid_iterator, test_iterator, VOCAB_SIZE,train_len,val_len = load_data()
 
 model = TextSentiment(VOCAB_SIZE, EMBEDDING_SIZE, NUN_CLASS).to(device)
 criterion = torch.nn.CrossEntropyLoss().to(device)
@@ -82,7 +83,7 @@ def process_text_offsets(batch):
     # print(text.shape,offsets.shape)
     return text.to(device), offsets.to(device) 
 
-for epoch in range(EPOCH_SIZE):
+def train_batch():
     train_loss = 0
     train_acc = 0
     for i,batch in enumerate(train_iterator):  
@@ -95,9 +96,11 @@ for epoch in range(EPOCH_SIZE):
         train_loss += loss.item()
         train_acc += (output.argmax(1) == label).sum().item()
         loss.backward()
-        optimizer.step()  
-        # break 
-    
+        optimizer.step() 
+
+    return train_loss/train_len,train_acc/train_len
+
+def vali_batch():
     valid_loss = 0
     valid_acc = 0
     for i,batch in enumerate(valid_iterator):  
@@ -108,61 +111,29 @@ for epoch in range(EPOCH_SIZE):
             loss = criterion(output, label)
             valid_loss += loss.item()
             valid_acc += (output.argmax(1) == label).sum().item()
+    return valid_loss/val_len,valid_acc/val_len
 
+
+
+for epoch in range(EPOCH_SIZE):
+    train_loss,train_acc = train_batch()  
+    valid_loss,valid_acc = vali_batch()  
     scheduler.step()
     
     tb_writer.add_scalar('training loss',
-                                 train_loss/train_len,
+                                 train_loss,
                                  epoch)
     tb_writer.add_scalar('training acc',
-                                 train_acc/train_len,
+                                 train_acc,
                                  epoch)
     tb_writer.add_scalar('validate loss',
-                                 valid_loss/val_len,
+                                 valid_loss,
                                  epoch)
     tb_writer.add_scalar('validate acc',
-                                 valid_acc/val_len,
+                                 valid_acc,
                                  epoch)
-    print(epoch,train_loss/train_len,train_acc/train_len,valid_loss/val_len,valid_acc/val_len) 
+    print(epoch,train_loss,train_acc,valid_loss,valid_acc) 
     # break 
     torch.save(model.state_dict(), "out/model.%d.dict"%(epoch))
 
-     
-
-# data = CorpusDataSet('data/cbow4.txt', "data/vocab.txt", CONTEXT_SIZE)
-# dataloader = DataLoader(data, batch_size=BATCH_SIZE,
-#                         shuffle=True, num_workers=0)
-
-# model = AntispamModule_1(vocab_size=data.get_vocab_size(), embedding_size=EMBEDDING_SIZE,
-#              context_size=CONTEXT_SIZE)
-# optimizer = optim.SGD(model.parameters(), lr=0.1)
-# # criterion = nn.NLLLoss()
-# criterion1 = nn.CrossEntropyLoss().to(device)
-
-
-
-
-# def train(): 
-#     model.to(device)
-#     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     
-
-#     for epoch in range(EPOCH_SIZE):
-#         total_loss = 0.0
-#         for i_batch, (neg_ctx, context, target) in enumerate(dataloader):
-#             optimizer.zero_grad()
-#             log_probs = model(target.to(device),context.to(device),neg_ctx.to(device))
-#             # loss = criterion1(log_probs)
-#             loss = log_probs
-#             loss.backward()
-#             optimizer.step()
-#             total_loss += loss.item()
-#             # break
-#             if i_batch % 20 == 1:
-#                 print(epoch, i_batch, loss.item()/BATCH_SIZE, total_loss/(i_batch+1)/BATCH_SIZE)
-#                 tb_writer.add_scalar('training loss v4',
-#                                      loss.item(),
-#                                      epoch*len(dataloader) + i_batch) 
-
-# if __name__ == "__main__":
-#     train()
