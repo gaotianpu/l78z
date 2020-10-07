@@ -17,8 +17,60 @@ from torchtext.vocab import GloVe
 # import spacy
 # spacy_en = spacy.load('en')
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+def tokenizer(text):  # create a tokenizer function
+    return list(jieba.cut(text))
+    # return list(text)
+
+
+def load_data(BATCH_SIZE): 
+    LABELS = data.Field(sequential=False, use_vocab=False) 
+    TEXT = data.Field(sequential=True, tokenize=tokenizer,
+            fix_length=200,
+                        lower=True)
+    fields = [('label', LABELS), ('res_url', None),
+                ('user_url', None), ('text', TEXT)]
+
+    train, val, test = data.TabularDataset.splits(path='data/',
+                                        train='train.tsv',
+                                        validation='val.tsv',
+                                        test='test.tsv',
+                                        format='csv',
+                                        csv_reader_params={"delimiter": "\t"},
+                                        fields=fields,
+                                        skip_header=False)
+    # 把process_text_offsets()加入到 data.TabularDataset.splits？
+
+    TEXT.build_vocab(train)
+    LABELS.build_vocab(train) 
+
+    VOCAB_SIZE = len(TEXT.vocab)  
+
+    train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
+            (train, val, test),
+            batch_size=BATCH_SIZE,
+            sort_within_batch=True,
+            sort_key=lambda x: len(x.text),
+            device=device) 
+    return train_iterator, valid_iterator, test_iterator
+
+def process_text_offsets(batch):
+    text = batch.text.permute(1,0) 
+    # text = [entry for entry in text] 
+    text = [entry[entry>1] for entry in text] 
+    # for t in text:
+    #     print(t,t.shape)
+
+    offsets = [0] + [len(entry) for entry in text] 
+    offsets = torch.tensor(offsets[:-1]).cumsum(dim=0) 
+    # print(offsets)
+    text = torch.cat(text)
+    # print(text.shape,offsets.shape)
+    return batch.label.to(device), text.to(device), offsets.to(device) 
 
 class CorpusDataSet(Dataset):
+    """已废弃"""
     def __init__(self, corp_file, vocab_file, context_size):
         pass
 
@@ -147,4 +199,9 @@ def test():
 
 
 if __name__ == "__main__":
-    test()
+    batch_size=32
+    train_iterator, valid_iterator, test_iterator= load_data(batch_size)
+    # test()
+    print(len(train_iterator)*batch_size)
+    # print(dir(train_iterator.train))
+    print(len(train_iterator.dataset.fields['text'].vocab))
