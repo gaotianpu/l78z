@@ -72,15 +72,12 @@ scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.95)
 def process_text_offsets(batch):
     text = batch.text.permute(1,0) 
     # text = [entry for entry in text] 
-    text = [entry[entry>1] for entry in text] 
-    # for t in text:
-    #     print(t,t.shape)
+    text = [entry[entry>1] for entry in text]  
 
     offsets = [0] + [len(entry) for entry in text] 
-    offsets = torch.tensor(offsets[:-1]).cumsum(dim=0) 
-    # print(offsets)
-    text = torch.cat(text)
-    # print(text.shape,offsets.shape)
+    offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)  
+
+    text = torch.cat(text) 
     return text.to(device), offsets.to(device) 
 
 def train_batch():
