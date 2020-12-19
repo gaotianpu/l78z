@@ -6,8 +6,10 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import Dataset, DataLoader
 from torchtext import data
+import jieba
 
-from corpus import CorpusDataSet
+import corpus
+# from corpus import load_data
 from module import TextSentiment
 
 LEARNING_RATE=4.0
@@ -22,45 +24,14 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 tb_writer = SummaryWriter('out/antispam')
 
-def tokenizer(text):  # create a tokenizer function
-    return list(text)
 
+# 
+train_iterator, valid_iterator, test_iterator = corpus.load_data(BATCH_SIZE)
+train_len = len(train_iterator.dataset)
+val_len = len(valid_iterator.dataset)
+vocab_size = len(train_iterator.dataset.fields['text'].vocab)
 
-def load_data(): 
-    LABELS = data.Field(sequential=False, use_vocab=False) 
-    TEXT = data.Field(sequential=True, tokenize=tokenizer,
-            fix_length=200,
-                        lower=True)
-    fields = [('label', LABELS), ('res_url', None),
-                ('user_url', None), ('text', TEXT)]
-
-    train, val, test = data.TabularDataset.splits(path='data/',
-                                        train='train.tsv',
-                                        validation='val.tsv',
-                                        test='test.tsv',
-                                        format='csv',
-                                        csv_reader_params={"delimiter": "\t"},
-                                        fields=fields,
-                                        skip_header=False)
-
-    TEXT.build_vocab(train)
-    LABELS.build_vocab(train) 
-
-    VOCAB_SIZE = len(TEXT.vocab) 
-    train_len = len(train)
-    val_len = len(val) 
-
-    train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
-            (train, val, test),
-            batch_size=BATCH_SIZE,
-            sort_within_batch=True,
-            sort_key=lambda x: len(x.text),
-            device=device) 
-    return train_iterator, valid_iterator, test_iterator, VOCAB_SIZE,train_len,val_len
-
-train_iterator, valid_iterator, test_iterator, VOCAB_SIZE,train_len,val_len = load_data()
-
-model = TextSentiment(VOCAB_SIZE, EMBEDDING_SIZE, NUN_CLASS).to(device)
+model = TextSentiment(vocab_size, EMBEDDING_SIZE, NUN_CLASS).to(device)
 criterion = torch.nn.CrossEntropyLoss().to(device)
 optimizer = torch.optim.SGD(model.parameters(), lr=LEARNING_RATE)
 # optimizer = optim.SparseAdam(model.parameters(), lr=1e-4)
@@ -84,8 +55,7 @@ def train_batch():
     train_loss = 0
     train_acc = 0
     for i,batch in enumerate(train_iterator):  
-        label = batch.label.to(device)
-        text, offsets = process_text_offsets(batch) 
+        label, text, offsets = corpus.process_text_offsets(batch) 
 
         optimizer.zero_grad() 
         output = model(text, offsets) 
@@ -95,14 +65,18 @@ def train_batch():
         loss.backward()
         optimizer.step() 
 
+        t_len = (i+1)*BATCH_SIZE
+        if i % 100 == 0:
+            print('middle',i,train_loss/t_len,train_acc/t_len)
+
+    
     return train_loss/train_len,train_acc/train_len
 
 def vali_batch():
     valid_loss = 0
     valid_acc = 0
     for i,batch in enumerate(valid_iterator):  
-        label = batch.label.to(device)
-        text, offsets = process_text_offsets(batch) 
+        label, text, offsets = corpus.process_text_offsets(batch) 
         with torch.no_grad():
             output = model(text, offsets)
             loss = criterion(output, label)
@@ -112,25 +86,29 @@ def vali_batch():
 
 
 
-for epoch in range(EPOCH_SIZE):
-    train_loss,train_acc = train_batch()  
-    valid_loss,valid_acc = vali_batch()  
-    scheduler.step()
-    
-    tb_writer.add_scalar('training loss',
-                                 train_loss,
-                                 epoch)
-    tb_writer.add_scalar('training acc',
-                                 train_acc,
-                                 epoch)
-    tb_writer.add_scalar('validate loss',
-                                 valid_loss,
-                                 epoch)
-    tb_writer.add_scalar('validate acc',
-                                 valid_acc,
-                                 epoch)
-    print(epoch,train_loss,train_acc,valid_loss,valid_acc) 
-    # break 
-    torch.save(model.state_dict(), "out/model.%d.dict"%(epoch))
+def main():
+    for epoch in range(EPOCH_SIZE):
+        train_loss,train_acc = train_batch()  
+        valid_loss,valid_acc = vali_batch()  
+        scheduler.step()
+        
+        tb_writer.add_scalar('training loss',
+                                    train_loss,
+                                    epoch)
+        tb_writer.add_scalar('training acc',
+                                    train_acc,
+                                    epoch)
+        tb_writer.add_scalar('validate loss',
+                                    valid_loss,
+                                    epoch)
+        tb_writer.add_scalar('validate acc',
+                                    valid_acc,
+                                    epoch)
+        print(epoch,train_loss,train_acc,valid_loss,valid_acc) 
+        # break 
+        torch.save(model.state_dict(), "out/model.%d.dict"%(epoch))
+
+if __name__ == "__main__":
+    main()
 
     
