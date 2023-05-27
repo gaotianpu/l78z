@@ -1,2 +1,20 @@
-C++ 练习题
-1. HelloWord
+# C/C++教程
+1. [c++ 编码规范](https://zh-google-styleguide.readthedocs.io/en/latest/google-cpp-styleguide/contents/)
+1. [Design Patterns In Modern C++](https://github.com/liuzengh/design-pattern)
+1. [C/C++ 编译过程: 预处理、编译、汇编、链接](https://www.cnblogs.com/ericling/articles/11736681.html)
+1. [C/C++ 静态库和动态库](https://www.cnblogs.com/skynet/p/3372855.html)
+1. [基于VSCode和CMake搭建C/C++开发环境](https://code.visualstudio.com/docs/cpp/cmake-linux)
+1. [C/C++ CMake使用第三方库(最新方式:基于git submodule)](https://www.jianshu.com/p/f181b5bd0a63)
+1. C/C++ 配置文件读取
+    * [c++ ini](https://github.com/benhoyt/inih)
+    * [C++ Config](https://github.com/hyperrealm/libconfig)
+1. [C/C++ 日志系统](https://github.com/gabime/spdlog)
+1. [C/C++ 词典加载]()
+1. [C/C++ JSON](https://github.com/nlohmann/json)
+1. [C++服务器架构：gRPC + ProtoBuf](https://grpc.io/docs/languages/cpp/quickstart/)
+1. [使用C/C++扩展Python](https://docs.python.org/zh-cn/3/extending/extending.html)
+1. [c++ redis]
+1. [awesome c++](https://github.com/fffaraz/awesome-cpp)
+1. [c++和深度学习]()
+1. [c++ 内存池](https://zhuanlan.zhihu.com/p/280706845)
+1. [c++ mmap/munap](https://blog.csdn.net/oktears/article/details/39610805)

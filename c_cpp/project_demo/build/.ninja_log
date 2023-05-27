@@ -1,0 +1,6 @@
+# ninja log v5
+1	141	1640775376049617776	build.ninja	c8b7b32ccaf9e918
+820	912	1640775200338501072	project_demo	ee2358dc9d9afa3a
+0	819	1640775200242214330	CMakeFiles/project_demo.dir/main.cpp.o	7f9cbfed053309c3
+1	847	1640775377034941942	CMakeFiles/project_demo.dir/main.cpp.o	7f9cbfed053309c3
+848	1015	1640775377209588581	project_demo	ee2358dc9d9afa3a

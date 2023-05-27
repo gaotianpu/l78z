@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/Users/gaotianpu/Documents/gitee/l78z/c_cpp/project_demo/build",
+  "command": "/usr/bin/clang++ -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX12.1.sdk -mmacosx-version-min=12.0 -std=gnu++11 -o CMakeFiles/project_demo.dir/main.cpp.o -c /Users/gaotianpu/Documents/gitee/l78z/c_cpp/project_demo/main.cpp",
+  "file": "/Users/gaotianpu/Documents/gitee/l78z/c_cpp/project_demo/main.cpp"
+}
+]

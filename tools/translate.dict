@@ -1,0 +1,46 @@
+ablation | 烧蚀 | 消融
+architectures | 体系结构 | 架构
+architectures | 建筑学 | 架构
+agents | 代理 | 代理 
+affinity | 亲和力 | 亲和力
+bounding boxes | 边界框 | 边框
+cells | 细胞 | 单元
+patches | 补丁 | 分块
+mask | 掩模 | 掩码
+mask | 遮罩 | 掩码
+mask|口罩|掩码
+mask|屏蔽|掩码
+|掩蔽|掩码
+vanilla | 香草 | 普通
+recipe | 配方 | 配置
+epochs | 时期 | 周期
+agnostic | 不可知 | 未知
+augmentation | 扩充 | 增广
+sampling | 取样 | 采样
+recurrent | 递归 | 循环
+pretext tasks | 借口任务 | 前置?任务
+Siamese | 连体 | 孪生
+transfer | 转移 | 迁移
+transfer | 传输 | 迁移
+global | 全球 | 全局
+ground truth | 地面实况 | 基准实况
+generalize | 概括 | 泛化
+works | 作品 | 工作
+inductive biases | 归纳偏见 | 归纳偏差
+inductive biases | 感应偏见 | 归纳偏差
+inductive biases | 感应偏置 | 归纳偏差
+wall-clock | 墙上的时钟 | 挂钟
+robustness | 鲁棒 | 稳健
+evaluation | 评价 | 评估
+augmentations | 增强 | 增广
+|对象检测|目标检测
+|人体研究|人类学习
+|培训|训练
+|规范化|归一化
+|标记|令牌
+|标注器|标注人员
+shot|镜头|样本
+annotation|注释|标注
+Ensemble|合奏|集成
+|一次拍摄|单样本
+|例子|样本
