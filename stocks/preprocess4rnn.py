@@ -10,7 +10,7 @@ from common import load_stocks
 
 PROCESSES_NUM = 5
 
-FUTURE_DAYS = 5 # 预测未来几天的数据
+FUTURE_DAYS = 3 # 预测未来几天的数据, 2,3,5? 2比较合适，3则可能出现重复，再不恰当的数据集划分策略下，训练集和测试可能会重叠？
 PAST_DAYS = 20 #使用过去几天的数据做特征
 
 MAX_ROWS_COUNT = 1000 #从数据库中加载多少数据
@@ -23,11 +23,12 @@ def zscore(x,mean,std):
     return round((x-mean)/(std+0.00000001),3)
 
 class PreProcessor:
-    def __init__(self, conn,stock_no, future_days = 3, past_days = 20):
+    def __init__(self, conn,stock_no, future_days = 3, past_days = 20 , data_type="train"):
         self.conn = conn
         self.stock_no = stock_no
         self.future_days = future_days
         self.past_days = past_days
+        self.data_type = data_type
     
     def process_row(self, df, idx):
         ret = {"stock_no": self.stock_no, "current_date":df.loc[idx]['trade_date']}
@@ -133,31 +134,42 @@ class PreProcessor:
         df = None  # 释放内存？
         del df  
     
-    def process(self,type):
-        if type == "train":
+    def process(self):
+        if self.data_type == "train":
             self.process_train_data()
         else:
             self.process_predict_data()
 
   
-def process_all_stocks(data_type="train"):
+def process_all_stocks(data_type="train", processes_idx=-1):
     stocks = load_stocks()
-    
     time_start = time.time()
-    for _, stock in enumerate(stocks):
-        p = PreProcessor(conn,stock[0],3,20)
-        p.process(data_type)
-    
+    for i, stock in enumerate(stocks):
+        p = PreProcessor(conn,stock[0],FUTURE_DAYS,PAST_DAYS,data_type)
+        if processes_idx < 0 or data_type!="train": #predict耗时少，不用拆分
+            p.process() 
+        elif i % PROCESSES_NUM == processes_idx:
+            p.process()
+        
+        # if i>1:
+        #     break
+        
     time_end = time.time() 
     time_c= time_end - time_start   #运行所花时间
-    print('time-cost:', time_c, 's') #predict=110s, train=
+    print('time-cost:', time_c, 's') #predict=110s, train=157*400/60=17.5 hours ?
+    
+    # 解决生成速度慢的方案
+    # 1. 并行
+    # 2. 增量添加
     
     conn.close()
 
-# python preprocess4rnn.py train > data/rnn_train.txt &
+# python preprocess4rnn.py train 0 > data/rnn_train.txt_0 &
 # python preprocess4rnn.py predict > data/rnn_predict.txt &
 if __name__ == "__main__":
     data_type = sys.argv[1]
-    process_all_stocks(data_type)
-    # p = PreProcessor(conn,"000001",3,20)
+    process_idx = -1 if len(sys.argv) != 3 else int(sys.argv[2])
+    process_all_stocks(data_type, process_idx)
+    conn.close() 
+    # p = PreProcessor(conn,"000001",3,20, data_type)
     # p.process(data_type) 
