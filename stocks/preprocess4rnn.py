@@ -20,10 +20,13 @@ max_high,min_high,max_low,min_low = 0.818,-0.6,0.668,-0.6
 conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
 def zscore(x,mean,std):
-    return round((x-mean)/(std+0.00000001),3)
+    return round((x-mean)/(std+0.00000001),4)
+
+def compute_rate(x,base): #计算涨跌幅度
+    return round((x-base)/base,4)
 
 class PreProcessor:
-    def __init__(self, conn,stock_no, future_days = 3, past_days = 20 , data_type="train"):
+    def __init__(self, conn,stock_no, future_days = 3,past_days = 20 , data_type="train"):
         self.conn = conn
         self.stock_no = stock_no
         self.future_days = future_days
@@ -35,7 +38,9 @@ class PreProcessor:
         
         # 未来值,FUTURE_DAYS最高价，最低价？
         if idx>0: #train
-            base = df.loc[idx-1]['TOPEN'] # df_future.iloc[-1]['TOPEN']
+            buy_base = df.loc[idx-1]['TOPEN'] # df_future.iloc[-1]['TOPEN']
+            hold_base = df.loc[idx]['TCLOSE']
+            
             df_future = df.loc[idx-self.future_days : idx-2] #由于t+1,计算买入后第二个交易的价格
             highest = df_future['HIGH'].max()
             lowest = df_future['LOW'].min()
@@ -44,9 +49,31 @@ class PreProcessor:
             # print(df_future.describe()) 
             # print(base,highest,lowest,mean)
             
-            f_high_rate = round((highest-base)/base,2)
-            f_low_rate = round((lowest-base)/base,2)
-            f_mean_rate = round((mean-base)/base,2)
+            f_high_rate = compute_rate(highest,buy_base) #round((highest-buy_base)/buy_base,2)
+            f_low_rate = compute_rate(lowest,buy_base)  #round((lowest-buy_base)/buy_base,2)
+            f_mean_rate = compute_rate(mean,buy_base) #round((mean-buy_base)/buy_base,2)
+            
+            # f_{buy/hold}_{high/low}_{est/mean}_{2(days)}
+            # buy, 选股，股票没买入，基线价格=下一个交易日的开盘价
+            # hold, 持股，股票已买入，基线价格=当天收盘价
+            # high/low,
+            # est, highest,lowest, 未来n天内，最高价、最低价的极值
+            # mean, 未来n天内，最高价、最低价的均值
+            # days, 预测未来几天的，buy情况下，最少2天；hold情况，最少一天；极值按最少的天数计算，均值则可以3,5这样的值？
+            
+            # f_buy_high_est #为避免拆分时重复导致过拟合，只预测最小天的？
+            # f_buy_low_est
+            # f_buy_high_mean_3 #预测未来时间上，一次全都生成了？
+            # f_buy_low_mean_3
+            # f_buy_high_mean_5
+            # f_buy_low_mean_5
+            
+            # f_hold_high_est
+            # f_hold_low_est
+            # f_hold_high_mean_3
+            # f_hold_low_mean_3
+            # f_hold_high_mean_5
+            # f_hold_low_mean_5
             
             ret['f_high_rate'] = f_high_rate
             ret['f_low_rate'] = f_low_rate
@@ -98,9 +125,11 @@ class PreProcessor:
             feather_ret.append(zscore(row['VATURNOVER'],VATURNOVER_mean,VATURNOVER_std))
             feather_ret.append(zscore(row['TURNOVER'],TURNOVER_mean,TURNOVER_std))
             
-            ret["past_days"].insert(0,feather_ret)
+            ret["past_days"].insert(0,feather_ret) 
             
-        print(ret)
+        # 额外\t分割的current_date,stock_no,dataset_type, 便于后续数据集拆分、pair构造等
+        datestock_uid = str(ret["current_date"]) + ret['stock_no']
+        print("%s;%s;%s;0;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],ret))
 
     def process_train_data(self):
         sql = "select * from stock_raw_daily where stock_no='%s' and TOPEN>0 order by trade_date desc"%(self.stock_no)
@@ -156,7 +185,7 @@ def process_all_stocks(data_type="train", processes_idx=-1):
         
     time_end = time.time() 
     time_c= time_end - time_start   #运行所花时间
-    print('time-cost:', time_c, 's') #predict=110s, train=157*400/60=17.5 hours ?
+    # print('time-cost:', time_c, 's') #predict=110s, train=157*400/60=17.5 hours ?
     
     # 解决生成速度慢的方案
     # 1. 并行
@@ -169,7 +198,9 @@ def process_all_stocks(data_type="train", processes_idx=-1):
 if __name__ == "__main__":
     data_type = sys.argv[1]
     process_idx = -1 if len(sys.argv) != 3 else int(sys.argv[2])
-    process_all_stocks(data_type, process_idx)
+    # process_all_stocks(data_type, process_idx)
+    
+    p = PreProcessor(conn,"000001",3,20, data_type)
+    p.process()
+     
     conn.close() 
-    # p = PreProcessor(conn,"000001",3,20, data_type)
-    # p.process(data_type) 

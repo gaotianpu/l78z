@@ -4,7 +4,13 @@ CREATE TABLE stock_basic_info(
    stock_no        CHAR(6) PRIMARY KEY     NOT NULL,
    start_date       CHAR(8)    NOT NULL,
    stock_name      CHAR(4)      NOT NULL,
-   is_drop        INT2
+   is_drop        INT2  DEFAULT 0
+);
+
+/* DROP TABLE stock_trade_date; */
+CREATE TABLE stock_trade_date(
+    trade_date  INT PRIMARY KEY NOT NULL,
+    stock_count INT NOT NULL DEFAULT 0
 );
 
 /* DROP TABLE stock_raw_daily; */
@@ -26,6 +32,36 @@ CREATE TABLE stock_raw_daily(
     primary key (trade_date,stock_no)
 );
 CREATE INDEX idx_stock_raw_daily_2 on stock_raw_daily (stock_no, trade_date);
+
+/* DROP TABLE stock_for_transfomer; dataset_type 默认值=0,验证集=1,测试集=2
+
+select pk_date_stock from stock_for_transfomer where trade_date='20220101' and dataset_type=0;
+#random(pk_date_stock,20)
+update pk_date_stock set dataset_type=1 where pk_date_stock in ();
+*/
+CREATE TABLE stock_for_transfomer(
+    pk_date_stock UNSIGNED BIG INT NOT NULL,
+    trade_date  INT    NOT NULL,
+    stock_no    CHAR(6)    NOT NULL,
+    dataset_type TINYINT NOT NULL DEFAULT 0,   
+    data_json   TEXT    NOT NULL,
+    primary key (pk_date_stock)
+);
+CREATE INDEX idx_stock_for_transfomer_2 on stock_for_transfomer (stock_no, trade_date);
+CREATE INDEX idx_stock_for_transfomer_3 on stock_for_transfomer (trade_date, stock_no);
+
+
+CREATE TABLE stock_for_transfomer_test(
+    pk_date_stock UNSIGNED BIG INT NOT NULL,
+    trade_date  INT    NOT NULL,
+    stock_no    CHAR(6)    NOT NULL,
+    dataset_type TINYINT NOT NULL DEFAULT 0,   
+    data_json   TEXT    NOT NULL,
+    primary key (pk_date_stock)
+);
+CREATE INDEX idx_stock_for_transfomer_test_2 on stock_for_transfomer_test (stock_no, trade_date);
+CREATE INDEX idx_stock_for_transfomer_test_3 on stock_for_transfomer_test (trade_date, stock_no);
+
 
 /* DROP TABLE stock_for_xgb ;*/
 
@@ -124,6 +160,13 @@ CREATE INDEX idx_stock_for_rnn_pair_2 on stock_for_rnn_pair (trade_date);
 
 .separator ";"
 .import data/rnn_all_data_new.csv stock_for_rnn
+
+/*test*/
+.import rnn_all_data_new_1w.csv stock_for_transfomer
+
+.import data/rnn_all_data_new.csv stock_for_transfomer 
+/* 13:22 ~ 14:15 */
+
 
  .separator ","
  .import schema/stocks.txt stock_basic_info
