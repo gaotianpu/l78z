@@ -14,6 +14,15 @@ import torch.optim.lr_scheduler as lr_scheduler
 
 MODEL_FILE = "StockForecastModel.pth"
 
+device = (
+    "cuda"
+    if torch.cuda.is_available()
+    else "mps"  #苹果的Metal Performance Shaders（MPS）
+    if torch.backends.mps.is_available()
+    else "cpu"
+)
+print(f"Using {device} device")
+
 def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
     """
     Implements gradual warmup, if train_steps < warmup_steps, the
@@ -84,16 +93,18 @@ class StockForecastModel(nn.Module):
         self.seq_len = seq_len
         self.d_model = d_model
         
-        dim_feedforward = d_model * 4
+        nhead = 2
+        num_layers = 6 
+        dim_feedforward = d_model * num_layers #是否合理？
         
         self.position_embedding = nn.Embedding(self.seq_len, self.d_model)
         
         self.encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=8, dim_feedforward=dim_feedforward, norm_first = True
+            d_model=d_model, nhead=2, dim_feedforward=dim_feedforward, norm_first = True
         )
         
         self.transformer_encoder = nn.TransformerEncoder(
-            self.encoder_layer, num_layers=6
+            self.encoder_layer, num_layers=num_layers
         )
         self.value_head = nn.Linear(self.d_model, 1)
 
@@ -114,8 +125,8 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
     
     model.train() #训练模式
     for batch, (choose,reject) in enumerate(dataloader):         
-        c = model(choose)
-        r = model(reject)  
+        c = model(choose.to(device))
+        r = model(reject.to(device))  
         
         loss = loss_fn(c, r)   
         
@@ -154,8 +165,8 @@ def test(dataloader, model, loss_fn):
     model.eval()
     with torch.no_grad():
         for batch, (choose,reject) in enumerate(dataloader):         
-            c = model(choose)
-            r = model(reject)   
+            c = model(choose.to(device))
+            r = model(reject.to(device))   
             loss = loss_fn(c, r)
             
             test_loss += loss.item()
@@ -176,16 +187,16 @@ seq_len = 20
 d_model = 8 
 
 learning_rate = 0.0000001
-criterion = LogExpLoss() #定义损失函数
 
-model = StockForecastModel(seq_len,d_model)
+criterion = LogExpLoss() #定义损失函数
+model = StockForecastModel(seq_len,d_model).to(device)
 optimizer = torch.optim.Adam(model.parameters(), 
                              lr=learning_rate, betas=(0.9,0.98), 
                              eps=1e-08) #定义最优化算法
 # scheduler = lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
 
 if os.path.isfile(MODEL_FILE):
-    model.load_state_dict(torch.load(MODEL_FILE)) 
+    # model.load_state_dict(torch.load(MODEL_FILE)) 
     # checkpoint = torch.load(MODEL_FILE)
     # model.load_state_dict(checkpoint['model_state_dict'])
     # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -202,7 +213,17 @@ for t in range(epochs):
     
 print("Done!")
 
+# 完全随机：loss=0.703475
+
+
+
 # 0.0000001 , 0.693031 -> 0.692935 -> 0.692743 , 5,10 epoch. norm_first = false
-# 0.0000001 , 0.  norm_first = true
-# 0.695393 -> 0.691020 , 0.000005
+
+# 0.0000001 , 0.690696 -> 690569, 5 epoch, norm_first = true
+# 0.000001, 0.690266 -> 0.689206     5 epoch, norm_first = true
+# 0.00001, 0.687986 -> 0.679608  5 epoch, norm_first = true
+# 0.0001, 0.653760 -> 0.609568   5 epoch, norm_first = true
+# 过了 0.0001, 0.606102 -> 0.608661 开始出现不收敛
+# 0.00001, 0.609200  -> 0.607962 不稳定了
+# 0.000001, 0.608151 -> 0.608142
 # dataset.conn.close()
