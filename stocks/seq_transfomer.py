@@ -12,6 +12,11 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 
+
+SEQUENCE_LENGTH = 20 #序列长度
+D_MODEL = 8  #维度
+
+
 MODEL_FILE = "StockForecastModel.pth"
 
 device = (
@@ -58,7 +63,7 @@ class StockPairDataset(Dataset):
 
     def __getitem__(self, idx):
         sql = (
-            "select pk_date_stock,data_json from stock_for_transfomer_test where pk_date_stock in (%s,%s)"
+            "select pk_date_stock,data_json from stock_for_transfomer where pk_date_stock in (%s,%s)"
             % (self.df.iloc[idx][0], self.df.iloc[idx][1])
         )
         df_pair = pd.read_sql(sql, self.conn)
@@ -70,6 +75,18 @@ class StockPairDataset(Dataset):
             return a_t, b_t
         else:
             return b_t, a_t
+
+class StockPredictDataset(Dataset):
+    def __init__(self): 
+        self.df = pd.read_csv("seq_predict.txt", sep=";", header=None)
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        pk_date_stock = self.df.iloc(idx)[1]
+        data_json = json.loads(self.df.iloc(idx)[4].replace("'",'"'))
+        return pk_date_stock, torch.tensor(data_json["past_days"]) 
 
 # 2. pair形式的损失函数
 class LogExpLoss(nn.Module):
@@ -174,49 +191,46 @@ def test(dataloader, model, loss_fn):
     test_loss /= num_batches
     print(f"Test Avg loss: {test_loss:>8f} \n")
 
-# # 初始化
-train_data = StockPairDataset("train","f_mean_rate")
-train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
-# choose,reject = next(iter(train_dataloader))
-# print(choose.shape,reject.shape)
+def training():
+    # # 初始化
+    train_data = StockPairDataset("train","f_mean_rate")
+    train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
+    # choose,reject = next(iter(train_dataloader))
+    # print(choose.shape,reject.shape)
 
-test_data = StockPairDataset("validate","f_mean_rate")
-test_dataloader = DataLoader(test_data, batch_size=128)
-
-seq_len = 20
-d_model = 8 
-
-learning_rate = 0.0000001
-
-criterion = LogExpLoss() #定义损失函数
-model = StockForecastModel(seq_len,d_model).to(device)
-optimizer = torch.optim.Adam(model.parameters(), 
-                             lr=learning_rate, betas=(0.9,0.98), 
-                             eps=1e-08) #定义最优化算法
-# scheduler = lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
-
-if os.path.isfile(MODEL_FILE):
-    # model.load_state_dict(torch.load(MODEL_FILE)) 
-    # checkpoint = torch.load(MODEL_FILE)
-    # model.load_state_dict(checkpoint['model_state_dict'])
-    # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    # epoch = checkpoint['epoch']
-    # loss = checkpoint['loss']
-    print("load success")
-
-epochs = 5
-for t in range(epochs):
-    print(f"Epoch {t+1}\n-------------------------------")
-    train(train_dataloader, model, criterion, optimizer,t)
-    test(test_dataloader, model, criterion)
-    # scheduler.step()
+    test_data = StockPairDataset("validate","f_mean_rate")
+    test_dataloader = DataLoader(test_data, batch_size=128)  
     
-print("Done!")
+    criterion = LogExpLoss() #定义损失函数
+    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    
+    learning_rate = 0.0000001
+    optimizer = torch.optim.Adam(model.parameters(), 
+                                lr=learning_rate, betas=(0.9,0.98), 
+                                eps=1e-08) #定义最优化算法
+    # scheduler = lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+
+    if os.path.isfile(MODEL_FILE):
+        model.load_state_dict(torch.load(MODEL_FILE)) 
+        # checkpoint = torch.load(MODEL_FILE)
+        # model.load_state_dict(checkpoint['model_state_dict'])
+        # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        # epoch = checkpoint['epoch']
+        # loss = checkpoint['loss']
+        print("load success")
+
+    epochs = 5
+    for t in range(epochs):
+        print(f"Epoch {t+1}\n-------------------------------")
+        train(train_dataloader, model, criterion, optimizer,t)
+        test(test_dataloader, model, criterion)
+        # scheduler.step()
+    
+    train_data.conn.close()
+    test_data.conn.close()
+    print("Done!")
 
 # 完全随机：loss=0.703475
-
-
-
 # 0.0000001 , 0.693031 -> 0.692935 -> 0.692743 , 5,10 epoch. norm_first = false
 
 # 0.0000001 , 0.690696 -> 690569, 5 epoch, norm_first = true
@@ -226,4 +240,30 @@ print("Done!")
 # 过了 0.0001, 0.606102 -> 0.608661 开始出现不收敛
 # 0.00001, 0.609200  -> 0.607962 不稳定了
 # 0.000001, 0.608151 -> 0.608142
-# dataset.conn.close()
+
+
+def predict():
+    dataset = StockPredictDataset()
+    dataloader = DataLoader(dataset, batch_size=128) 
+     
+    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    if os.path.isfile(MODEL_FILE):
+        model.load_state_dict(torch.load(MODEL_FILE)) 
+    
+    model.eval()
+    with torch.no_grad():
+        for batch, (pk_date_stock,data) in enumerate(dataloader):         
+            output = model(data.to(device))
+            print(pk_date_stock,output)
+    
+    dataset.conn.close()
+
+# python seq_transfomer.py training
+# python seq_transfomer.py predict
+if __name__ == "__main__":
+    op_type = sys.argv[1]
+    assert op_type in ("training", "predict")
+    if op_type == "predict"
+        predict()
+    else:
+        training()

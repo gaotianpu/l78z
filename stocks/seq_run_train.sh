@@ -2,6 +2,16 @@
 cur_date="`date +%Y%m%d`" 
 echo $cur_date
 
+start_time=$(date +%s)
+
+# echo "0. stocks_statistics"
+# python statistics.py > data/stocks_statistics.jsonl
+# sqlite3 data/stocks.db <<EOF
+# .separator ";"
+# delete from stock_statistics_info where stock_no<>'0';
+# .import data/stocks_statistics.jsonl stock_statistics_info
+# EOF
+
 echo "1. generate stocks sequence data"
 rm -f data/seq_train_*.txt
 python seq_preprocess.py train 0 > data/seq_train_0.txt &
@@ -12,30 +22,53 @@ python seq_preprocess.py train 4 > data/seq_train_4.txt
 python seq_preprocess.py predict > data/seq_predict.txt #
 #find data/ -name 'seq_train_*.txt' | xargs sed 'a\' | grep -v nan | sort -nr > data/seq_all_data_new.csv
 
+end_time=$(date +%s)
+cost_time=$[ $end_time-$start_time ]
+echo "1.done $(($cost_time/60))min $(($cost_time%60))s"
+start_time=$end_time 
 
-# 将股票的序列数据导入到sqlite3中
-echo "2. import stocks sequence data into sqlite3 table:stock_for_transfomer"
-sqlite3 data/stocks.db <<EOF
-.separator ","
-.import data/seq_train_0.csv stock_for_transfomer
-.import data/seq_train_1.csv stock_for_transfomer
-.import data/seq_train_2.csv stock_for_transfomer
-.import data/seq_train_3.csv stock_for_transfomer
-.import data/seq_train_4.csv stock_for_transfomer
-EOF
+# # 将股票的序列数据导入到sqlite3中
+# echo "2. import into sqlite3.  stocks sequence data -> table:stock_for_transfomer"
+# sqlite3 data/stocks.db <<EOF
+# .separator ";"
+# .import data/seq_train_0.csv stock_for_transfomer
+# .import data/seq_train_1.csv stock_for_transfomer
+# .import data/seq_train_2.csv stock_for_transfomer
+# .import data/seq_train_3.csv stock_for_transfomer
+# .import data/seq_train_4.csv stock_for_transfomer
+# EOF
 
-echo "3. split dataset as train,validate,test"
-python seq_data_split.py
+# end_time=$(date +%s)
+# cost_time=$[ $end_time-$start_time ]
+# echo "2.import into sqlite done $(($cost_time/60))min $(($cost_time%60))s"
+# start_time=$end_time 
 
-echo "4. make pairs"
-python seq_make_pairs.py 1 f_mean_rate> f_mean_rate/validate.txt &
-python seq_make_pairs.py 2 f_mean_rate> f_mean_rate/test.txt &
-python seq_make_pairs.py 0 f_mean_rate> f_mean_rate/train.txt
+# echo "3. split dataset as train,validate,test"
+# python seq_data_split.py
 
-echo "5. training"
-python seq_transfomer_train.py
+# end_time=$(date +%s)
+# cost_time=$[ $end_time-$start_time ]
+# echo "3.split dataset done! $(($cost_time/60))min $(($cost_time%60))s"
+# start_time=$end_time 
 
-# echo "Done!"
+# echo "4. make pairs"
+# python seq_make_pairs.py 1 f_mean_rate> f_mean_rate/validate.txt &
+# python seq_make_pairs.py 2 f_mean_rate> f_mean_rate/test.txt &
+# python seq_make_pairs.py 0 f_mean_rate> f_mean_rate/train.txt
+
+# end_time=$(date +%s)
+# cost_time=$[ $end_time-$start_time ]
+# echo "4. make pairs done! $(($cost_time/60))min $(($cost_time%60))s"
+# start_time=$end_time 
+
+# echo "5. training"
+# python seq_transfomer_train.py training > seq_transfomer_train.log.$cur_date 
+
+# end_time=$(date +%s)
+# cost_time=$[ $end_time-$start_time ]
+# echo "5.training done! $(($cost_time/60))min $(($cost_time%60))s"
+
+echo "Done!"
 
 
 

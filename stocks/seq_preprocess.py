@@ -5,12 +5,13 @@ import sys
 from datetime import datetime
 import time
 import sqlite3  
+import json
 import pandas as pd
 from common import load_stocks
 
 PROCESSES_NUM = 5
 
-FUTURE_DAYS = 3 # 预测未来几天的数据, 2,3,5? 2比较合适，3则可能出现重复，再不恰当的数据集划分策略下，训练集和测试可能会重叠？
+FUTURE_DAYS = 4 # 预测未来几天的数据, 2,3,5? 2比较合适，3则可能出现重复，再不恰当的数据集划分策略下，训练集和测试可能会重叠？
 PAST_DAYS = 20 #使用过去几天的数据做特征
 
 MAX_ROWS_COUNT = 2000 #从数据库中加载多少数据, 差不多8年的交易日数。
@@ -32,9 +33,18 @@ class PreProcessor:
         self.future_days = future_days
         self.past_days = past_days
         self.data_type = data_type
+        
+        # self.statistics = self.get_statistics(self)
     
-    def process_row(self, df, idx):
-        ret = {"stock_no": self.stock_no, "current_date":df.loc[idx]['trade_date']}
+    def get_statistics(self):
+        sql = "select data_json from stock_statistics_info where stock_no='%s'" % (self.stock_no)
+        df_statistics = pd.read_sql(sql, self.conn) 
+        
+        ret = json.loads(df_statistics.loc[0]["data_json"])
+        return ret
+    
+    def process_row(self, df, idx, statistics):
+        ret = {"stock_no": self.stock_no, "current_date":int(df.loc[idx]['trade_date'])}
         
         # 未来值,FUTURE_DAYS最高价，最低价？
         if idx>0: #train
@@ -45,10 +55,7 @@ class PreProcessor:
             highest = df_future['HIGH'].max()
             lowest = df_future['LOW'].min()
             high_mean = df_future['HIGH'].mean()
-            low_mean = df_future['LOW'].mean()
-            
-            # print(df_future.describe()) 
-            # print(base,highest,lowest,mean)
+            low_mean = df_future['LOW'].mean() 
             
             f_high_rate = compute_rate(highest,buy_base) #round((highest-buy_base)/buy_base,2)
             f_low_rate = compute_rate(lowest,buy_base)  #round((lowest-buy_base)/buy_base,2)
@@ -88,21 +95,26 @@ class PreProcessor:
             ret['f_low_mean_rate'] = 0.0 
         
         # 获取过去所有交易日的均值，标准差
-        # 只能是过去的，不能看到未来数据？ 还是说应该固定住？
-        df_history = df.loc[idx: ] 
-        df_history_describe = df_history.describe() 
+        # 只能是过去的，不能看到未来数据？ 还是说应该固定住？似乎应该固定住更好些
+        
+        # df_history = df.loc[idx: ] 
+        # df_history_describe = df_history.describe() 
+        # # 价格
+        # price_mean = round(df_history_describe["TOPEN"]["mean"],3)
+        # price_std = round(df_history_describe["TOPEN"]["std"],3)
+        
         # 价格
-        price_mean = round(df_history_describe["TOPEN"]["mean"],3)
-        price_std = round(df_history_describe["TOPEN"]["std"],3) 
+        price_mean = statistics["price_mean"] 
+        price_std = statistics["price_std"] 
         # VOTURNOVER 成交金额
-        VOTURNOVER_mean = round(df_history_describe["VOTURNOVER"]["mean"],3)
-        VOTURNOVER_std = round(df_history_describe["VOTURNOVER"]["std"],3)
+        VOTURNOVER_mean = statistics["VOTURNOVER_mean"] 
+        VOTURNOVER_std = statistics["VOTURNOVER_std"] 
         # VATURNOVER 成交量
-        VATURNOVER_mean = round(df_history_describe["VATURNOVER"]["mean"],3)
-        VATURNOVER_std = round(df_history_describe["VATURNOVER"]["std"],3)
+        VATURNOVER_mean = statistics["VATURNOVER_mean"] 
+        VATURNOVER_std = statistics["VATURNOVER_std"] 
         #  ('TURNOVER', '换手率')
-        TURNOVER_mean = round(df_history_describe["TURNOVER"]["mean"],3)
-        TURNOVER_std = round(df_history_describe["TURNOVER"]["std"],3) 
+        TURNOVER_mean = statistics["TURNOVER_mean"] 
+        TURNOVER_std = statistics["TURNOVER_std"]
  
         
         # 特征值归一化
@@ -127,23 +139,26 @@ class PreProcessor:
             feather_ret.append(zscore(row['LCLOSE'],price_mean,price_std)) #有必要么？
             feather_ret.append(zscore(row['VOTURNOVER'],VOTURNOVER_mean,VOTURNOVER_std))
             feather_ret.append(zscore(row['VATURNOVER'],VATURNOVER_mean,VATURNOVER_std))
-            feather_ret.append(zscore(row['TURNOVER'],TURNOVER_mean,TURNOVER_std))
+            feather_ret.append(float(zscore(row['TURNOVER'],TURNOVER_mean,TURNOVER_std)))
             
             ret["past_days"].insert(0,feather_ret) 
             
-        # 额外\t分割的current_date,stock_no,dataset_type, 便于后续数据集拆分、pair构造等
-        datestock_uid = str(ret["current_date"]) + ret['stock_no']
-        print("%s;%s;%s;0;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],ret))
+        # 额外;分割的datestock_uid,current_date,stock_no,dataset_type, 便于后续数据集拆分、pair构造等
+        datestock_uid = str(ret["current_date"]) + ret['stock_no'] 
+        print("%s;%s;%s;0;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],
+                                json.dumps(ret))) #
 
     def process_train_data(self):
+        statistics = self.get_statistics() 
+        
         sql = "select * from stock_raw_daily where stock_no='%s' and TOPEN>0 order by trade_date desc limit 0,%d"%(self.stock_no,MAX_ROWS_COUNT)
-        df = pd.read_sql(sql, conn)
+        df = pd.read_sql(sql, self.conn) 
         
         end_idx = len(df) - self.past_days + 1
         for idx in range(self.future_days, end_idx):
-            self.process_row(df, idx)
-            # break
-        
+            self.process_row(df, idx,statistics)
+            # break #debug
+            
         df = None  # 释放内存？
         del df  
     
@@ -157,12 +172,13 @@ class PreProcessor:
         return trade_date
     
     def process_predict_data(self):
+        statistics = self.get_statistics() 
+         
         # max_trade_date = self.get_max_trade_date() #
-        sql = "select * from stock_raw_daily where stock_no='%s' and TOPEN>0 order by trade_date desc limit 0,%d"%(self.stock_no,self.past_days)
+        sql = "select * from stock_raw_daily where stock_no='%s' and TOPEN>0 order by trade_date desc limit 0,%d"%(self.stock_no,self.past_days+self.future_days)
         df = pd.read_sql(sql, conn)
-        # print(df.loc[0]['trade_date'],max_trade_date)
         
-        self.process_row(df, 0)
+        self.process_row(df, 0, statistics)
         
         df = None  # 释放内存？
         del df  
@@ -188,7 +204,7 @@ def process_all_stocks(data_type="train", processes_idx=-1):
         #     break
         
     time_end = time.time() 
-    time_c= time_end - time_start   #运行所花时间
+    time_c = time_end - time_start   #运行所花时间
     # print('time-cost:', time_c, 's') #predict=110s, train=157*400/60=17.5 hours ?
     
     # 解决生成速度慢的方案
@@ -196,14 +212,12 @@ def process_all_stocks(data_type="train", processes_idx=-1):
     # 2. 增量添加
     conn.close()
 
-# python preprocess4rnn.py train 0 > data/rnn_train.txt_0 &
-# python preprocess4rnn.py predict > data/rnn_predict.txt &
+# python seq_preprocess.py train 0 > data/rnn_train.txt_0 &
+# python seq_preprocess.py predict > data/rnn_predict.txt &
 if __name__ == "__main__":
     data_type = sys.argv[1]
     process_idx = -1 if len(sys.argv) != 3 else int(sys.argv[2])
     process_all_stocks(data_type, process_idx)
     
-    # p = PreProcessor(conn,"000001",3,20, data_type)
+    # p = PreProcessor(conn,"000001",4,20, data_type)
     # p.process()
-     
-    conn.close() 
