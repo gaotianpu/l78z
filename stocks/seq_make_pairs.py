@@ -95,9 +95,9 @@ def process_pairs(dataset_type,field="f_mean_rate"):
 
 
 
-# python rnn_make_pairs.py 0 f_mean_rate> f_mean_rate/train.txt &
-# python rnn_make_pairs.py 1 f_mean_rate> f_mean_rate/validate.txt &
-# python rnn_make_pairs.py 2 f_mean_rate> f_mean_rate/test.txt &
+# python seq_make_pairs.py 0 f_mean_rate> f_mean_rate/train.txt &
+# python seq_make_pairs.py 1 f_mean_rate> f_mean_rate/validate.txt &
+# python seq_make_pairs.py 2 f_mean_rate> f_mean_rate/test.txt &
 if __name__ == "__main__":
     data_type = int(sys.argv[1])
     process_pairs(data_type) #train=0,validate=1,test=2
