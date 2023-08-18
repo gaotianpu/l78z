@@ -31,8 +31,10 @@ def dataset_split(dataset_type): # 1=验证集 2=测试集
     trade_dates = load_trade_dates()
     for date in trade_dates: 
         df = load_ids_by_date(date,0) #取dataset_type=0(默认值)的数据
-        selected_ids = df.sample(n=SAMPLE_COUNT_PER_DAY) #每日抽取20条 
-        upate_dataset_type(selected_ids,dataset_type)
+        # print(len(df))
+        if len(df) > SAMPLE_COUNT_PER_DAY*10:
+            selected_ids = df.sample(n=SAMPLE_COUNT_PER_DAY) #每日抽取20条 
+            upate_dataset_type(selected_ids,dataset_type)
          
 
 if __name__ == "__main__":

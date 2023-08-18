@@ -12,36 +12,36 @@ start_time=$(date +%s)
 # .import data/stocks_statistics.jsonl stock_statistics_info
 # EOF
 
-echo "1. generate stocks sequence data"
-rm -f data/seq_train_*.txt
-python seq_preprocess.py train 0 > data/seq_train_0.txt &
-python seq_preprocess.py train 1 > data/seq_train_1.txt &
-python seq_preprocess.py train 2 > data/seq_train_2.txt &
-python seq_preprocess.py train 3 > data/seq_train_3.txt &
-python seq_preprocess.py train 4 > data/seq_train_4.txt 
-python seq_preprocess.py predict > data/seq_predict.txt #
-#find data/ -name 'seq_train_*.txt' | xargs sed 'a\' | grep -v nan | sort -nr > data/seq_all_data_new.csv
-
-end_time=$(date +%s)
-cost_time=$[ $end_time-$start_time ]
-echo "1.done $(($cost_time/60))min $(($cost_time%60))s"
-start_time=$end_time 
-
-# # 将股票的序列数据导入到sqlite3中
-# echo "2. import into sqlite3.  stocks sequence data -> table:stock_for_transfomer"
-# sqlite3 data/stocks.db <<EOF
-# .separator ";"
-# .import data/seq_train_0.csv stock_for_transfomer
-# .import data/seq_train_1.csv stock_for_transfomer
-# .import data/seq_train_2.csv stock_for_transfomer
-# .import data/seq_train_3.csv stock_for_transfomer
-# .import data/seq_train_4.csv stock_for_transfomer
-# EOF
+# echo "1. generate stocks sequence data"
+# rm -f data/seq_train_*.txt
+# python seq_preprocess.py train 0 > data/seq_train_0.txt &
+# python seq_preprocess.py train 1 > data/seq_train_1.txt &
+# python seq_preprocess.py train 2 > data/seq_train_2.txt &
+# python seq_preprocess.py train 3 > data/seq_train_3.txt &
+# python seq_preprocess.py train 4 > data/seq_train_4.txt 
+# python seq_preprocess.py predict > data/seq_predict.txt #
+# #find data/ -name 'seq_train_*.txt' | xargs sed 'a\' | grep -v nan | sort -nr > data/seq_all_data_new.csv
 
 # end_time=$(date +%s)
 # cost_time=$[ $end_time-$start_time ]
-# echo "2.import into sqlite done $(($cost_time/60))min $(($cost_time%60))s"
+# echo "1.done $(($cost_time/60))min $(($cost_time%60))s"
 # start_time=$end_time 
+
+# 将股票的序列数据导入到sqlite3中
+echo "2. import into sqlite3.  stocks sequence data -> table:stock_for_transfomer"
+sqlite3 data/stocks.db <<EOF
+.separator ";"
+.import data/seq_train_0.txt stock_for_transfomer
+.import data/seq_train_1.txt stock_for_transfomer
+.import data/seq_train_2.txt stock_for_transfomer
+.import data/seq_train_3.txt stock_for_transfomer
+.import data/seq_train_4.txt stock_for_transfomer
+EOF
+
+end_time=$(date +%s)
+cost_time=$[ $end_time-$start_time ]
+echo "2.import into sqlite done $(($cost_time/60))min $(($cost_time%60))s"
+start_time=$end_time 
 
 # echo "3. split dataset as train,validate,test"
 # python seq_data_split.py
@@ -52,9 +52,21 @@ start_time=$end_time
 # start_time=$end_time 
 
 # echo "4. make pairs"
-# python seq_make_pairs.py 1 f_mean_rate> f_mean_rate/validate.txt &
-# python seq_make_pairs.py 2 f_mean_rate> f_mean_rate/test.txt &
-# python seq_make_pairs.py 0 f_mean_rate> f_mean_rate/train.txt
+python seq_make_pairs.py 1 f_high_mean_rate> f_high_mean_rate/validate.txt &
+python seq_make_pairs.py 2 f_high_mean_rate> f_high_mean_rate/test.txt &
+python seq_make_pairs.py 0 f_high_mean_rate> f_high_mean_rate/train.txt 
+
+python seq_make_pairs.py 0 f_high_mean_rate 0 > f_high_mean_rate/train.txt_0 &
+python seq_make_pairs.py 0 f_high_mean_rate 1 > f_high_mean_rate/train.txt_1 &
+python seq_make_pairs.py 0 f_high_mean_rate 2 > f_high_mean_rate/train.txt_2 &
+python seq_make_pairs.py 0 f_high_mean_rate 3 > f_high_mean_rate/train.txt_3 &
+python seq_make_pairs.py 0 f_high_mean_rate 4 > f_high_mean_rate/train.txt_4 
+
+python seq_make_pairs.py 0 f_high_mean_rate 0 > f_high_mean_rate_s/train.txt_0 &
+python seq_make_pairs.py 0 f_high_mean_rate 1 > f_high_mean_rate_s/train.txt_1 &
+python seq_make_pairs.py 0 f_high_mean_rate 2 > f_high_mean_rate_s/train.txt_2 &
+python seq_make_pairs.py 0 f_high_mean_rate 3 > f_high_mean_rate_s/train.txt_3 &
+python seq_make_pairs.py 0 f_high_mean_rate 4 > f_high_mean_rate_s/train.txt_4 
 
 # end_time=$(date +%s)
 # cost_time=$[ $end_time-$start_time ]

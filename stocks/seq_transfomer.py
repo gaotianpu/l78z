@@ -52,7 +52,7 @@ def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
 
 # 1. 定义数据集
 class StockPairDataset(Dataset):
-    def __init__(self, data_type="train", field="f_mean_rate"):
+    def __init__(self, data_type="train", field="f_high_mean_rate"):
         assert data_type in ("train", "validate", "test", "predict")
         self.df = pd.read_csv("%s.data" % (data_type), sep=" ", header=None)
         self.conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
@@ -77,15 +77,18 @@ class StockPairDataset(Dataset):
             return b_t, a_t
 
 class StockPredictDataset(Dataset):
-    def __init__(self): 
-        self.df = pd.read_csv("seq_predict.txt", sep=";", header=None)
+    def __init__(self,predict_data_file="seq_predict.txt"): 
+        self.df = pd.read_csv(predict_data_file, sep=";", header=None)
 
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
-        pk_date_stock = self.df.iloc(idx)[1]
-        data_json = json.loads(self.df.iloc(idx)[4].replace("'",'"'))
+        pk_date_stock = self.df.iloc[idx][0]
+        # date = self.df.iloc[idx][1]
+        # stock_no = self.df.iloc[idx][2]
+        # print(pk_date_stock,self.df.iloc[idx][4])
+        data_json = json.loads(self.df.iloc[idx][4].replace("'",'"'))
         return pk_date_stock, torch.tensor(data_json["past_days"]) 
 
 # 2. pair形式的损失函数
@@ -110,14 +113,15 @@ class StockForecastModel(nn.Module):
         self.seq_len = seq_len
         self.d_model = d_model
         
-        nhead = 2
+        nhead = 1 #1,2？
         num_layers = 6 
         dim_feedforward = d_model * num_layers #是否合理？
         
         self.position_embedding = nn.Embedding(self.seq_len, self.d_model)
         
         self.encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=2, dim_feedforward=dim_feedforward, norm_first = True
+            d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward, 
+            batch_first = True, norm_first = True
         )
         
         self.transformer_encoder = nn.TransformerEncoder(
@@ -141,6 +145,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
     size = len(dataloader.dataset) 
     
     model.train() #训练模式
+    total_loss = 0.0 
     for batch, (choose,reject) in enumerate(dataloader):         
         c = model(choose.to(device))
         r = model(reject.to(device))  
@@ -152,12 +157,15 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         optimizer.step()
         optimizer.zero_grad() 
         
+        total_loss = total_loss + loss.item()
+        
         if batch % 64 == 0:
+            avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(choose)
-            print(f"loss: {loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d}]") 
+            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d}]") 
         
         if batch % 512 == 0:
-            torch.save(model.state_dict(), MODEL_FILE+"."+str(epoch))
+            torch.save(model.state_dict(), MODEL_FILE+"."+str(epoch) + "." + str(int(batch / 512)) )
             # torch.save({
             # 'epoch': epoch,
             # 'model_state_dict': model.state_dict(),
@@ -193,18 +201,21 @@ def test(dataloader, model, loss_fn):
 
 def training():
     # # 初始化
-    train_data = StockPairDataset("train","f_mean_rate")
+    train_data = StockPairDataset("train","f_high_mean_rate")
     train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
     # choose,reject = next(iter(train_dataloader))
     # print(choose.shape,reject.shape)
 
-    test_data = StockPairDataset("validate","f_mean_rate")
+    test_data = StockPairDataset("validate","f_high_mean_rate")
     test_dataloader = DataLoader(test_data, batch_size=128)  
     
     criterion = LogExpLoss() #定义损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.0000001
+    # train: 0.581011
+    # 0.730487,0.722867,0.712951,0.708912,0.705015,0.701588 | 0.533442 | 0.501004 | 0.498912
+    # 0.887414, 
+    learning_rate = 0.0000005  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -219,7 +230,7 @@ def training():
         # loss = checkpoint['loss']
         print("load success")
 
-    epochs = 5
+    epochs = 1
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer,t)
@@ -243,27 +254,50 @@ def training():
 
 
 def predict():
-    dataset = StockPredictDataset()
-    dataloader = DataLoader(dataset, batch_size=128) 
+    dataset = StockPredictDataset(predict_data_file="seq_predict.txt")
+    # print(next(iter(dataset)))
+    dataloader = DataLoader(dataset, batch_size=128, shuffle=True) 
      
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    # MODEL_FILE = "tmp.pth"
+    # torch.save(model.state_dict(), MODEL_FILE)
+    # return 
+
     if os.path.isfile(MODEL_FILE):
         model.load_state_dict(torch.load(MODEL_FILE)) 
     
     model.eval()
     with torch.no_grad():
-        for batch, (pk_date_stock,data) in enumerate(dataloader):         
-            output = model(data.to(device))
-            print(pk_date_stock,output)
+        for _batch, (pk_date_stock,data) in enumerate(dataloader):         
+            output = model(data.to(device)) 
+            # print(data.size(),data.shape)
+            ret = list(zip(pk_date_stock.tolist(),output.tolist()))
+            print("---",_batch,"----")
+            for item in ret :
+                print(";".join( [str(x) for x in item])) 
+            # break 
+
+def tmp():
+    test_data = StockPairDataset("validate","f_high_mean_rate")
+    test_dataloader = DataLoader(test_data, batch_size=128)   
     
-    dataset.conn.close()
+    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    criterion = LogExpLoss() #定义损失函数
+    
+    for i in range(24):
+        fname =  MODEL_FILE + ".0."  + str(i) 
+        print(fname)
+        if os.path.isfile(fname):
+            model.load_state_dict(torch.load(fname))
+            test(test_dataloader, model, criterion) 
 
 # python seq_transfomer.py training
 # python seq_transfomer.py predict
 if __name__ == "__main__":
+    # tmp()
     op_type = sys.argv[1]
     assert op_type in ("training", "predict")
-    if op_type == "predict"
+    if op_type == "predict":
         predict()
     else:
         training()

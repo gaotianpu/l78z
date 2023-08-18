@@ -5,6 +5,8 @@ import random
 import pandas as pd
 import sqlite3
 
+PROCESSES_NUM = 5
+
 conn = sqlite3.connect("file:data/stocks.db", uri=True)
 
 def load_stocks():
@@ -49,7 +51,7 @@ def load_idjson_by_stockno(stockno,dateset_type=0):
 #         # if i>500000: #小数据测试,debug
 #         #     break
 
-def make_pairs(rows,field="f_mean_rate"):
+def make_pairs(rows,field="f_high_mean_rate"):
     count = len(rows)
     for i in range(0,count-1):
         for j in range(i+1,count):
@@ -62,8 +64,8 @@ def make_pairs(rows,field="f_mean_rate"):
             # rows[i].pk_date_stock
             # 两个比较，数值上有一定的差别才能构成算成pair对？
             # pk_date_stock_1,pk_date_stock_2,dataset_type(train|vaildate|test),field_1,field_2,field_3(0相等，1小于，2大于)
-            data_i = json.loads(rows.loc[i]["data_json"].replace("'",'"'))
-            data_j = json.loads(rows.loc[j]["data_json"].replace("'",'"'))
+            data_i = json.loads(rows.loc[i]["data_json"])
+            data_j = json.loads(rows.loc[j]["data_json"])
             rate_i = data_i[field]
             rate_j = data_j[field] 
             
@@ -80,30 +82,38 @@ def make_pairs(rows,field="f_mean_rate"):
         # break #debug
             
 
-def process_pairs(dataset_type,field="f_mean_rate",last_trade_date=20080808):
+def process_pairs(dataset_type,field="f_high_mean_rate",last_trade_date=20080808,process_idx=-1):
     # 根据同一交易日下，不同股票构造pair对
-    trade_dates = load_trade_dates()
-    for date in trade_dates:
-        # if date<last_trade_date:
-        #     continue 
-        data_rows = load_idjson_by_date(date,dataset_type)
-        make_pairs(data_rows,field)
-    #     break #debug
+    # trade_dates = load_trade_dates()
+    # for idx,date in enumerate(trade_dates):
+    #     if (process_idx < 0 or data_type!=0) or idx % PROCESSES_NUM == process_idx: #predict耗时少，不用拆分
+    #         # if date<last_trade_date:
+    #         #     continue 
+    #         # print("a:",idx)
+    #         data_rows = load_idjson_by_date(date,dataset_type)
+    #         make_pairs(data_rows,field)
+            
+            # break #debug
     #增量的情况？新增一个交易日
         
     # 根据同一股票下，不同日期构造pair对
     stocks = load_stocks()
-    for stock in stocks:
-        data_rows = load_idjson_by_stockno(stock[0],dataset_type)
-        make_pairs(data_rows,field)
-        # break #debug
-        # 增量处理？
+    for idx,stock in enumerate(stocks):
+        if (process_idx < 0 or data_type!=0) or idx % PROCESSES_NUM == process_idx: 
+            # print("b:",idx)
+            data_rows = load_idjson_by_stockno(stock[0],dataset_type)
+            make_pairs(data_rows,field)
+            
+            # break #debug
+            # 增量处理？
 
 
-# python seq_make_pairs.py 0 f_mean_rate> f_mean_rate/train.txt &
-# python seq_make_pairs.py 1 f_mean_rate> f_mean_rate/validate.txt &
-# python seq_make_pairs.py 2 f_mean_rate> f_mean_rate/test.txt &
+# python seq_make_pairs.py 0 f_high_mean_rate 0 > f_high_mean_rate/train.txt_0 &
+# python seq_make_pairs.py 0 f_high_mean_rate 1 > f_high_mean_rate/train.txt_1 &
+# python seq_make_pairs.py 1 f_high_mean_rate> f_high_mean_rate/validate.txt &
+# python seq_make_pairs.py 2 f_high_mean_rate> f_high_mean_rate/test.txt &
 if __name__ == "__main__":
     data_type = int(sys.argv[1])
-    process_pairs(data_type) #train=0,validate=1,test=2
+    process_idx = -1 if len(sys.argv) != 4 else int(sys.argv[3])
+    process_pairs(data_type,process_idx=process_idx) #train=0,validate=1,test=2
     conn.close()

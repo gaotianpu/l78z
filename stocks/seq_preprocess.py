@@ -16,6 +16,8 @@ PAST_DAYS = 20 #使用过去几天的数据做特征
 
 MAX_ROWS_COUNT = 2000 #从数据库中加载多少数据, 差不多8年的交易日数。
 
+MIN_TRADE_DATE = 0
+
 max_high,min_high,max_low,min_low = 0.818,-0.6,0.668,-0.6
 
 conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
@@ -27,12 +29,13 @@ def compute_rate(x,base): #计算涨跌幅度
     return round((x-base)/base,4)
 
 class PreProcessor:
-    def __init__(self, conn,stock_no, future_days = 3,past_days = 20 , data_type="train"):
+    def __init__(self, conn,stock_no, future_days = 3,past_days = 20 , data_type="train" , min_trade_date=0):
         self.conn = conn
         self.stock_no = stock_no
         self.future_days = future_days
         self.past_days = past_days
         self.data_type = data_type
+        self.min_trade_date = min_trade_date
         
         # self.statistics = self.get_statistics(self)
     
@@ -44,7 +47,13 @@ class PreProcessor:
         return ret
     
     def process_row(self, df, idx, statistics):
-        ret = {"stock_no": self.stock_no, "current_date":int(df.loc[idx]['trade_date'])}
+        current_date = int(df.loc[idx]['trade_date'])
+        
+        # 保证是增量生成
+        if current_date < self.min_trade_date:
+            return 
+        
+        ret = {"stock_no": self.stock_no, "current_date":current_date}
         
         # 未来值,FUTURE_DAYS最高价，最低价？
         if idx>0: #train
@@ -194,7 +203,7 @@ def process_all_stocks(data_type="train", processes_idx=-1):
     stocks = load_stocks()
     time_start = time.time()
     for i, stock in enumerate(stocks):
-        p = PreProcessor(conn,stock[0],FUTURE_DAYS,PAST_DAYS,data_type)
+        p = PreProcessor(conn,stock[0],FUTURE_DAYS,PAST_DAYS,data_type,MIN_TRADE_DATE)
         if processes_idx < 0 or data_type!="train": #predict耗时少，不用拆分
             p.process() 
         elif i % PROCESSES_NUM == processes_idx:
