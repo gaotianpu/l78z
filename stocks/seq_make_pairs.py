@@ -22,7 +22,7 @@ def load_stocks():
 def load_trade_dates():
     sql = "select distinct trade_date from stock_for_transfomer"
     df = pd.read_sql(sql, conn)
-    return df['trade_date'].tolist()
+    return df['trade_date'].sort_values(ascending=False).tolist()
 
 def load_ids_by_date(date,dateset_type=0):
     sql = "select pk_date_stock from stock_for_transfomer where trade_date='%s' and dataset_type='%d'" %(date,dateset_type)
@@ -70,7 +70,8 @@ def make_pairs(rows,field="f_high_mean_rate"):
             rate_j = data_j[field] 
             
             # print(id_i,id_j) # 未过滤，190；
-            if abs(rate_i-rate_j)>0.01: #过滤后129
+            # 0.01 ,过滤后129, 0.05 
+            if abs(rate_i-rate_j)>0.1: 
                 # 在这里把pair的choose,reject排好序。
                 if rate_i>rate_j:
                     print(id_i,id_j) 
@@ -85,10 +86,11 @@ def make_pairs(rows,field="f_high_mean_rate"):
 def process_pairs(dataset_type,field="f_high_mean_rate",last_trade_date=20080808,process_idx=-1):
     # 根据同一交易日下，不同股票构造pair对
     # trade_dates = load_trade_dates()
-    # for idx,date in enumerate(trade_dates):
+    # for idx,date in enumerate(trade_dates):     
+    #     # if date > 20220415:
+    #     #     continue 
+        
     #     if (process_idx < 0 or data_type!=0) or idx % PROCESSES_NUM == process_idx: #predict耗时少，不用拆分
-    #         # if date<last_trade_date:
-    #         #     continue 
     #         # print("a:",idx)
     #         data_rows = load_idjson_by_date(date,dataset_type)
     #         make_pairs(data_rows,field)
@@ -117,3 +119,6 @@ if __name__ == "__main__":
     process_idx = -1 if len(sys.argv) != 4 else int(sys.argv[3])
     process_pairs(data_type,process_idx=process_idx) #train=0,validate=1,test=2
     conn.close()
+    
+    # x = load_trade_dates()
+    # print(x)

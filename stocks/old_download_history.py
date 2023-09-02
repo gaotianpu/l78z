@@ -6,8 +6,6 @@
 import os
 import sys
 import time
-import random
-import json
 import datetime
 import requests
 import logging
@@ -22,9 +20,8 @@ PROCESSES_NUM = 3
 # https://q.stock.sohu.com/hisHq?code=cn_600519&start=20230508&end=20230829&stat=1&order=D&period=d&callback=historySearchHandler&rt=jsonp&r=0.15448371743973954&0.6702222141861589
 
 # http://quotes.money.163.com/service/chddata.html?code=0600000&start=20200527&end=20211010&fields=TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;TURNOVER;VOTURNOVER;VATURNOVER;TCAP;MCAP
-# DOWNLOAD_FIELDS = "TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;TURNOVER;VOTURNOVER;VATURNOVER;TCAP;MCAP"
-# HISTORY_DATA_URL = 'http://quotes.money.163.com/service/chddata.html?code={code}&start={start}&end={end}&fields={fields}'
-HISTORY_DATA_URL = 'https://q.stock.sohu.com/hisHq?code=cn_{code}&start={start}&end={end}&stat=1&order=D&period=d&callback=historySearchHandler&rt=jsonp&r={random}'
+DOWNLOAD_FIELDS = "TCLOSE;HIGH;LOW;TOPEN;LCLOSE;CHG;PCHG;TURNOVER;VOTURNOVER;VATURNOVER;TCAP;MCAP"
+HISTORY_DATA_URL = 'http://quotes.money.163.com/service/chddata.html?code={code}&start={start}&end={end}&fields={fields}'
 
 log_file = "log/download_history.log"
 logging.basicConfig(filename=log_file,
@@ -47,10 +44,10 @@ def download(stock_no, start=None, allow_cache=True):
     if not start:
         start = (datetime.datetime.now() -
                  datetime.timedelta(MAX_DAYS)).strftime("%Y%m%d")
-    params = {"code": stock_no,
+    params = {"code": '0' + stock_no if stock_no.startswith('6') else '1' + stock_no,
               "start": start,
               "end": (datetime.datetime.now()+datetime.timedelta(1)).strftime("%Y%m%d"),
-              "random": random.random()}
+              "fields": DOWNLOAD_FIELDS}
     source_url = HISTORY_DATA_URL.format(**params)
 
     resp = None
@@ -69,14 +66,20 @@ def download(stock_no, start=None, allow_cache=True):
                 continue
 
     # 对返回结果再加工下,方便后续导入db，生成训练数据等
-    end_idx = resp.text.index(',"code":')
-    ret = json.loads(resp.text[:end_idx].replace("historySearchHandler([","") + "}" )
-    # print(resp.text[:end_idx].replace("historySearchHandler([","") + "}" )
     new_lines = []
-    for items in ret.get("hq"):
-        items.insert(1,stock_no)
-        items[0] = items[0].replace("-","")
-        new_lines.append(";".join(items)) 
+    lines = resp.text.split('\n')
+    for lineNO, line in enumerate(lines):
+        if lineNO == 0:
+            continue
+        line = line.replace('None', '0')
+        fields = line.strip().split(',')
+        if len(fields) < 2:
+            break
+        new_fields = []
+        new_fields.append(fields[0].replace('-', ''))
+        new_fields.append(fields[1].replace("'", ''))
+        new_fields = new_fields + fields[3:]
+        new_lines.append(",".join(new_fields))
 
     with open(cache_file, 'w+') as f:
         f.write('\n'.join(new_lines))
@@ -88,7 +91,7 @@ def download_all(processes_idx=-1):
     for i, stock in enumerate(load_stocks()):
         if processes_idx < 0 or i % PROCESSES_NUM == processes_idx:
             # download(stock[0],stock[1])
-            download(stock[0],start="20150801")
+            download(stock[0])
 
 
 def download_failed(stocknos):
@@ -100,10 +103,10 @@ def download_failed(stocknos):
         download(stockno)
         time.sleep(0.1)  # 0.1s 间隔
 
-# 
+
 if __name__ == "__main__":
+    # download('000725','20010112')
     process_idx = -1 if len(sys.argv) != 2 else int(sys.argv[1])
     download_all(process_idx)
 
     # download("515790")
-    # download("600519", start="20150801", allow_cache=False)

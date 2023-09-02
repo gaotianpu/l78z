@@ -52,7 +52,7 @@ def download(url):
                 return None 
             else:
                 continue
-
+    print(resp.text)
     lines = resp.text.split(';\n')
     rows = []
     for idx, line in enumerate(lines):
@@ -97,7 +97,7 @@ def get_stock_prices(stocks):
         tmp = download(url)
         if tmp:
             li = li + tmp
-        # break 
+        break 
     return li 
 
 # python download_daily.py > data/today_price.txt & 

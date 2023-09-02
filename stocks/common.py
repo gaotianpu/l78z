@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+# 60:
+# http://www.sse.com.cn/assortment/stock/list/share/
+# 
+
 def load_stocks():
     with open("schema/stocks.txt", 'r') as f:
         l = []

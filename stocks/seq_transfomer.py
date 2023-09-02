@@ -5,13 +5,14 @@ import numpy as np
 import pandas as pd
 import json
 import sqlite3
+import math
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
-
+from sklearn.metrics import ndcg_score
 
 SEQUENCE_LENGTH = 20 #序列长度
 D_MODEL = 8  #维度
@@ -48,7 +49,8 @@ def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
         #learning_rate = np.sin(learning_rate)  #预热学习率结束后,学习率呈sin衰减
         learning_rate = learning_rate**1.0001 #预热学习率结束后,学习率呈指数衰减(近似模拟指数衰减)
     return learning_rate 
-              
+
+          
 
 # 1. 定义数据集
 class StockPairDataset(Dataset):
@@ -91,6 +93,50 @@ class StockPredictDataset(Dataset):
         data_json = json.loads(self.df.iloc[idx][4].replace("'",'"'))
         return pk_date_stock, torch.tensor(data_json["past_days"]) 
 
+class StockNDCGDataset(Dataset):
+    def __init__(self,datatype="validate"): 
+        dtmap = {"validate":1,"test":2}
+        self.conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+        sql = (
+            "select * from stock_for_transfomer where dataset_type=%d order by trade_date desc"
+            % (dtmap.get(datatype))
+        )
+        self.df = pd.read_sql(sql, self.conn)
+        
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        pk_date_stock = self.df.iloc[idx][0]
+        # date = self.df.iloc[idx][1]
+        # stock_no = self.df.iloc[idx][2]
+        # print(pk_date_stock,self.df.iloc[idx][4])
+        data_json = json.loads(self.df.iloc[idx][4].replace("'",'"'))
+        f_high_mean_rate = data_json.get("f_high_mean_rate")
+        return pk_date_stock, f_high_mean_rate, torch.tensor(data_json["past_days"]) 
+
+
+# class PositionalEncoding(nn.Module):
+#     def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 20):
+#         super().__init__()
+#         self.dropout = nn.Dropout(p=dropout)
+#         position = torch.arange(max_len).unsqueeze(1)
+#         div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+#         pe = torch.zeros(max_len, 1, d_model) #[seq_len, batch_size, embedding_dim]
+#         #pe = torch.zeros(1, max_len, d_model) #[batch_size, seq_len, embedding_dim]
+#         pe[:, 0, 0::2] = torch.sin(position * div_term)
+#         pe[:, 0, 1::2] = torch.cos(position * div_term)
+#         self.register_buffer('pe', pe)
+
+#     def forward(self, x: torch.Tensor) -> torch.Tensor:
+#         """
+#         from: https://pytorch.org/tutorials/beginner/transformer_tutorial.html
+#         Arguments:
+#             x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``
+#         """
+#         x = x + self.pe[:x.size(0)]
+#         return self.dropout(x)
+    
 # 2. pair形式的损失函数
 class LogExpLoss(nn.Module):
     """
@@ -114,14 +160,15 @@ class StockForecastModel(nn.Module):
         self.d_model = d_model
         
         nhead = 1 #1,2？
-        num_layers = 6 
+        num_layers = 9 # 6,
         dim_feedforward = d_model * num_layers #是否合理？
         
         self.position_embedding = nn.Embedding(self.seq_len, self.d_model)
         
+        # activation = "gelu"
         self.encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model, nhead=nhead, dim_feedforward=dim_feedforward, 
-            batch_first = True, norm_first = True
+            activation = "gelu", batch_first = True, norm_first = True
         )
         
         self.transformer_encoder = nn.TransformerEncoder(
@@ -174,6 +221,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
             # }, MODEL_FILE+"."+str(epoch))
             
     torch.save(model.state_dict(), MODEL_FILE+"."+str(epoch))
+    torch.save(model.state_dict(), MODEL_FILE)
     # torch.save({
     #         'epoch': EPOCH,
     #         'model_state_dict': model.state_dict(),
@@ -212,10 +260,17 @@ def training():
     criterion = LogExpLoss() #定义损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
+   
+    
     # train: 0.581011
     # 0.730487,0.722867,0.712951,0.708912,0.705015,0.701588 | 0.533442 | 0.501004 | 0.498912
-    # 0.887414, 
-    learning_rate = 0.0000005  
+    # layer6: 0.887414, 0.756749, 0.743146, 0.728794, 0.692854 , 0.691521 (0.690849)? , 0.690852
+    # layer9: 0.819140 | 0.741584, 0.720711 | 0.705574 , 0.700156, 0.697405, 0.695821| 0.689996 
+    # 0.689303？
+    # 0.729, 0.691027, 0.691651
+    # 0.834066, 0.703351, 0.701498, 0.699650, 0.698420, 0.697356, 0.692404, 0.691072,0.690485, 0.689984, 0.689526, 0.689427
+    # 0.689188, 0.689167
+    learning_rate = 0.0000001 #000005  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -235,6 +290,7 @@ def training():
         print(f"Epoch {t+1}\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer,t)
         test(test_dataloader, model, criterion)
+        estimate_ndcg_score(dataloader=None,model=model)
         # scheduler.step()
     
     train_data.conn.close()
@@ -256,12 +312,9 @@ def training():
 def predict():
     dataset = StockPredictDataset(predict_data_file="seq_predict.txt")
     # print(next(iter(dataset)))
-    dataloader = DataLoader(dataset, batch_size=128, shuffle=True) 
+    dataloader = DataLoader(dataset, batch_size=128) 
      
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-    # MODEL_FILE = "tmp.pth"
-    # torch.save(model.state_dict(), MODEL_FILE)
-    # return 
 
     if os.path.isfile(MODEL_FILE):
         model.load_state_dict(torch.load(MODEL_FILE)) 
@@ -271,11 +324,58 @@ def predict():
         for _batch, (pk_date_stock,data) in enumerate(dataloader):         
             output = model(data.to(device)) 
             # print(data.size(),data.shape)
-            ret = list(zip(pk_date_stock.tolist(),output.tolist()))
+            ret = list(zip(pk_date_stock.tolist(), output.tolist()))
             print("---",_batch,"----")
             for item in ret :
                 print(";".join( [str(x) for x in item])) 
             # break 
+
+def compute_ndcg(df):
+    ret = []
+    date_groups = df.groupby(0)
+    for date,data in date_groups:
+        # print(data)
+        data = data.sort_values(by=[2])
+        data[4] = [math.ceil((i+1)/3) for i in range(20)]
+        # print(data)
+        y_true = np.expand_dims(data[4].to_numpy(),axis=0)
+        y_predict = np.expand_dims(data[3].to_numpy(),axis=0)
+        ndcg = ndcg_score(y_true,y_predict)
+        ndcg_3 = ndcg_score(y_true,y_predict,k=3)
+        # print(date,ndcg)
+        ret.append([date,ndcg,ndcg_3])
+    return ret     
+
+def estimate_ndcg_score(dataloader=None,model=None):
+    if dataloader is None:
+        dataset = StockNDCGDataset()
+        dataloader = DataLoader(dataset, batch_size=128) 
+     
+    if model is None:
+        model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+        if os.path.isfile(MODEL_FILE):
+            model.load_state_dict(torch.load(MODEL_FILE)) 
+    
+    model.eval()
+    li_ = []
+    with torch.no_grad():
+        for _batch, (pk_date_stock,f_high_mean_rate,data) in enumerate(dataloader):         
+            output = model(data.to(device)) 
+            # print(data.size(),data.shape)
+            ret = list(zip(pk_date_stock.tolist(), f_high_mean_rate.tolist(), output.tolist()))
+            
+            # print("---",_batch,"----")
+            li_ = li_ + [(str(item[0])[:8], str(item[0])[8:], item[1], item[2]) for item in ret]
+            # break
+    
+    # df = pd.read_csv("ndcg.txt",sep=";", header=None)
+    df = pd.DataFrame(li_)
+    ret = compute_ndcg(df)
+    # for x in ret:
+    #     print(x)
+    print("ndcg:")
+    print(sum([x[1] for x in ret])/len(ret))
+    print(sum([x[2] for x in ret])/len(ret))
 
 def tmp():
     test_data = StockPairDataset("validate","f_high_mean_rate")
@@ -284,16 +384,30 @@ def tmp():
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     criterion = LogExpLoss() #定义损失函数
     
-    for i in range(24):
+    for i in range(10): #32
         fname =  MODEL_FILE + ".0."  + str(i) 
         print(fname)
         if os.path.isfile(fname):
             model.load_state_dict(torch.load(fname))
             test(test_dataloader, model, criterion) 
 
+
+# ndcg
+# 0: 0.8307093034747426,0.550872458373548 #random
+# 1: 0.8486111478400458,0.5979844966625786?
+# 2: 0.737837,
+# 4: 0.708878, 0.8374819185466269, 0.566666881965949
+# 5. 0.705350, 0.8385942260967199, 0.5700625762937057   
+# 6. 0.710611, 0.8389706826370555, 0.5720949170258646 
+# 7. 0.716058, 0.8464665123769485, 0.5976441339959607
+# 8. 0.708704, 0.8457563130697786, 0.5908392888671835
+# 9. 0.712539, 0.8452659465940661, 0.5892770887228126
+# 10. 0.712425,0.8454848934851745,0.5907898843408312
+# train_6.data stock:date1|date2
 # python seq_transfomer.py training
 # python seq_transfomer.py predict
-if __name__ == "__main__":
+if __name__ == "__main__": 
+    # estimate_ndcg_score()
     # tmp()
     op_type = sys.argv[1]
     assert op_type in ("training", "predict")

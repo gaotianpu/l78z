@@ -58,3 +58,6 @@
 
 ## 四、[ROS](./ros.md)
 
+通讯接口: USART，I2C，SPI，CAN，以太网通讯
+
+Free RTOS，RT thread，UCOS等实时操作系统
