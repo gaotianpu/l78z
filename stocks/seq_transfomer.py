@@ -152,7 +152,7 @@ class LogExpLoss(nn.Module):
 
 # 3. 定义模型
 class StockForecastModel(nn.Module):
-    def __init__(self, seq_len : int = 20, d_model: int = 8) -> None:
+    def __init__(self, seq_len : int = 20, d_model: int = 9) -> None:
         super().__init__()
         # https://pytorch.org/docs/stable/generated/torch.nn.TransformerEncoderLayer.html
         # https://pytorch.org/docs/stable/generated/torch.nn.TransformerEncoder.html
@@ -270,7 +270,7 @@ def training():
     # 0.729, 0.691027, 0.691651
     # 0.834066, 0.703351, 0.701498, 0.699650, 0.698420, 0.697356, 0.692404, 0.691072,0.690485, 0.689984, 0.689526, 0.689427
     # 0.689188, 0.689167
-    learning_rate = 0.0000001 #000005  #0.0000001  
+    learning_rate = 0.000005 #000005  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -337,13 +337,18 @@ def compute_ndcg(df):
         # print(data)
         data = data.sort_values(by=[2])
         data[4] = [math.ceil((i+1)/3) for i in range(20)]
+        
+        data = data.sort_values(by=[3],ascending=False)
+        mean_3 = data[2].head(3).mean()
+        mean_all = data[2].mean()
+        
         # print(data)
         y_true = np.expand_dims(data[4].to_numpy(),axis=0)
         y_predict = np.expand_dims(data[3].to_numpy(),axis=0)
         ndcg = ndcg_score(y_true,y_predict)
         ndcg_3 = ndcg_score(y_true,y_predict,k=3)
         # print(date,ndcg)
-        ret.append([date,ndcg,ndcg_3])
+        ret.append([date,ndcg,ndcg_3,mean_3,mean_all])
     return ret     
 
 def estimate_ndcg_score(dataloader=None,model=None):
@@ -376,6 +381,8 @@ def estimate_ndcg_score(dataloader=None,model=None):
     print("ndcg:")
     print(sum([x[1] for x in ret])/len(ret))
     print(sum([x[2] for x in ret])/len(ret))
+    print(sum([x[3] for x in ret])/len(ret))
+    print(sum([x[4] for x in ret])/len(ret))
 
 def tmp():
     test_data = StockPairDataset("validate","f_high_mean_rate")
@@ -403,6 +410,9 @@ def tmp():
 # 8. 0.708704, 0.8457563130697786, 0.5908392888671835
 # 9. 0.712539, 0.8452659465940661, 0.5892770887228126
 # 10. 0.712425,0.8454848934851745,0.5907898843408312
+# 
+# 0.712466, 0.8458764051472386, 0.5915879749128049
+# 0.711251, 0.84731303396431,0.5954946729416742
 # train_6.data stock:date1|date2
 # python seq_transfomer.py training
 # python seq_transfomer.py predict

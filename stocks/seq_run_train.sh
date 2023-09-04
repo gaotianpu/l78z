@@ -4,11 +4,19 @@ echo $cur_date
 
 start_time=$(date +%s)
 
+echo "download history"
 python download_history.py 0 &
 python download_history.py 1 &
 python download_history.py 2 &
 # 再次下载，可以把首次下载不成功部分找补回来
 python download_history.py -1 
+
+cat data/history/* > history.data
+awk -F '%' '{print $1$2}' history.data > history.data.new
+sqlite3 data/stocks.db <<EOF
+.separator ";"
+.import history.data.new stock_raw_daily_2
+EOF
 
 # echo "0. stocks_statistics"
 # python statistics.py > data/stocks_statistics.jsonl
@@ -66,7 +74,7 @@ python seq_make_pairs.py 0 f_high_mean_rate 0 > f_high_mean_rate/train.txt_0 &
 python seq_make_pairs.py 0 f_high_mean_rate 1 > f_high_mean_rate/train.txt_1 &
 python seq_make_pairs.py 0 f_high_mean_rate 2 > f_high_mean_rate/train.txt_2 &
 python seq_make_pairs.py 0 f_high_mean_rate 3 > f_high_mean_rate/train.txt_3 &
-python seq_make_pairs.py 0 f_high_mean_rate 4 > f_high_mean_rate/train.txt_4 
+python seq_make_pairs.py 0 f_high_mean_rate 4 > f_high_mean_rate/train.txt_4 &
 
 python seq_make_pairs.py 0 f_high_mean_rate 0 > f_high_mean_rate_s/train.txt_0 &
 python seq_make_pairs.py 0 f_high_mean_rate 1 > f_high_mean_rate_s/train.txt_1 &

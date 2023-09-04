@@ -28,6 +28,23 @@ CREATE TABLE stock_raw_daily(
 );
 CREATE INDEX idx_stock_raw_daily_2 on stock_raw_daily (stock_no, trade_date);
 
+/* DROP TABLE stock_raw_daily_2; */
+CREATE TABLE stock_raw_daily_2(
+    trade_date  INT    NOT NULL,
+    stock_no    CHAR(6)    NOT NULL,
+    OPEN_price  DECIMAL(10,2) NOT NULL,  
+    CLOSE_price DECIMAL(10,2) NOT NULL,  
+    change_amount   DECIMAL(10,2) NOT NULL,
+    change_rate     DECIMAL(10,2) NOT NULL,
+    LOW_price       DECIMAL(10,2) NOT NULL,
+    HIGH_price      DECIMAL(10,2) NOT NULL,
+    TURNOVER    UNSIGNED BIG INT NOT NULL,   /*成交量*/ 
+    TURNOVER_amount  FLOAT NOT NULL, /*成交金额*/
+    TURNOVER_rate   DECIMAL(10,2) NOT NULL, /*换手率*/
+    primary key (trade_date,stock_no)
+);
+CREATE INDEX idx_stock_raw_daily_2_2 on stock_raw_daily_2 (stock_no, trade_date);
+
 /*stock的统计信息，价格，成交量等均值和标准差，用于对数据的标准化处理*/
 CREATE TABLE stock_statistics_info(
    stock_no        CHAR(6) PRIMARY KEY     NOT NULL,

@@ -71,7 +71,7 @@ def make_pairs(rows,field="f_high_mean_rate"):
             
             # print(id_i,id_j) # 未过滤，190；
             # 0.01 ,过滤后129, 0.05 
-            if abs(rate_i-rate_j)>0.1: 
+            if abs(rate_i-rate_j)>0.15: 
                 # 在这里把pair的choose,reject排好序。
                 if rate_i>rate_j:
                     print(id_i,id_j) 
@@ -85,26 +85,26 @@ def make_pairs(rows,field="f_high_mean_rate"):
 
 def process_pairs(dataset_type,field="f_high_mean_rate",last_trade_date=20080808,process_idx=-1):
     # 根据同一交易日下，不同股票构造pair对
-    # trade_dates = load_trade_dates()
-    # for idx,date in enumerate(trade_dates):     
-    #     # if date > 20220415:
-    #     #     continue 
+    trade_dates = load_trade_dates()
+    for idx,date in enumerate(trade_dates):     
+        # if date > 20220415:
+        #     continue 
         
-    #     if (process_idx < 0 or data_type!=0) or idx % PROCESSES_NUM == process_idx: #predict耗时少，不用拆分
-    #         # print("a:",idx)
-    #         data_rows = load_idjson_by_date(date,dataset_type)
-    #         make_pairs(data_rows,field)
+        if (process_idx < 0 or data_type!=0) or idx % PROCESSES_NUM == process_idx: #predict耗时少，不用拆分
+            # print("a:",idx)
+            data_rows = load_idjson_by_date(date,dataset_type)
+            make_pairs(data_rows,field)
             
             # break #debug
     #增量的情况？新增一个交易日
         
     # 根据同一股票下，不同日期构造pair对
-    stocks = load_stocks()
-    for idx,stock in enumerate(stocks):
-        if (process_idx < 0 or data_type!=0) or idx % PROCESSES_NUM == process_idx: 
-            # print("b:",idx)
-            data_rows = load_idjson_by_stockno(stock[0],dataset_type)
-            make_pairs(data_rows,field)
+    # stocks = load_stocks()
+    # for idx,stock in enumerate(stocks):
+    #     if (process_idx < 0 or data_type!=0) or idx % PROCESSES_NUM == process_idx: 
+    #         # print("b:",idx)
+    #         data_rows = load_idjson_by_stockno(stock[0],dataset_type)
+    #         make_pairs(data_rows,field)
             
             # break #debug
             # 增量处理？
