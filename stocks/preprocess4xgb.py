@@ -157,7 +157,7 @@ def process_stock(stock_no, data_type="train"):
 
 
 def process_all_stocks(data_type="train", processes_idx=-1):
-    stocks = load_stocks()
+    stocks = load_stocks(conn)
     for i, stock in enumerate(stocks):
         if processes_idx < 0:
             process_stock(stock[0], data_type)

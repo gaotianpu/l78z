@@ -41,7 +41,7 @@ def compute_mean_std():
     print(json.dumps(ret))
 
 def tmp():
-    stocks = load_stocks()
+    stocks = load_stocks(conn)
     time_start = time.time()
     for i, stock in enumerate(stocks):
         stock_no = stock[0]

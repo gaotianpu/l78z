@@ -15,7 +15,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
 SEQUENCE_LENGTH = 20 #序列长度
-D_MODEL = 8  #维度
+D_MODEL = 9  #维度
 
 
 MODEL_FILE = "StockForecastModel.pth"
@@ -79,7 +79,7 @@ class StockPairDataset(Dataset):
             return b_t, a_t
 
 class StockPredictDataset(Dataset):
-    def __init__(self,predict_data_file="seq_predict.txt"): 
+    def __init__(self,predict_data_file="seq_predict.data"): 
         self.df = pd.read_csv(predict_data_file, sep=";", header=None)
 
     def __len__(self):
@@ -248,7 +248,7 @@ def test(dataloader, model, loss_fn):
     print(f"Test Avg loss: {test_loss:>8f} \n")
 
 def training():
-    # # 初始化
+    # 初始化
     train_data = StockPairDataset("train","f_high_mean_rate")
     train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
     # choose,reject = next(iter(train_dataloader))
@@ -260,17 +260,7 @@ def training():
     criterion = LogExpLoss() #定义损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-   
-    
-    # train: 0.581011
-    # 0.730487,0.722867,0.712951,0.708912,0.705015,0.701588 | 0.533442 | 0.501004 | 0.498912
-    # layer6: 0.887414, 0.756749, 0.743146, 0.728794, 0.692854 , 0.691521 (0.690849)? , 0.690852
-    # layer9: 0.819140 | 0.741584, 0.720711 | 0.705574 , 0.700156, 0.697405, 0.695821| 0.689996 
-    # 0.689303？
-    # 0.729, 0.691027, 0.691651
-    # 0.834066, 0.703351, 0.701498, 0.699650, 0.698420, 0.697356, 0.692404, 0.691072,0.690485, 0.689984, 0.689526, 0.689427
-    # 0.689188, 0.689167
-    learning_rate = 0.000005 #000005  #0.0000001  
+    learning_rate = 0.000005 #0.00001 #0.000005  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -298,19 +288,9 @@ def training():
     print("Done!")
 
 # 完全随机：loss=0.703475
-# 0.0000001 , 0.693031 -> 0.692935 -> 0.692743 , 5,10 epoch. norm_first = false
-
-# 0.0000001 , 0.690696 -> 690569, 5 epoch, norm_first = true
-# 0.000001, 0.690266 -> 0.689206     5 epoch, norm_first = true
-# 0.00001, 0.687986 -> 0.679608  5 epoch, norm_first = true
-# 0.0001, 0.653760 -> 0.609568   5 epoch, norm_first = true
-# 过了 0.0001, 0.606102 -> 0.608661 开始出现不收敛
-# 0.00001, 0.609200  -> 0.607962 不稳定了
-# 0.000001, 0.608151 -> 0.608142
-
 
 def predict():
-    dataset = StockPredictDataset(predict_data_file="seq_predict.txt")
+    dataset = StockPredictDataset(predict_data_file="seq_predict.data")
     # print(next(iter(dataset)))
     dataloader = DataLoader(dataset, batch_size=128) 
      
@@ -321,33 +301,32 @@ def predict():
     
     model.eval()
     with torch.no_grad():
+        all = []
         for _batch, (pk_date_stock,data) in enumerate(dataloader):         
-            output = model(data.to(device)) 
-            # print(data.size(),data.shape)
+            output = model(data.to(device))
             ret = list(zip(pk_date_stock.tolist(), output.tolist()))
-            print("---",_batch,"----")
-            for item in ret :
-                print(";".join( [str(x) for x in item])) 
+            all = all + ret 
             # break 
+        all.sort(key = lambda x:x[1],reverse=True)
+        for item in all :
+            print(";".join( [str(x) for x in item])) 
 
 def compute_ndcg(df):
     ret = []
     date_groups = df.groupby(0)
     for date,data in date_groups:
-        # print(data)
         data = data.sort_values(by=[2])
         data[4] = [math.ceil((i+1)/3) for i in range(20)]
         
         data = data.sort_values(by=[3],ascending=False)
         mean_3 = data[2].head(3).mean()
-        mean_all = data[2].mean()
+        mean_all = data[2].mean() 
         
-        # print(data)
         y_true = np.expand_dims(data[4].to_numpy(),axis=0)
         y_predict = np.expand_dims(data[3].to_numpy(),axis=0)
         ndcg = ndcg_score(y_true,y_predict)
         ndcg_3 = ndcg_score(y_true,y_predict,k=3)
-        # print(date,ndcg)
+        
         ret.append([date,ndcg,ndcg_3,mean_3,mean_all])
     return ret     
 
@@ -365,19 +344,15 @@ def estimate_ndcg_score(dataloader=None,model=None):
     li_ = []
     with torch.no_grad():
         for _batch, (pk_date_stock,f_high_mean_rate,data) in enumerate(dataloader):         
-            output = model(data.to(device)) 
-            # print(data.size(),data.shape)
-            ret = list(zip(pk_date_stock.tolist(), f_high_mean_rate.tolist(), output.tolist()))
-            
-            # print("---",_batch,"----")
+            output = model(data.to(device))
+            ret = list(zip(pk_date_stock.tolist(), f_high_mean_rate.tolist(), output.tolist())) 
             li_ = li_ + [(str(item[0])[:8], str(item[0])[8:], item[1], item[2]) for item in ret]
             # break
     
     # df = pd.read_csv("ndcg.txt",sep=";", header=None)
     df = pd.DataFrame(li_)
-    ret = compute_ndcg(df)
-    # for x in ret:
-    #     print(x)
+    ret = compute_ndcg(df) 
+    
     print("ndcg:")
     print(sum([x[1] for x in ret])/len(ret))
     print(sum([x[2] for x in ret])/len(ret))
@@ -399,26 +374,12 @@ def tmp():
             test(test_dataloader, model, criterion) 
 
 
-# ndcg
-# 0: 0.8307093034747426,0.550872458373548 #random
-# 1: 0.8486111478400458,0.5979844966625786?
-# 2: 0.737837,
-# 4: 0.708878, 0.8374819185466269, 0.566666881965949
-# 5. 0.705350, 0.8385942260967199, 0.5700625762937057   
-# 6. 0.710611, 0.8389706826370555, 0.5720949170258646 
-# 7. 0.716058, 0.8464665123769485, 0.5976441339959607
-# 8. 0.708704, 0.8457563130697786, 0.5908392888671835
-# 9. 0.712539, 0.8452659465940661, 0.5892770887228126
-# 10. 0.712425,0.8454848934851745,0.5907898843408312
-# 
-# 0.712466, 0.8458764051472386, 0.5915879749128049
-# 0.711251, 0.84731303396431,0.5954946729416742
-# train_6.data stock:date1|date2
 # python seq_transfomer.py training
 # python seq_transfomer.py predict
 if __name__ == "__main__": 
     # estimate_ndcg_score()
-    # tmp()
+    # tmp() 
+    
     op_type = sys.argv[1]
     assert op_type in ("training", "predict")
     if op_type == "predict":

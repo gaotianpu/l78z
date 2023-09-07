@@ -16,9 +16,8 @@ PAST_DAYS = 20 #使用过去几天的数据做特征
 
 MAX_ROWS_COUNT = 3000 #从数据库中加载多少数据, 差不多8年的交易日数。
 
+# select max(trade_date) from stock_for_transfomer;
 MIN_TRADE_DATE = 0
-
-max_high,min_high,max_low,min_low = 0.818,-0.6,0.668,-0.6
 
 conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
@@ -167,7 +166,7 @@ class PreProcessor:
 
   
 def process_all_stocks(data_type="train", processes_idx=-1):
-    stocks = load_stocks()
+    stocks = load_stocks(conn)
     time_start = time.time()
     for i, stock in enumerate(stocks):
         p = PreProcessor(conn,stock[0],FUTURE_DAYS,PAST_DAYS,data_type,MIN_TRADE_DATE)

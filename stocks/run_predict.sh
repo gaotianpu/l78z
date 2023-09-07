@@ -6,15 +6,31 @@ echo $cur_date
 
 # 数据下载  
 rm -f data/history/* 
-rm -f data/history_all.csv log/download_history.log
+rm -f data/history_all.csv 
 
-python download_daily.py > data/today_price.txt && cp data/today_price.txt data/today_price_${cur_date}.txt & 
-
+echo "1. download history"
 python download_history.py 0 &
 python download_history.py 1 &
-python download_history.py 2 
+python download_history.py 2 &
 # 再次下载，可以把首次下载不成功部分找补回来
 python download_history.py -1 
+
+mv log/download_history.log  log/download_history.log.$cur_date
+
+cat data/history/* > history.data
+awk -F '%' '{print $1$2}' history.data > history.data.new
+sqlite3 data/stocks.db <<EOF
+.separator ";"
+.import history.data.new stock_raw_daily_2
+EOF
+
+# python download_daily.py > data/today_price.txt && cp data/today_price.txt data/today_price_${cur_date}.txt & 
+
+# python download_history.py 0 &
+# python download_history.py 1 &
+# python download_history.py 2 
+# # 再次下载，可以把首次下载不成功部分找补回来
+# python download_history.py -1 
 
 # 有换行符的情况 
 # find data/history/ -name '*.csv' | xargs sed 'a\' > data/history_all.csv 

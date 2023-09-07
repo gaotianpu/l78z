@@ -33,7 +33,7 @@ EOF
 # python seq_preprocess.py train 2 > data/seq_train_2.txt &
 # python seq_preprocess.py train 3 > data/seq_train_3.txt &
 # python seq_preprocess.py train 4 > data/seq_train_4.txt 
-# python seq_preprocess.py predict > data/seq_predict.txt #
+# python seq_preprocess.py predict > data/seq_predict.data #
 # #find data/ -name 'seq_train_*.txt' | xargs sed 'a\' | grep -v nan | sort -nr > data/seq_all_data_new.csv
 
 # end_time=$(date +%s)
@@ -66,27 +66,26 @@ start_time=$end_time
 # start_time=$end_time 
 
 # echo "4. make pairs"
-python seq_make_pairs.py 1 f_high_mean_rate > f_high_mean_rate/validate.txt &
-python seq_make_pairs.py 2 f_high_mean_rate > f_high_mean_rate/test.txt &
+python seq_make_pairs.py 1 date > f_high_mean_rate/validate.date.txt &
+python seq_make_pairs.py 2 date > f_high_mean_rate/test.date.txt &
+python seq_make_pairs.py 1 stock > f_high_mean_rate/validate.stock.txt &
+python seq_make_pairs.py 2 stock > f_high_mean_rate/test.stock.txt &
 # python seq_make_pairs.py 0 f_high_mean_rate > f_high_mean_rate/train.txt 
 
-python seq_make_pairs.py 0 f_high_mean_rate 0 > f_high_mean_rate/train.txt_0 &
-python seq_make_pairs.py 0 f_high_mean_rate 1 > f_high_mean_rate/train.txt_1 &
-python seq_make_pairs.py 0 f_high_mean_rate 2 > f_high_mean_rate/train.txt_2 &
-python seq_make_pairs.py 0 f_high_mean_rate 3 > f_high_mean_rate/train.txt_3 &
-python seq_make_pairs.py 0 f_high_mean_rate 4 > f_high_mean_rate/train.txt_4 &
+# date pair
+python seq_make_pairs.py 0 date 0 > f_high_mean_rate/train.date.txt_0 &
+python seq_make_pairs.py 0 date 1 > f_high_mean_rate/train.date.txt_1 &
+python seq_make_pairs.py 0 date 2 > f_high_mean_rate/train.date.txt_2 &
+python seq_make_pairs.py 0 date 3 > f_high_mean_rate/train.date.txt_3 &
+python seq_make_pairs.py 0 date 4 > f_high_mean_rate/train.date.txt_4 &
 
-python seq_make_pairs.py 0 f_high_mean_rate 0 > f_high_mean_rate_s/train.txt_0 &
-python seq_make_pairs.py 0 f_high_mean_rate 1 > f_high_mean_rate_s/train.txt_1 &
-python seq_make_pairs.py 0 f_high_mean_rate 2 > f_high_mean_rate_s/train.txt_2 &
-python seq_make_pairs.py 0 f_high_mean_rate 3 > f_high_mean_rate_s/train.txt_3 &
-python seq_make_pairs.py 0 f_high_mean_rate 4 > f_high_mean_rate_s/train.txt_4 
+# stock pair
+python seq_make_pairs.py 0 stock 0 > f_high_mean_rate/train.stock.txt_0 &
+python seq_make_pairs.py 0 stock 1 > f_high_mean_rate/train.stock.txt_1 &
+python seq_make_pairs.py 0 stock 2 > f_high_mean_rate/train.stock.txt_2 &
+python seq_make_pairs.py 0 stock 3 > f_high_mean_rate/train.stock.txt_3 &
+python seq_make_pairs.py 0 stock 4 > f_high_mean_rate/train.stock.txt_4 &
 
-python seq_make_pairs.py 0 f_high_mean_rate 0 > f_high_mean_rate_1/train.txt_0 &
-python seq_make_pairs.py 0 f_high_mean_rate 1 > f_high_mean_rate_1/train.txt_1 &
-python seq_make_pairs.py 0 f_high_mean_rate 2 > f_high_mean_rate_1/train.txt_2 &
-python seq_make_pairs.py 0 f_high_mean_rate 3 > f_high_mean_rate_1/train.txt_3 &
-python seq_make_pairs.py 0 f_high_mean_rate 4 > f_high_mean_rate_1/train.txt_4 
 
 # end_time=$(date +%s)
 # cost_time=$[ $end_time-$start_time ]
