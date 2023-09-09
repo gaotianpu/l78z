@@ -27,18 +27,52 @@ def get_update_sql():
         usql = ("update stock_raw_daily_2 set TURNOVER_rate=%s where stock_no='%s' and TURNOVER_rate='-';" %(row["TURNOVER_rate"],row["stock_no"]))
         print(usql)
 
-def compute_mean_std():
+def compute_mean_std(stock_no=None):
+    '''抽样计算整体的均值和标准差'''
     # order by RANDOM()
-    fields = "OPEN_price,CLOSE_price,change_amount,change_rate,LOW_price,HIGH_price,TURNOVER,TURNOVER_amount,TURNOVER_rate".split(",")
+    fields = "OPEN_price,CLOSE_price,change_amount,change_rate,LOW_price,HIGH_price,TURNOVER,TURNOVER_amount,TURNOVER_rate,low_rate".split(",")
+    
+    ret = {}
     sql = "select * from stock_raw_daily_2  order by RANDOM() limit 350000;"
+    if stock_no:
+        ret["stock_no"] = stock_no
+        sql = "select * from stock_raw_daily_2 where stock_no='%s' order by trade_date desc"%(stock_no)
+    
     df = pd.read_sql(sql, conn)
+    
+    if stock_no=="002913":
+        df['change_rate'] = df['change_rate'].str.replace("%","")
+        df['change_rate'] = pd.to_numeric(df['change_rate']) #.astype('double')
+        df['TURNOVER_rate'] = df['TURNOVER_rate'].str.replace("%","")
+        df['TURNOVER_rate'] = pd.to_numeric(df['TURNOVER_rate'])
+    
+    df['last_close_price'] = df['CLOSE_price'] - df['change_amount'] 
+    df['low_rate'] = c_round((df['LOW_price'] - df['last_close_price']) / df['last_close_price']) 
+    
+    # print(df.head())
+    # print(df['low_rate'].head())
     df_describe = df.describe() 
     # print(df_describe) 
-    ret = {}
+    
     for field in fields:
         ret[field+"_mean"] = c_round(df_describe[field]["mean"])
         ret[field+"_std"] = c_round(df_describe[field]["std"])
+        # 中位数，75%，25%？
+    
     print(json.dumps(ret))
+        
+
+def compute_per_stocks_mean_std():
+    '''计算每个stocks，价格，成交量，成交金额等字段的均值、标准差'''
+    stocks = load_stocks(conn)
+    time_start = time.time()
+    for i, stock in enumerate(stocks):
+        stock_no = stock[0]
+        try:
+            compute_mean_std(stock_no)
+        except:
+            print("error:",stock_no)
+        # break
 
 def tmp():
     stocks = load_stocks(conn)
@@ -73,5 +107,10 @@ def tmp():
 # python statistics.py > stocks_statistics.jsonl
     
 if __name__ == "__main__":
-    compute_mean_std()
+    # python statistics.py > per_stocks_mean_std.jsonl
+    compute_per_stocks_mean_std()
+    
+    # compute_mean_std("002913") # 601998,  002913
+    
+    # compute_mean_std()
     # get_update_sql()

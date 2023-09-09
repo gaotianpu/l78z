@@ -7,6 +7,9 @@ CREATE TABLE stock_basic_info(
    is_drop        INT2  DEFAULT 0
 );
 
+/*
+update stock_basic_info set is_drop=1 where stock_no in ('000502','000613')
+*/
 
 /* DROP TABLE stock_raw_daily; */
 CREATE TABLE stock_raw_daily(
@@ -45,6 +48,10 @@ CREATE TABLE stock_raw_daily_2(
 );
 CREATE INDEX idx_stock_raw_daily_2_2 on stock_raw_daily_2 (stock_no, trade_date);
 
+/*
+update stock_raw_daily_2 set change_rate=replace(change_rate,'%',''),TURNOVER_rate=replace(TURNOVER_rate,'%','') where stock_no='002913' and trade_date='20171201'
+*/
+
 /*stock的统计信息，价格，成交量等均值和标准差，用于对数据的标准化处理*/
 CREATE TABLE stock_statistics_info(
    stock_no        CHAR(6) PRIMARY KEY     NOT NULL,
@@ -75,6 +82,7 @@ CREATE TABLE stock_for_transfomer(
 );
 CREATE INDEX idx_stock_for_transfomer_2 on stock_for_transfomer (stock_no, trade_date);
 CREATE INDEX idx_stock_for_transfomer_3 on stock_for_transfomer (trade_date, stock_no);
+CREATE INDEX idx_stock_for_transfomer_4 on stock_for_transfomer (dataset_type);
 
 
 -- CREATE TABLE stock_for_transfomer_test(

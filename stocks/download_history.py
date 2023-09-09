@@ -16,7 +16,7 @@ from multiprocessing import Pool
 from itertools import islice
 import sqlite3  
 
-from common import load_stocks
+from common import load_stocks,get_max_trade_date
 
 
 MAX_DAYS = 7  #最多下载多少天的交易数据
@@ -36,14 +36,7 @@ logging.basicConfig(filename=log_file,
                     format='%(levelname)s:%(asctime)s:%(lineno)d:%(funcName)s:%(message)s')
 
 conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
-def get_max_trade_date(conn):
-        trade_date = 0
-        c = conn.cursor()
-        cursor = c.execute("select max(trade_date) from stock_raw_daily_2;")
-        for row in cursor:
-            trade_date = row[0]
-        cursor.close()
-        return trade_date
+
     
 def get_cache_file(stock_no):
     return 'data/history/%s.csv' % (stock_no)
@@ -105,10 +98,12 @@ def download_all(processes_idx=-1):
     # 多线程下载？ 线程太多封禁？
     for i, stock in enumerate(load_stocks(conn)):
         if processes_idx < 0 or i % PROCESSES_NUM == processes_idx:
-            # download(stock[0],stock[1])
-            last_date = get_max_trade_date(conn)
-            dt = datetime.datetime.strptime(str(last_date), "%Y%m%d")
-            dt = (dt+datetime.timedelta(days=1)).strftime("%Y%m%d")
+            dt = stock[1] #上市日？ 
+            last_date = get_max_trade_date(conn,stock[0])
+            if last_date: 
+                dt = datetime.datetime.strptime(str(last_date), "%Y%m%d")
+                dt = (dt+datetime.timedelta(days=1)).strftime("%Y%m%d")
+            
             download(stock[0],start=dt)
 
 
@@ -124,9 +119,7 @@ def download_failed(stocknos):
 # 
 if __name__ == "__main__":
     process_idx = -1 if len(sys.argv) != 2 else int(sys.argv[1])
-    download_all(process_idx)
-    
-    # print((datetime.datetime.now()+datetime.timedelta(-1)).strftime("%Y%m%d"))
+    download_all(process_idx) 
 
     # download("515790")
-    # download("600519", start="20150801", allow_cache=False)
+    # download("002913", start="20150801", allow_cache=False)

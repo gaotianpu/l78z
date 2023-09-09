@@ -6,6 +6,7 @@ from datetime import datetime
 import time
 import sqlite3  
 import json
+import logging
 import pandas as pd
 from common import load_stocks
 
@@ -24,6 +25,13 @@ conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 mean_std = {"OPEN_price_mean": 17.9043, "OPEN_price_std": 31.569, "CLOSE_price_mean": 17.9258, "CLOSE_price_std": 31.5798, "change_amount_mean": 0.0076, "change_amount_std": 1.1697, "change_rate_mean": 0.0529, "change_rate_std": 3.4192, "LOW_price_mean": 17.5473, "LOW_price_std": 30.9598, "HIGH_price_mean": 18.3079, "HIGH_price_std": 32.2353, "TURNOVER_mean": 157735.6861, "TURNOVER_std": 333532.135, "TURNOVER_amount_mean": 19274.754, "TURNOVER_amount_std": 42239.1776, "TURNOVER_rate_mean": 2.7719, "TURNOVER_rate_std": 4.2903}
 
 FIELDS = "OPEN_price,CLOSE_price,change_amount,change_rate,LOW_price,HIGH_price,TURNOVER,TURNOVER_amount,TURNOVER_rate".split(",")
+
+
+log_file = "log/seq_preprocess.log"
+logging.basicConfig(filename=log_file,
+                    level=logging.INFO,
+                    format='%(levelname)s:%(asctime)s:%(lineno)d:%(funcName)s:%(message)s')
+
 
 def zscore(x,mean,std):
     return round((x-mean)/(std+0.00000001),4)
@@ -120,8 +128,11 @@ class PreProcessor:
             
         # 额外;分割的datestock_uid,current_date,stock_no,dataset_type, 便于后续数据集拆分、pair构造等
         datestock_uid = str(ret["current_date"]) + ret['stock_no'] 
-        print("%s;%s;%s;0;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],
-                                json.dumps(ret))) #
+        if len(ret["past_days"]) == self.past_days:
+            print("%s;%s;%s;0;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],
+                                    json.dumps(ret))) #
+        # else :
+        #     print("error:%s"%(datestock_uid))
 
     def process_train_data(self):
         # statistics = self.get_statistics() 
@@ -131,29 +142,28 @@ class PreProcessor:
         
         end_idx = len(df) - self.past_days + 1
         for idx in range(self.future_days, end_idx):
-            self.process_row(df, idx)
+            try:
+                self.process_row(df, idx)
+            except:
+                logging.warning("process_train_data process_row error stock_no=%s,idx=%s" %(self.stock_no,idx) )
+     
             # break #debug
             
         df = None  # 释放内存？
         del df  
-    
-    def get_max_trade_date(self):
-        trade_date = 0
-        c = self.conn.cursor()
-        cursor = c.execute("select max(trade_date) from stock_raw_daily_2;")
-        for row in cursor:
-            trade_date = row[0]
-        cursor.close()
-        return trade_date
-    
+        
     def process_predict_data(self):
         # statistics = self.get_statistics() 
          
         # max_trade_date = self.get_max_trade_date() #
         sql = "select * from stock_raw_daily_2 where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,self.past_days+self.future_days)
-        df = pd.read_sql(sql, conn)
+        df = pd.read_sql(sql, conn) 
         
-        self.process_row(df, 0)
+        try:
+            self.process_row(df, 0)
+        except:
+            logging.warning("process_predict_data process_row error stock_no=%s" %(self.stock_no) )
+     
         
         df = None  # 释放内存？
         del df  

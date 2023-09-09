@@ -4,16 +4,13 @@ import json
 import random
 import pandas as pd
 import sqlite3
-from common import load_stocks
+from common import load_stocks,load_trade_dates
 
 PROCESSES_NUM = 5
 
 conn = sqlite3.connect("file:data/stocks.db", uri=True)
             
-def load_trade_dates():
-    sql = "select distinct trade_date from stock_for_transfomer"
-    df = pd.read_sql(sql, conn)
-    return df['trade_date'].sort_values(ascending=False).tolist()
+
 
 def load_ids_by_date(date,dateset_type=0):
     sql = "select pk_date_stock from stock_for_transfomer where trade_date='%s' and dataset_type='%d'" %(date,dateset_type)
@@ -96,7 +93,7 @@ def make_pairs(rows):
 def process_pairs(dataset_type,pair_type="date",field="f_high_mean_rate",last_trade_date=20080808,process_idx=-1):
     if pair_type == "date":
         # 根据同一交易日下，不同股票构造pair对
-        trade_dates = load_trade_dates()
+        trade_dates = load_trade_dates(conn)
         for idx,date in enumerate(trade_dates):     
             # if date > 20220415:
             #     continue 
@@ -137,7 +134,7 @@ if __name__ == "__main__":
     # ret = load_idjson_by_date(20230801)
     # print(ret)
     
-    # x = load_trade_dates()
+    # x = load_trade_dates(conn)
     # print(x)
     
     # date = 20230825

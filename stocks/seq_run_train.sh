@@ -19,6 +19,7 @@ sqlite3 data/stocks.db <<EOF
 EOF
 
 # echo "0. stocks_statistics"
+# python statistics.py > per_stocks_mean_std.jsonl
 # python statistics.py > data/stocks_statistics.jsonl
 # sqlite3 data/stocks.db <<EOF
 # .separator ";"
