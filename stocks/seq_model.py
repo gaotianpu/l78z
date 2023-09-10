@@ -162,6 +162,6 @@ class StockForecastModel(nn.Module):
 #         return self.dropout(x)
 
 if __name__ == "__main__":
-    dataset = StockPointDataset(datatype="train")
+    dataset = StockPointDataset(datatype="validate")
     d = next(iter(dataset))
     print(d)

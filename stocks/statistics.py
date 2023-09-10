@@ -7,7 +7,7 @@ import time
 import sqlite3  
 import pandas as pd
 import json
-from common import load_stocks
+from common import load_stocks,get_max_trade_date
 
 MAX_ROWS_COUNT = 2000 #从数据库中加载多少数据, 差不多8年的交易日数。
 
@@ -40,11 +40,11 @@ def compute_mean_std(stock_no=None):
     
     df = pd.read_sql(sql, conn)
     
-    if stock_no=="002913":
-        df['change_rate'] = df['change_rate'].str.replace("%","")
-        df['change_rate'] = pd.to_numeric(df['change_rate']) #.astype('double')
-        df['TURNOVER_rate'] = df['TURNOVER_rate'].str.replace("%","")
-        df['TURNOVER_rate'] = pd.to_numeric(df['TURNOVER_rate'])
+    # if stock_no=="002913":
+    #     df['change_rate'] = df['change_rate'].str.replace("%","")
+    #     df['change_rate'] = pd.to_numeric(df['change_rate']) #.astype('double')
+    #     df['TURNOVER_rate'] = df['TURNOVER_rate'].str.replace("%","")
+    #     df['TURNOVER_rate'] = pd.to_numeric(df['TURNOVER_rate'])
     
     df['last_close_price'] = df['CLOSE_price'] - df['change_amount'] 
     df['low_rate'] = c_round((df['LOW_price'] - df['last_close_price']) / df['last_close_price']) 
@@ -59,7 +59,11 @@ def compute_mean_std(stock_no=None):
         ret[field+"_std"] = c_round(df_describe[field]["std"])
         # 中位数，75%，25%？
     
-    print(json.dumps(ret))
+    if stock_no:
+        max_trade_date = get_max_trade_date(conn,stock_no)
+        print("%s;%s;%s" %(stock_no, max_trade_date,json.dumps(ret)))
+    else:
+        print(json.dumps(ret))
         
 
 def compute_per_stocks_mean_std():

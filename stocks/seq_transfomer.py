@@ -163,8 +163,7 @@ def predict():
     # print(next(iter(dataset)))
     dataloader = DataLoader(dataset, batch_size=128) 
      
-    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-
+    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device) 
     if os.path.isfile(MODEL_FILE):
         model.load_state_dict(torch.load(MODEL_FILE)) 
     

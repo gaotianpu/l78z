@@ -46,17 +46,16 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         optimizer.step()
         optimizer.zero_grad()  
         
+        total_loss = total_loss + loss.item()
+        
         if batch % 64 == 0:
-            avg_loss = total_loss / 64 #(batch + 1) 
+            avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(output)
             print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d}]") 
-            total_loss = loss.item()
-        else:
-            total_loss = total_loss + loss.item()
             
         
         if batch % 1024 == 0:
-            torch.save(model.state_dict(), MODEL_FILE+"."+str(epoch) + "." + str(int(batch / 512)) )
+            torch.save(model.state_dict(), MODEL_FILE+"."+str(epoch) + "." + str(int(batch / 1024)) )
             # torch.save({
             # 'epoch': epoch,
             # 'model_state_dict': model.state_dict(),
@@ -103,7 +102,7 @@ def training():
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.0000001 #0.00001 #0.000005  #0.0000001  
+    learning_rate = 0.000005 #0.00001 #0.000005  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
