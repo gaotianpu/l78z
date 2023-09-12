@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import numpy as np
+import pandas as pd 
 import itertools
 
 li =      [1,3,2,4]
@@ -86,3 +87,13 @@ print(get_index(li,li_name))
 
 # arr = np.repeat(arr,3,1).T # .reshape(3, 3).T
 # print(arr)
+
+
+
+
+data_type = "train"
+df = pd.read_csv("data/rnn_%s.txt"%(data_type),
+        names="date,stock,high,low,high_label,low_label,f7,f8,f9,f10,f11,f12,f13,f14,f15,f16".split(","),
+        header=None, dtype={'stock':str,'high_label':int}, sep=";")
+
+df.describe()

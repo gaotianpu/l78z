@@ -7,9 +7,19 @@ import time
 import sqlite3  
 import pandas as pd
 import json
-from common import load_stocks,get_max_trade_date
+from common import load_stocks,get_max_trade_date,load_trade_dates
 
 MAX_ROWS_COUNT = 2000 #从数据库中加载多少数据, 差不多8年的交易日数。
+
+forecast_fields = 'f_high_mean_rate,f_high_rate,f_low_mean_rate,f_low_rate'.split(",")
+static_fields = 'mean,std,min,25%,50%,75%,max'.split(",")
+
+def get_all_fields():
+    fields = ['key','count']
+    for f1 in forecast_fields:
+        for f2 in static_fields:
+            fields.append("%s_%s"%(f1,f2))
+    return fields
 
 conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
@@ -55,8 +65,9 @@ def compute_mean_std(stock_no=None):
     # print(df_describe) 
     
     for field in fields:
-        ret[field+"_mean"] = c_round(df_describe[field]["mean"])
-        ret[field+"_std"] = c_round(df_describe[field]["std"])
+        for f2 in static_fields:
+            ret["%s_%s" %(field,f2)] = c_round(df_describe[field][f2])
+        #ret[field+"_std"] = c_round(df_describe[field]["std"])
         # 中位数，75%，25%？
     
     if stock_no:
@@ -108,11 +119,61 @@ def tmp():
         
         print("%s;%s;%s"%(stock_no,str(last_trade_date),json.dumps(ret))) 
 
-# python statistics.py > stocks_statistics.jsonl
+
+def static_seq(bykey,sql):
+    df = pd.read_sql(sql, conn)
     
+    li_ = []
+    for idx,row in df.iterrows():
+        data_json = json.loads(row['data_json'])
+        ret = [data_json.get(field) for field in forecast_fields]
+        # print(ret) 
+        li_.append(ret)
+    
+    df_v = pd.DataFrame(li_,columns=forecast_fields)
+    df_v_d = df_v.describe() 
+    # print(df_v_d)
+    
+    static_li = [bykey,int(df_v_d['f_high_mean_rate']["count"])]
+    for f1 in forecast_fields:
+        for f2 in static_fields:
+            static_li.append(round(df_v_d[f1][f2],4))
+            
+    # print(";".join( [str(x) for x in static_li])) 
+    
+    return static_li
+
+def static_forecast_val():
+    # 按天/股票统计最大值，最小值的均值？
+    t_li = []
+    dates = load_trade_dates(conn)
+    for trade_date in dates:
+        sql = "select * from stock_for_transfomer where trade_date=%s" % (trade_date) 
+        t_li.append(static_seq(trade_date,sql)) 
+    df_v = pd.DataFrame(t_li,columns=get_all_fields())
+    df_v.to_csv("data/static_seq_dates.txt",sep=";",index=False)  
+    
+    # stock_no='002913' 
+    
+    s_li = []
+    stocks = load_stocks(conn)
+    for stock in stocks:
+        stock_no = stock[0]
+        sql = "select * from stock_for_transfomer where stock_no='%s'" % (stock_no) 
+        try:
+            s_li.append(static_seq(stock_no,sql))  
+        except:
+            print("error:", stock_no)
+    df_v = pd.DataFrame(s_li,columns=get_all_fields())
+    df_v.to_csv("data/static_seq_stocks.txt",sep=";",index=False)
+
+# python statistics.py > stocks_statistics.jsonl
 if __name__ == "__main__":
     # python statistics.py > per_stocks_mean_std.jsonl
-    compute_per_stocks_mean_std()
+    # compute_per_stocks_mean_std()
+    
+    static_forecast_val()
+    # print(get_all_fields())
     
     # compute_mean_std("002913") # 601998,  002913
     

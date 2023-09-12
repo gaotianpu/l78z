@@ -176,8 +176,10 @@ def predict():
             all = all + ret 
             # break 
         all.sort(key = lambda x:x[1],reverse=True)
-        for item in all :
-            print(";".join( [str(x) for x in item])) 
+        for i,item in enumerate(all) :
+            litem = list(item)
+            litem.append(i+1)
+            print(";".join( [str(x) for x in litem])) 
 
 def compute_ndcg(df):
     ret = []
@@ -198,9 +200,10 @@ def compute_ndcg(df):
         ret.append([date,ndcg,ndcg_3,mean_3,mean_all])
     return ret     
 
-def estimate_ndcg_score(dataloader=None,model=None):
+def estimate_ndcg_score(dataloader=None,model=None,field="f_high_mean_rate"):
+    '''评估时，field只应该是f_high_mean_rate'''
     if dataloader is None:
-        dataset = StockPointDataset()
+        dataset = StockPointDataset(datatype="validate",trade_date=None, field=field)
         dataloader = DataLoader(dataset, batch_size=128) 
      
     if model is None:
@@ -211,9 +214,9 @@ def estimate_ndcg_score(dataloader=None,model=None):
     model.eval()
     li_ = []
     with torch.no_grad():
-        for _batch, (pk_date_stock,f_high_mean_rate,data) in enumerate(dataloader):         
+        for _batch, (pk_date_stock,true_scores,data) in enumerate(dataloader):         
             output = model(data.to(device))
-            ret = list(zip(pk_date_stock.tolist(), f_high_mean_rate.tolist(), output.tolist())) 
+            ret = list(zip(pk_date_stock.tolist(), true_scores.tolist(), output.tolist())) 
             li_ = li_ + [(str(item[0])[:8], str(item[0])[8:], item[1], item[2]) for item in ret]
             # break
     
@@ -226,6 +229,7 @@ def estimate_ndcg_score(dataloader=None,model=None):
     print(sum([x[2] for x in ret])/len(ret))
     print(sum([x[3] for x in ret])/len(ret))
     print(sum([x[4] for x in ret])/len(ret))
+    print("\n")
 
 def evaluate_model_checkpoints():
     test_data = StockPairDataset("validate","f_high_mean_rate")
@@ -240,8 +244,9 @@ def evaluate_model_checkpoints():
         if os.path.isfile(fname):
             model.load_state_dict(torch.load(fname))
             test(test_dataloader, model, criterion) 
+            
 
-def gen_date_predict_scores():
+def gen_date_predict_scores(model_version = "predict_regress_high"):
     COMPARE_THRESHOLD = 0.02
     TOP_N = 10
     
@@ -255,7 +260,7 @@ def gen_date_predict_scores():
     for date in trade_dates:
         # print(date) 
         df = None
-        data_file = "data/predict_results/%s.csv"%(date)
+        data_file = "data/%s/%s.csv"%(model_version,date) #predict_results,predict_regress_high
         if os.path.exists(data_file):
             df = pd.read_csv(data_file, sep=",", header=0, index_col=0)
             # print(df)
@@ -266,14 +271,14 @@ def gen_date_predict_scores():
                 # print(next(iter(dataloader)))
                 
                 all_ = []
-                for _batch, (pk_date_stock,f_high_mean_rate,data) in enumerate(dataloader):         
+                for _batch, (pk_date_stock,true_scores,data) in enumerate(dataloader):         
                     output = model(data.to(device))
-                    ret = list(zip(pk_date_stock.tolist(), f_high_mean_rate.tolist(), output.tolist()))
+                    ret = list(zip(pk_date_stock.tolist(), true_scores.tolist(), output.tolist()))
                     all_ = all_ + ret
                 
                 df = pd.DataFrame(all_,columns=['pk_date_stock','true_score','predict_score'])
                 df = df.sort_values(by=["predict_score"],ascending=False)
-                df.to_csv("data/predict_results/%s.csv"%(date))
+                df.to_csv(data_file)
         
         li = []
         li.append(date) 
@@ -317,7 +322,10 @@ def gen_date_predict_scores():
 if __name__ == "__main__": 
     # estimate_ndcg_score()
     # evaluate_model_checkpoints() 
-    # gen_date_predict_scores()
+    
+    # python seq_transfomer.py > predict_regress_high.txt &
+    # predict_results,predict_regress_high
+    # gen_date_predict_scores("predict_regress_high")
     
     op_type = sys.argv[1]
     assert op_type in ("training", "predict")

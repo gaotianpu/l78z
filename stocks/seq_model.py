@@ -18,7 +18,7 @@ from sklearn.metrics import ndcg_score
 # 1. 定义数据集
 class StockPairDataset(Dataset):
     def __init__(self, data_type="train", field="f_high_mean_rate"):
-        assert data_type in ("train", "validate", "test", "predict")
+        assert data_type in ("train", "validate", "test")
         self.df = pd.read_csv("%s.data" % (data_type), sep=" ", header=None)
         self.conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
@@ -86,8 +86,8 @@ class StockPointDataset(Dataset):
         df_item = pd.read_sql(sql, self.conn) 
         
         data_json = json.loads(df_item.iloc[0][4].replace("'",'"'))
-        f_high_mean_rate = data_json.get(self.field)
-        return pk_date_stock, torch.tensor(f_high_mean_rate), torch.tensor(data_json["past_days"]) 
+        true_score = data_json.get(self.field)
+        return pk_date_stock, torch.tensor(true_score), torch.tensor(data_json["past_days"]) 
 
 
 # 2. pair形式的损失函数

@@ -14,8 +14,8 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from common import load_trade_dates
-from seq_model import LogExpLoss,StockForecastModel,StockPairDataset,StockPointDataset,StockPredictDataset
+from seq_model import StockForecastModel,StockPointDataset
+from seq_transfomer import estimate_ndcg_score
 
 SEQUENCE_LENGTH = 20 #序列长度
 D_MODEL = 9  #维度
@@ -56,12 +56,6 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         
         if batch % 1024 == 0:
             torch.save(model.state_dict(), MODEL_FILE+"."+str(epoch) + "." + str(int(batch / 1024)) )
-            # torch.save({
-            # 'epoch': epoch,
-            # 'model_state_dict': model.state_dict(),
-            # 'optimizer_state_dict': optimizer.state_dict(),
-            # 'loss': loss.item(),
-            # }, MODEL_FILE+"."+str(epoch ))
             
     torch.save(model.state_dict(), MODEL_FILE+"."+str(epoch))
     
@@ -89,20 +83,20 @@ def test(dataloader, model, loss_fn):
     test_loss /= num_batches
     print(f"Test Avg loss: {test_loss:>8f} \n")
 
-def training():
+def training(field="f_high_mean_rate"):
     # 初始化
-    train_data = StockPointDataset(datatype="train")
+    train_data = StockPointDataset(datatype="train",field=field)
     train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
     # a = next(iter(train_dataloader))
     # print(choose.shape,reject.shape)
 
-    test_data = StockPointDataset(datatype="validate")
+    test_data = StockPointDataset(datatype="validate",field=field)
     test_dataloader = DataLoader(test_data, batch_size=128)  
     
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.000005 #0.00001 #0.000005  #0.0000001  
+    learning_rate = 0.00001 #0.00001 #0.000005  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -122,29 +116,41 @@ def training():
         print(f"Epoch {t+1}\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer,t)
         test(test_dataloader, model, criterion)
-        # estimate_ndcg_score(dataloader=None,model=model)
+        estimate_ndcg_score(model=model)
+        # estimate_ndcg_score(test_dataloader,model)
         # scheduler.step()
         
     torch.save(model.state_dict(), MODEL_FILE)
-    
-    train_data.conn.close()
-    test_data.conn.close()
     print("Done!")
 
 
- 
-
-# python seq_transfomer.py training
-# python seq_transfomer.py predict
-if __name__ == "__main__": 
-    # estimate_ndcg_score()
-    # evaluate_model_checkpoints() 
-    # gen_date_predict_scores()
-    training()
+def evaluate_model_checkpoints(field="f_high_mean_rate"):
+    '''用于检查哪个checkpoint效果更好些'''
+    test_data = StockPointDataset(datatype="validate",field=field)
+    test_dataloader = DataLoader(test_data, batch_size=128)  
     
-    # op_type = sys.argv[1]
-    # assert op_type in ("training", "predict")
-    # if op_type == "predict":
-    #     predict()
-    # else:
-    #     training()
+    ndcg_data = StockPointDataset(datatype="validate",field="f_high_mean_rate") 
+    ndcg_dataloader = DataLoader(ndcg_data, batch_size=128)   
+    
+    criterion = nn.MSELoss() #均方差损失函数
+    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    
+    for i in range(18): #32
+        fname =  MODEL_FILE + ".0."  + str(i) 
+        print(fname)
+        if os.path.isfile(fname):
+            model.load_state_dict(torch.load(fname))
+            test(test_dataloader, model, criterion)
+            estimate_ndcg_score(ndcg_dataloader,model)
+        # break 
+            
+# python seq_regress.py f_high_mean_rate
+if __name__ == "__main__":  
+    field = "f_low_mean_rate" # f_high_mean_rate, f_low_mean_rate
+    # evaluate_model_checkpoints(field)  
+    training(field)
+
+    # test_data = StockPointDataset(datatype="validate",field=field)
+    # test_dataloader = DataLoader(test_data, batch_size=8)  
+    # a = next(iter(test_dataloader))
+    # print(a)
