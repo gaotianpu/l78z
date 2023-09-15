@@ -14,6 +14,21 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
+from common import load_trade_dates,load_prices
+
+conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+
+SEQUENCE_LENGTH = 20 #序列长度
+D_MODEL = 9  #维度
+MODEL_FILE = "StockForecastModel.pth" 
+
+device = (
+    "cuda"
+    if torch.cuda.is_available()
+    else "mps"  #苹果的Metal Performance Shaders（MPS）
+    if torch.backends.mps.is_available()
+    else "cpu"
+)
 
 # 1. 定义数据集
 class StockPairDataset(Dataset):
@@ -66,6 +81,11 @@ class StockPointDataset(Dataset):
             "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
             % (dtmap.get(datatype))
         )
+        # #debug
+        # sql = (
+        #     "select pk_date_stock from stock_for_transfomer where dataset_type>=%d"
+        #     % (dtmap.get(datatype))
+        # )
         
         if trade_date:
             sql = (
@@ -161,7 +181,59 @@ class StockForecastModel(nn.Module):
 #         x = x + self.pe[:x.size(0)]
 #         return self.dropout(x)
 
+def predict():
+    dataset = StockPredictDataset(predict_data_file="seq_predict.data")
+    dataloader = DataLoader(dataset, batch_size=128) 
+    # print(next(iter(dataset)))
+    
+    model_files="pair_high,point_pair_high,point_high,point_low".split(",") 
+    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    li_df = []
+    for model_name in model_files:
+        mfile = "StockForecastModel.pth.%s"%(model_name)
+        if os.path.isfile(mfile):
+            model.load_state_dict(torch.load(mfile)) 
+        
+        model.eval()
+        with torch.no_grad():
+            all = []
+            for _batch, (pk_date_stock,data) in enumerate(dataloader):         
+                output = model(data.to(device))
+                ret = list(zip(pk_date_stock.tolist(), output.tolist()))
+                all = all + ret 
+                # break 
+            
+            df = pd.DataFrame(all,columns=["pk_date_stock",model_name])
+            df = df.sort_values(by=[model_name],ascending=False)
+            df = df.round(4)
+            df['idx_' + model_name] = range(len(df))
+            df.to_csv("data/predict_%s.txt"%(model_name),sep=";",index=False)
+            li_df.append(df)
+            
+    # 几个模型合并
+    trade_date = str(li_df[0]["pk_date_stock"][0])[:8]
+    
+    df = li_df[0].merge(li_df[1],on="pk_date_stock",how='left')
+    df = df.merge(li_df[2],on="pk_date_stock",how='left')
+    df = df.merge(li_df[3],on="pk_date_stock",how='left')
+    df['idx_merge'] = df.apply(lambda x: x['idx_pair_high'] + x['idx_point_pair_high'], axis=1)
+    
+    df_prices = load_prices(conn,trade_date)
+    df = df.merge(df_prices,on="pk_date_stock",how='left')
+    df['buy_low_price'] = df.apply(lambda x: x['CLOSE_price'] * (1 + x['point_low']), axis=1)
+    df['buy_low_price'] = df['buy_low_price'].round(2)
+    
+    #df["buy_low_price"] = df_prices['CLOSE_price'].values * (1+df_prices['point_low'].values)
+    
+    df.to_csv("data/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
+    df.to_csv("data/predict_merged.txt",sep=";",index=False) 
+
 if __name__ == "__main__":
-    dataset = StockPointDataset(datatype="validate")
-    d = next(iter(dataset))
-    print(d)
+    op_type = sys.argv[1]
+    assert op_type in ("training", "predict")
+    if op_type == "predict":
+        predict()
+    
+    # dataset = StockPointDataset(datatype="validate")
+    # d = next(iter(dataset))
+    # print(d)

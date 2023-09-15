@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from common import load_trade_dates
+from common import load_trade_dates,load_prices,load_trade_dates_after
 from seq_model import LogExpLoss,StockForecastModel,StockPairDataset,StockPointDataset,StockPredictDataset
 
 SEQUENCE_LENGTH = 20 #序列长度
@@ -129,7 +129,7 @@ def training():
     criterion = LogExpLoss() #定义损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.000005 #0.00001 #0.000005  #0.0000001  
+    learning_rate = 0.0000001 #0.00001 #0.000001 #0.000005  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -158,28 +158,6 @@ def training():
 
 # 完全随机：loss=0.703475
 
-def predict():
-    dataset = StockPredictDataset(predict_data_file="seq_predict.data")
-    # print(next(iter(dataset)))
-    dataloader = DataLoader(dataset, batch_size=128) 
-     
-    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device) 
-    if os.path.isfile(MODEL_FILE):
-        model.load_state_dict(torch.load(MODEL_FILE)) 
-    
-    model.eval()
-    with torch.no_grad():
-        all = []
-        for _batch, (pk_date_stock,data) in enumerate(dataloader):         
-            output = model(data.to(device))
-            ret = list(zip(pk_date_stock.tolist(), output.tolist()))
-            all = all + ret 
-            # break 
-        all.sort(key = lambda x:x[1],reverse=True)
-        for i,item in enumerate(all) :
-            litem = list(item)
-            litem.append(i+1)
-            print(";".join( [str(x) for x in litem])) 
 
 def compute_ndcg(df):
     ret = []
@@ -246,21 +224,23 @@ def evaluate_model_checkpoints():
             test(test_dataloader, model, criterion) 
             
 
-def gen_date_predict_scores(model_version = "predict_regress_high"):
+def gen_date_predict_scores(model_version = "pair_high"):
     COMPARE_THRESHOLD = 0.02
     TOP_N = 10
     
+    mfile = "%s.%s" %(MODEL_FILE,model_version)
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-    if os.path.isfile(MODEL_FILE):
-        model.load_state_dict(torch.load(MODEL_FILE))   
+    if os.path.isfile(mfile):
+        model.load_state_dict(torch.load(mfile))   
     model.eval()
     
      
-    trade_dates = load_trade_dates(conn)
+    # trade_dates = load_trade_dates(conn)
+    trade_dates = load_trade_dates_after(conn)
     for date in trade_dates:
         # print(date) 
         df = None
-        data_file = "data/%s/%s.csv"%(model_version,date) #predict_results,predict_regress_high
+        data_file = "data/predict_%s_%s.csv"%(date,model_version) #predict_results,predict_regress_high
         if os.path.exists(data_file):
             df = pd.read_csv(data_file, sep=",", header=0, index_col=0)
             # print(df)
@@ -295,18 +275,21 @@ def gen_date_predict_scores(model_version = "predict_regress_high"):
         li.append(top_10_good)
         li.append(top_10_good/10)
         li.append(round(top_10['predict_score'].mean(),3))
+        li.append(round(top_10['true_score'].mean(),3))
         
         top_5 = df.head(5)
         top_5_good =  len(top_5.loc[top_5['true_score'] > COMPARE_THRESHOLD])
         li.append(top_5_good)
         li.append(top_5_good/5)
         li.append(round(top_5['predict_score'].mean(),3))
+        li.append(round(top_5['true_score'].mean(),3))
         
         top_n_5 = df.head(6).tail(5)
         top_n_5_good =  len(top_n_5.loc[top_n_5['true_score'] > COMPARE_THRESHOLD])
         li.append(top_n_5_good)
         li.append(top_n_5_good/5)
         li.append(round(top_n_5['predict_score'].mean(),3))
+        li.append(round(top_n_5['true_score'].mean(),3))
         
         li.append(round(describe["true_score"]["mean"],3))
         li.append(round(describe["true_score"]["std"],3))
@@ -315,21 +298,25 @@ def gen_date_predict_scores(model_version = "predict_regress_high"):
 
         print( ";".join([str(item) for item in li]))
         # break 
-        
+
+def gen_date_predict_scores_all():
+    model_files="pair_high,point_pair_high,point_high,point_low".split(",") 
+    for model_name in model_files: 
+        print(model_name)
+        gen_date_predict_scores(model_name)
 
 # python seq_transfomer.py training
-# python seq_transfomer.py predict
 if __name__ == "__main__": 
-    # estimate_ndcg_score()
-    # evaluate_model_checkpoints() 
+    op_type = sys.argv[1]
+    print(op_type)
+    if op_type == "training":
+        training()
+    if op_type == "estimate_ndcg_score":
+        estimate_ndcg_score()
+    if op_type == "evaluate_model_checkpoints":
+        evaluate_model_checkpoints() 
+    if op_type == "gen_date_predict_scores_all":
+        gen_date_predict_scores_all()
     
     # python seq_transfomer.py > predict_regress_high.txt &
-    # predict_results,predict_regress_high
-    # gen_date_predict_scores("predict_regress_high")
-    
-    op_type = sys.argv[1]
-    assert op_type in ("training", "predict")
-    if op_type == "predict":
-        predict()
-    else:
-        training()
+    # predict_results,predict_regress_high 

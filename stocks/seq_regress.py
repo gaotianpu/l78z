@@ -135,20 +135,39 @@ def evaluate_model_checkpoints(field="f_high_mean_rate"):
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    for i in range(18): #32
+    for i in range(8): #32
         fname =  MODEL_FILE + ".0."  + str(i) 
         print(fname)
         if os.path.isfile(fname):
             model.load_state_dict(torch.load(fname))
             test(test_dataloader, model, criterion)
-            estimate_ndcg_score(ndcg_dataloader,model)
+            estimate_ndcg_score(test_dataloader,model)
         # break 
+
+def tmp(): 
+    ndcg_data = StockPointDataset(datatype="test",field="f_high_mean_rate") #validate
+    ndcg_dataloader = DataLoader(ndcg_data, batch_size=128)   
+    
+    model_files="pair_high,point_pair_high,point_high,point_low".split(",") 
+    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    for model_name in model_files:
+        print(model_name)
+        mfile = "StockForecastModel.pth.%s"%(model_name)
+        if os.path.isfile(mfile):
+            model.load_state_dict(torch.load(mfile)) 
+        
+        model.eval()
+        with torch.no_grad():
+            estimate_ndcg_score(ndcg_dataloader,model)
+    
+     
             
 # python seq_regress.py f_high_mean_rate
 if __name__ == "__main__":  
     field = "f_low_mean_rate" # f_high_mean_rate, f_low_mean_rate
     # evaluate_model_checkpoints(field)  
-    training(field)
+    # training(field)
+    tmp()
 
     # test_data = StockPointDataset(datatype="validate",field=field)
     # test_dataloader = DataLoader(test_data, batch_size=8)  

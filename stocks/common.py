@@ -27,6 +27,11 @@ def load_trade_dates(conn):
     df = pd.read_sql(sql, conn)
     return df['trade_date'].sort_values(ascending=False).tolist()
 
+def load_trade_dates_after(conn,trade_date=20230825):
+    sql = "select distinct trade_date from stock_for_transfomer where trade_date>20230825"
+    df = pd.read_sql(sql, conn)
+    return df['trade_date'].sort_values(ascending=False).tolist()
+
 def get_max_trade_date(conn,stock_no,table_name="stock_raw_daily_2"):
     sql = "select max(trade_date) as max_trade_date from %s where stock_no='%s';" %(table_name,stock_no)
     df = pd.read_sql(sql, conn)
@@ -38,9 +43,15 @@ def get_max_trade_date(conn,stock_no,table_name="stock_raw_daily_2"):
         # df = pd.read_sql(sql, conn)
         # return df['min_trade_date'][0]
 
+def load_prices(conn,trade_date):
+    sql = "select  cast(trade_date||stock_no as int64) as pk_date_stock,stock_no,CLOSE_price,LOW_price from stock_raw_daily_2 where trade_date=%s"%(trade_date)
+    df = pd.read_sql(sql, conn)
+    return df 
+    
 if __name__ == "__main__":
     conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
-    ret = get_max_trade_date(conn,stock_no="002914")
+    # ret = get_max_trade_date(conn,stock_no="002914")
+    ret = load_prices(conn,20230908)
     print(ret)
     # stocks = load_stocks(conn)
     # for stock in stocks:

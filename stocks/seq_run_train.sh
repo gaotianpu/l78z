@@ -53,6 +53,8 @@ sqlite3 data/stocks.db <<EOF
 .import data/seq_train_4.txt stock_for_transfomer
 EOF
 
+# .import data/seq_train.txt.0915.2 stock_for_transfomer
+
 echo "3. split dataset as train,validate,test"
 python seq_data_split.py
 

@@ -2,7 +2,8 @@
 cur_date="`date +%Y%m%d`" 
 echo $cur_date
 
-# rm -f data/history/*
+rm -f data/history/*
+rm -f log/download_history.log
 
 echo "1.0 下载最新数据，导入stock_raw_daily"
 python download_history.py 0 &
@@ -31,5 +32,5 @@ echo "2. 生成predict需要的序列数据"
 python seq_preprocess.py predict > data/seq_predict.data.$cur_date #
 cp data/seq_predict.data.$cur_date seq_predict.data
 
-echo "3. 调取模型，预测"
-python seq_transfomer.py predict > ret.seq_predict.txt.$cur_date
+echo "3. 调取模型，预测" # data/predict_merged.txt
+python seq_model.py predict # > ret.seq_predict.txt.$cur_date

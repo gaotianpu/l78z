@@ -18,7 +18,7 @@ PAST_DAYS = 20 #使用过去几天的数据做特征
 MAX_ROWS_COUNT = 3000 #从数据库中加载多少数据, 差不多8年的交易日数。
 
 # select max(trade_date) from stock_for_transfomer;
-MIN_TRADE_DATE = 0
+MIN_TRADE_DATE = 20230825
 
 conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
@@ -57,13 +57,8 @@ class PreProcessor:
     #     ret = json.loads(df_statistics.loc[0]["data_json"])
     #     return ret
     
-    def process_row(self, df, idx):
-        current_date = int(df.loc[idx]['trade_date'])
-        
-        # 保证是增量生成
-        if current_date < self.min_trade_date:
-            return 
-        
+    def process_row(self, df, idx,current_date):
+        # current_date = int(df.loc[idx]['trade_date'])
         ret = {"stock_no": self.stock_no, "current_date":current_date}
         
         # 未来值,FUTURE_DAYS最高价，最低价？
@@ -143,7 +138,12 @@ class PreProcessor:
         end_idx = len(df) - self.past_days + 1
         for idx in range(self.future_days, end_idx):
             try:
-                self.process_row(df, idx)
+                # 保证是增量生成
+                current_date = int(df.loc[idx]['trade_date'])
+                if current_date <= self.min_trade_date:
+                    break
+                 
+                self.process_row(df, idx,current_date)
             except:
                 logging.warning("process_train_data process_row error stock_no=%s,idx=%s" %(self.stock_no,idx) )
      
@@ -197,7 +197,7 @@ def process_all_stocks(data_type="train", processes_idx=-1):
     # 2. 增量添加
     conn.close()
 
-# python seq_preprocess.py train 0 > data/rnn_train.txt_0 &
+# python seq_preprocess.py train 0 > data/seq_train.txt_0 &
 # python seq_preprocess.py predict > data/rnn_predict.txt &
 if __name__ == "__main__":
     data_type = sys.argv[1]
