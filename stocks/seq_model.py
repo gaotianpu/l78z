@@ -181,6 +181,21 @@ class StockForecastModel(nn.Module):
 #         x = x + self.pe[:x.size(0)]
 #         return self.dropout(x)
 
+def compute_buy_price(df_predict=None):
+    select_cols='stock_no,low_rate_25%,low_rate_50%,low_rate_75%,high_rate_25%,high_rate_50%,high_rate_75%'.split(",")
+    
+    if not df_predict:
+        df_predict = pd.read_csv("data/predict_merged.txt",sep=";",header=0)
+    
+    df = df_predict.merge(
+        pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0)[select_cols],
+        on="stock_no",how='left')
+    for col in select_cols:
+        df['price_'+col] = df.apply(lambda x: x['CLOSE_price'] * (1 + x[col]), axis=1)
+    df = df.round(2)
+    
+    df.to_csv("predict_buy_price.txt",sep=";",index=False) 
+    
 def predict():
     dataset = StockPredictDataset(predict_data_file="seq_predict.data")
     dataloader = DataLoader(dataset, batch_size=128) 
@@ -223,10 +238,15 @@ def predict():
     df['buy_low_price'] = df.apply(lambda x: x['CLOSE_price'] * (1 + x['point_low']), axis=1)
     df['buy_low_price'] = df['buy_low_price'].round(2)
     
-    #df["buy_low_price"] = df_prices['CLOSE_price'].values * (1+df_prices['point_low'].values)
+    # df_static = pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0)
+    # df_static.to_csv("data/static_seq_stocks.txt",sep=";",index=False)
     
+    # point_pair_high 效果更好些？
+    df = df.sort_values(by=["idx_point_pair_high"]) #,ascending=False 
     df.to_csv("data/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
     df.to_csv("data/predict_merged.txt",sep=";",index=False) 
+    
+    compute_buy_price(df)
 
 if __name__ == "__main__":
     op_type = sys.argv[1]

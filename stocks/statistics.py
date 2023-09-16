@@ -13,6 +13,7 @@ MAX_ROWS_COUNT = 2000 #从数据库中加载多少数据, 差不多8年的交易
 
 forecast_fields = 'f_high_mean_rate,f_high_rate,f_low_mean_rate,f_low_rate'.split(",")
 static_fields = 'mean,std,min,25%,50%,75%,max'.split(",")
+daily_fields = "OPEN_price,CLOSE_price,change_amount,change_rate,LOW_price,HIGH_price,TURNOVER,TURNOVER_amount,TURNOVER_rate,low_rate,high_rate".split(",")
 
 def get_all_fields():
     fields = ['key','count']
@@ -40,12 +41,12 @@ def get_update_sql():
 def compute_mean_std(stock_no=None):
     '''抽样计算整体的均值和标准差'''
     # order by RANDOM()
-    fields = "OPEN_price,CLOSE_price,change_amount,change_rate,LOW_price,HIGH_price,TURNOVER,TURNOVER_amount,TURNOVER_rate,low_rate".split(",")
     
-    ret = {}
+    ret = []
     sql = "select * from stock_raw_daily_2  order by RANDOM() limit 350000;"
     if stock_no:
-        ret["stock_no"] = stock_no
+        ret.append(stock_no)
+        # ret.append(get_max_trade_date(conn,stock_no))
         sql = "select * from stock_raw_daily_2 where stock_no='%s' order by trade_date desc"%(stock_no)
     
     df = pd.read_sql(sql, conn)
@@ -58,36 +59,46 @@ def compute_mean_std(stock_no=None):
     
     df['last_close_price'] = df['CLOSE_price'] - df['change_amount'] 
     df['low_rate'] = c_round((df['LOW_price'] - df['last_close_price']) / df['last_close_price']) 
+    df['high_rate'] = c_round((df['HIGH_price'] - df['last_close_price']) / df['last_close_price']) 
     
     # print(df.head())
     # print(df['low_rate'].head())
     df_describe = df.describe() 
     # print(df_describe) 
     
-    for field in fields:
+    for field in daily_fields:
         for f2 in static_fields:
-            ret["%s_%s" %(field,f2)] = c_round(df_describe[field][f2])
+            ret.append(c_round(df_describe[field][f2]))
+            # ret["%s_%s" %(field,f2)] = c_round(df_describe[field][f2])
         #ret[field+"_std"] = c_round(df_describe[field]["std"])
         # 中位数，75%，25%？
     
-    if stock_no:
-        max_trade_date = get_max_trade_date(conn,stock_no)
-        print("%s;%s;%s" %(stock_no, max_trade_date,json.dumps(ret)))
-    else:
-        print(json.dumps(ret))
+    # if stock_no: 
+    return ret
+        # print("%s;%s;%s" %(stock_no, max_trade_date,json.dumps(ret)))
+    # else:
+    #     print(json.dumps(ret))
         
 
 def compute_per_stocks_mean_std():
     '''计算每个stocks，价格，成交量，成交金额等字段的均值、标准差'''
     stocks = load_stocks(conn)
-    time_start = time.time()
+    li = []
     for i, stock in enumerate(stocks):
         stock_no = stock[0]
         try:
-            compute_mean_std(stock_no)
+            li.append(compute_mean_std(stock_no))
         except:
             print("error:",stock_no)
         # break
+    
+    all_fields = ['stock_no'] #max_trade_date
+    for field in daily_fields:
+        for f2 in static_fields: 
+            all_fields.append("%s_%s" %(field,f2)) 
+            
+    df = pd.DataFrame(li,columns=all_fields)
+    df.to_csv("data/static_seq_stocks.txt",sep=";",index=False)  
 
 def tmp():
     stocks = load_stocks(conn)
@@ -167,15 +178,40 @@ def static_forecast_val():
     df_v = pd.DataFrame(s_li,columns=get_all_fields())
     df_v.to_csv("data/static_seq_stocks.txt",sep=";",index=False)
 
-# python statistics.py > stocks_statistics.jsonl
-if __name__ == "__main__":
-    # python statistics.py > per_stocks_mean_std.jsonl
-    # compute_per_stocks_mean_std()
+def compute_buy_price(df_predict=None):
+    select_cols='stock_no,low_rate_25%,low_rate_50%,low_rate_75%,high_rate_25%,high_rate_50%,high_rate_75%'.split(",")
     
-    static_forecast_val()
+    if not df_predict:
+        df_predict = pd.read_csv("data/predict_merged.txt",sep=";",header=0)
+    
+    df = df_predict.merge(
+        pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0)[select_cols],
+        on="stock_no",how='left')
+    for col in select_cols:
+        df['price_'+col] = df.apply(lambda x: x['CLOSE_price'] * (1 + x[col]), axis=1)
+    df = df.round(2)
+    
+    df.to_csv("predict_buy_price.txt",sep=";",index=False) 
+
+# python statistics.py stocks #> stocks_statistics.jsonl
+if __name__ == "__main__":
+    op_type = sys.argv[1]
+    print(op_type)
+    if op_type == "stocks":
+        # python statistics.py stocks # data/static_seq_stocks.txt
+        compute_per_stocks_mean_std()  
+    if op_type == "dates":
+        # python statistics.py dates # per_day_mean_std.jsonl
+        static_forecast_val()
+    if op_type == "buy_price":
+        # python statistics.py buy_price # predict_buy_price.txt
+        compute_buy_price()
+    
+    
+    
     # print(get_all_fields())
     
     # compute_mean_std("002913") # 601998,  002913
     
     # compute_mean_std()
-    # get_update_sql()
+    # get_update_sql() 

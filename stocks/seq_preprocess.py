@@ -159,10 +159,13 @@ class PreProcessor:
         sql = "select * from stock_raw_daily_2 where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,self.past_days+self.future_days)
         df = pd.read_sql(sql, conn) 
         
-        try:
-            self.process_row(df, 0)
-        except:
-            logging.warning("process_predict_data process_row error stock_no=%s" %(self.stock_no) )
+        current_date = int(df.loc[0]['trade_date'])
+        self.process_row(df, 0,current_date)
+        
+        # try:
+        #     self.process_row(df, 0)
+        # except:
+        #     logging.warning("process_predict_data process_row error stock_no=%s" %(self.stock_no) )
      
         
         df = None  # 释放内存？
