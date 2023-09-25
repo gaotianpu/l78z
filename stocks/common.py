@@ -22,13 +22,8 @@ def load_stocks(conn=None):
     # print(df)
     return df.values.tolist()
 
-def load_trade_dates(conn):
-    sql = "select distinct trade_date from stock_for_transfomer"
-    df = pd.read_sql(sql, conn)
-    return df['trade_date'].sort_values(ascending=False).tolist()
-
-def load_trade_dates_after(conn,trade_date=20230825):
-    sql = "select distinct trade_date from stock_for_transfomer where trade_date>20230825"
+def load_trade_dates(conn,start_date=20230825):
+    sql = "select distinct trade_date from stock_for_transfomer where trade_date>%s"%(start_date)
     df = pd.read_sql(sql, conn)
     return df['trade_date'].sort_values(ascending=False).tolist()
 

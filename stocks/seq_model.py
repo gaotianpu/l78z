@@ -31,6 +31,54 @@ device = (
 )
 
 # 1. 定义数据集
+class StockPredictDataset(Dataset):
+    def __init__(self,predict_data_file="seq_predict.data"): 
+        self.df = pd.read_csv(predict_data_file, sep=";", header=None)
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        pk_date_stock = self.df.iloc[idx][0]
+        # date = self.df.iloc[idx][1]
+        # stock_no = self.df.iloc[idx][2]
+        # print(pk_date_stock,self.df.iloc[idx][5])
+        data_json = json.loads(self.df.iloc[idx][5].replace("'",'"'))
+        return pk_date_stock, torch.tensor(data_json["past_days"]) 
+
+class StockPointDataset(Dataset):
+    def __init__(self,datatype="validate",trade_date=None, field="f_high_mean_rate"): 
+        dtmap = {"train":0,"validate":1,"test":2}
+        self.field = field
+        self.conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+        # order by trade_date desc
+        sql = (
+            "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
+            % (dtmap.get(datatype))
+        ) 
+        if trade_date:
+            sql = (
+                "select pk_date_stock from stock_for_transfomer where trade_date='%s' and dataset_type=%d"
+                % (trade_date,dtmap.get(datatype))
+            )
+            
+        self.df = pd.read_sql(sql, self.conn)
+        
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        pk_date_stock = self.df.iloc[idx][0]
+        # data_json = json.loads(self.df.iloc[idx][data_json'])
+        
+        sql = "select * from stock_for_transfomer where pk_date_stock=%s" % (pk_date_stock)
+        df_item = pd.read_sql(sql, self.conn) 
+        
+        data_json = json.loads(df_item.iloc[0]['data_json']) #.replace("'",'"'))
+        true_score = data_json.get(self.field)
+        return pk_date_stock, torch.tensor(true_score), torch.tensor(data_json["past_days"]) 
+
+
 class StockPairDataset(Dataset):
     def __init__(self, data_type="train", field="f_high_mean_rate"):
         assert data_type in ("train", "validate", "test")
@@ -56,72 +104,6 @@ class StockPairDataset(Dataset):
         else:
             return b_t, a_t
 
-class StockPredictDataset(Dataset):
-    def __init__(self,predict_data_file="seq_predict.data"): 
-        self.df = pd.read_csv(predict_data_file, sep=";", header=None)
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        pk_date_stock = self.df.iloc[idx][0]
-        # date = self.df.iloc[idx][1]
-        # stock_no = self.df.iloc[idx][2]
-        # print(pk_date_stock,self.df.iloc[idx][4])
-        data_json = json.loads(self.df.iloc[idx][4].replace("'",'"'))
-        return pk_date_stock, torch.tensor(data_json["past_days"]) 
-
-class StockPointDataset(Dataset):
-    def __init__(self,datatype="validate",trade_date=None, field="f_high_mean_rate"): 
-        dtmap = {"train":0,"validate":1,"test":2}
-        self.field = field
-        self.conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
-        # order by trade_date desc
-        sql = (
-            "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
-            % (dtmap.get(datatype))
-        )
-        # #debug
-        # sql = (
-        #     "select pk_date_stock from stock_for_transfomer where dataset_type>=%d"
-        #     % (dtmap.get(datatype))
-        # )
-        
-        if trade_date:
-            sql = (
-                "select pk_date_stock from stock_for_transfomer where trade_date='%s' and dataset_type=%d"
-                % (trade_date,dtmap.get(datatype))
-            )
-            
-        self.df = pd.read_sql(sql, self.conn)
-        
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        pk_date_stock = self.df.iloc[idx][0]
-        # data_json = json.loads(self.df.iloc[idx][4].replace("'",'"'))
-        
-        sql = "select * from stock_for_transfomer where pk_date_stock=%s" % (pk_date_stock)
-        df_item = pd.read_sql(sql, self.conn) 
-        
-        data_json = json.loads(df_item.iloc[0][4].replace("'",'"'))
-        true_score = data_json.get(self.field)
-        return pk_date_stock, torch.tensor(true_score), torch.tensor(data_json["past_days"]) 
-
-
-# 2. pair形式的损失函数
-class LogExpLoss(nn.Module):
-    """
-    Pairwise Loss for Reward Model
-    Details: https://arxiv.org/abs/2204.05862
-    """
-
-    def forward(
-        self, chosen_reward: torch.Tensor, reject_reward: torch.Tensor
-    ) -> torch.Tensor:
-        loss = torch.log(1 + torch.exp(reject_reward - chosen_reward)).mean()
-        return loss
 
 # 3. 定义模型
 class StockForecastModel(nn.Module):
@@ -184,16 +166,22 @@ class StockForecastModel(nn.Module):
 def compute_buy_price(df_predict=None):
     select_cols='stock_no,low_rate_25%,low_rate_50%,low_rate_75%,high_rate_25%,high_rate_50%,high_rate_75%'.split(",")
     
-    if not df_predict:
-        df_predict = pd.read_csv("data/predict_merged.txt",sep=";",header=0)
+    if df_predict is None:
+        df_predict = pd.read_csv("data/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
+    
+    trade_date = str(df_predict['pk_date_stock'][0])[:8]
     
     df = df_predict.merge(
-        pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0)[select_cols],
+        pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0,dtype={'stock_no': str})[select_cols],
         on="stock_no",how='left')
     for col in select_cols:
-        df['price_'+col] = df.apply(lambda x: x['CLOSE_price'] * (1 + x[col]), axis=1)
-    df = df.round(2)
-    
+        if col == "stock_no":
+            continue
+        fieldname = 'price_' + col
+        df[fieldname] = df.apply(lambda x: x['CLOSE_price'] * (1 + x[col]), axis=1)
+        df[fieldname] = df[fieldname].round(2) 
+        
+    df.to_csv("data/predict_buy_price.txt.%s"%(trade_date),sep=";",index=False)
     df.to_csv("predict_buy_price.txt",sep=";",index=False) 
     
 def predict():
@@ -231,7 +219,7 @@ def predict():
     df = li_df[0].merge(li_df[1],on="pk_date_stock",how='left')
     df = df.merge(li_df[2],on="pk_date_stock",how='left')
     df = df.merge(li_df[3],on="pk_date_stock",how='left')
-    df['idx_merge'] = df.apply(lambda x: x['idx_pair_high'] + x['idx_point_pair_high'], axis=1)
+    # df['idx_merge'] = df.apply(lambda x: x['idx_pair_high'] + x['idx_point_pair_high'], axis=1)
     
     df_prices = load_prices(conn,trade_date)
     df = df.merge(df_prices,on="pk_date_stock",how='left')
@@ -252,6 +240,7 @@ if __name__ == "__main__":
     op_type = sys.argv[1]
     assert op_type in ("training", "predict")
     if op_type == "predict":
+        # python seq_model.py predict
         predict()
     
     # dataset = StockPointDataset(datatype="validate")

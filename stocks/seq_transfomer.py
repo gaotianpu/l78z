@@ -14,8 +14,8 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from common import load_trade_dates,load_prices,load_trade_dates_after
-from seq_model import LogExpLoss,StockForecastModel,StockPairDataset,StockPointDataset,StockPredictDataset
+from common import load_trade_dates
+from seq_model import StockForecastModel,StockPairDataset,StockPointDataset
 
 SEQUENCE_LENGTH = 20 #序列长度
 D_MODEL = 9  #维度
@@ -53,8 +53,18 @@ def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
         learning_rate = learning_rate**1.0001 #预热学习率结束后,学习率呈指数衰减(近似模拟指数衰减)
     return learning_rate 
 
-          
+# 2. pair形式的损失函数
+class LogExpLoss(nn.Module):
+    """
+    Pairwise Loss for Reward Model
+    Details: https://arxiv.org/abs/2204.05862
+    """
 
+    def forward(
+        self, chosen_reward: torch.Tensor, reject_reward: torch.Tensor
+    ) -> torch.Tensor:
+        loss = torch.log(1 + torch.exp(reject_reward - chosen_reward)).mean()
+        return loss
 
 # 4. train 函数
 def train(dataloader, model, loss_fn, optimizer,epoch): 
@@ -161,22 +171,29 @@ def training():
 
 def compute_ndcg(df):
     ret = []
-    date_groups = df.groupby(0)
+    date_groups = df.groupby('trade_date')
     for date,data in date_groups:
-        data = data.sort_values(by=[2])
-        data[4] = [math.ceil((i+1)/3) for i in range(20)]
-        
-        data = data.sort_values(by=[3],ascending=False)
-        mean_3 = data[2].head(3).mean()
-        mean_all = data[2].mean() 
-        
-        y_true = np.expand_dims(data[4].to_numpy(),axis=0)
-        y_predict = np.expand_dims(data[3].to_numpy(),axis=0)
+        y_true = np.expand_dims(data['true_label'].to_numpy(),axis=0)
+        y_predict = np.expand_dims(data['predict_score'].to_numpy(),axis=0)
         ndcg = ndcg_score(y_true,y_predict)
         ndcg_3 = ndcg_score(y_true,y_predict,k=3)
         
+        # data = data.sort_values(by=[2])
+        # data[4] = [math.ceil((i+1)/3) for i in range(24)]
+        
+        data = data.sort_values(by=['predict_score'],ascending=False)
+        mean_3 = data['true_score'].head(3).mean()
+        mean_all = data['true_score'].mean() 
+        
         ret.append([date,ndcg,ndcg_3,mean_3,mean_all])
     return ret     
+
+def score_to_label(score):
+    val_ranges = [-0.00493,0.01434,0.02506,0.03954,0.04997,0.06524,0.09353]
+    for i,val_range in enumerate(val_ranges):
+        if score<val_range:
+            return i+1
+    return 8
 
 def estimate_ndcg_score(dataloader=None,model=None,field="f_high_mean_rate"):
     '''评估时，field只应该是f_high_mean_rate'''
@@ -195,11 +212,11 @@ def estimate_ndcg_score(dataloader=None,model=None,field="f_high_mean_rate"):
         for _batch, (pk_date_stock,true_scores,data) in enumerate(dataloader):         
             output = model(data.to(device))
             ret = list(zip(pk_date_stock.tolist(), true_scores.tolist(), output.tolist())) 
-            li_ = li_ + [(str(item[0])[:8], str(item[0])[8:], item[1], item[2]) for item in ret]
+            li_ = li_ + [(str(item[0])[:8], str(item[0])[8:], score_to_label(item[1]),item[1], item[2]) for item in ret]
             # break
     
     # df = pd.read_csv("ndcg.txt",sep=";", header=None)
-    df = pd.DataFrame(li_)
+    df = pd.DataFrame(li_,columns=['trade_date','stock_no','true_label','true_score','predict_score'])
     ret = compute_ndcg(df) 
     
     print("ndcg:")
@@ -236,7 +253,7 @@ def gen_date_predict_scores(model_version = "pair_high"):
     
      
     # trade_dates = load_trade_dates(conn)
-    trade_dates = load_trade_dates_after(conn)
+    trade_dates = load_trade_dates(conn)
     for date in trade_dates:
         # print(date) 
         df = None

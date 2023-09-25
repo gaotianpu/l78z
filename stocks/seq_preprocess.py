@@ -18,7 +18,7 @@ PAST_DAYS = 20 #使用过去几天的数据做特征
 MAX_ROWS_COUNT = 3000 #从数据库中加载多少数据, 差不多8年的交易日数。
 
 # select max(trade_date) from stock_for_transfomer;
-MIN_TRADE_DATE = 20230825
+MIN_TRADE_DATE = 0 #20230825
 
 conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
@@ -40,13 +40,14 @@ def compute_rate(x,base): #计算涨跌幅度
     return round((x-base)/base,4)
 
 class PreProcessor:
-    def __init__(self, conn,stock_no, future_days = 3,past_days = 20 , data_type="train" , min_trade_date=0):
+    def __init__(self, conn,stock_no, future_days = 3,past_days = 20 , data_type="train" , start_trade_date=0):
         self.conn = conn
         self.stock_no = stock_no
         self.future_days = future_days
         self.past_days = past_days
         self.data_type = data_type
-        self.min_trade_date = min_trade_date
+        self.start_trade_date = start_trade_date
+        self.val_ranges = [-0.00493,0.01434,0.02506,0.03954,0.04997,0.06524,0.09353]
         
         # self.statistics = self.get_statistics(self)
     
@@ -57,6 +58,12 @@ class PreProcessor:
     #     ret = json.loads(df_statistics.loc[0]["data_json"])
     #     return ret
     
+    def map_val_range(self, val):
+        for i,val_range in enumerate(self.val_ranges):
+            if val<val_range:
+                return i+1
+        return 8 
+    
     def process_row(self, df, idx,current_date):
         # current_date = int(df.loc[idx]['trade_date'])
         ret = {"stock_no": self.stock_no, "current_date":current_date}
@@ -64,7 +71,14 @@ class PreProcessor:
         # 未来值,FUTURE_DAYS最高价，最低价？
         if idx>0: #train
             buy_base = df.loc[idx-1]['OPEN_price'] # df_future.iloc[-1]['TOPEN']
-            hold_base = df.loc[idx]['CLOSE_price']
+            hold_base = df.loc[idx]['CLOSE_price'] #昨收价格
+            
+            #用于预测要卖出的价位
+            next_high_rate = compute_rate(df.loc[idx-1]['HIGH_price'],hold_base)
+            #用于预测要买入的价位
+            next_low_rate = compute_rate(df.loc[idx-1]['LOW_price'],hold_base)
+            #是否会跌停的判断？还没想清楚
+            next_close_rate = compute_rate(df.loc[idx-1]['CLOSE_price'],hold_base)
             
             df_future = df.loc[idx-self.future_days : idx-2] #由于t+1,计算买入后第二个交易的价格
             highest = df_future['HIGH_price'].max()
@@ -76,6 +90,9 @@ class PreProcessor:
             f_low_rate = compute_rate(lowest,buy_base)  #round((lowest-buy_base)/buy_base,2)
             f_high_mean_rate = compute_rate(high_mean,buy_base) 
             f_low_mean_rate = compute_rate(low_mean,buy_base) 
+            
+            # f_high_mean_rate
+            val_label = self.map_val_range(f_high_mean_rate)
             
             # f_{buy/hold}_{high/low}_{est/mean}_{2(days)}
             # buy, 选股，股票没买入，基线价格=下一个交易日的开盘价
@@ -103,11 +120,19 @@ class PreProcessor:
             ret['f_low_rate'] = f_low_rate
             ret['f_high_mean_rate'] = f_high_mean_rate 
             ret['f_low_mean_rate'] = f_low_mean_rate 
+            ret['next_high_rate'] = next_high_rate 
+            ret['next_low_rate'] = next_low_rate 
+            ret['next_close_rate'] = next_close_rate 
+            ret['val_label'] = val_label 
         else: #predict
             ret['f_high_rate'] = 0.0
             ret['f_low_rate'] = 0.0
             ret['f_high_mean_rate'] = 0.0
             ret['f_low_mean_rate'] = 0.0 
+            ret['next_high_rate'] = 0.0 
+            ret['next_low_rate'] = 0.0 
+            ret['next_close_rate'] = 0.0
+            ret['val_label'] = 0
         
         # 获取过去所有交易日的均值，标准差
         # 只能是过去的，不能看到未来数据？ 还是说应该固定住？似乎应该固定住更好些 
@@ -123,15 +148,16 @@ class PreProcessor:
             
         # 额外;分割的datestock_uid,current_date,stock_no,dataset_type, 便于后续数据集拆分、pair构造等
         datestock_uid = str(ret["current_date"]) + ret['stock_no'] 
+        # if len(ret["past_days"]) == self.past_days:
+        #     print("%s;%s;%s;0;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],
+        #                                 json.dumps(ret))) #
+        # #new, 用于list排序
         if len(ret["past_days"]) == self.past_days:
-            print("%s;%s;%s;0;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],
-                                    json.dumps(ret))) #
-        # else :
-        #     print("error:%s"%(datestock_uid))
+            print("%s;%s;%s;0;%s;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],
+                                    ret['val_label'],json.dumps(ret))) #
+        
 
     def process_train_data(self):
-        # statistics = self.get_statistics() 
-        
         sql = "select * from stock_raw_daily_2 where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,MAX_ROWS_COUNT)
         df = pd.read_sql(sql, self.conn) 
         
@@ -140,7 +166,7 @@ class PreProcessor:
             try:
                 # 保证是增量生成
                 current_date = int(df.loc[idx]['trade_date'])
-                if current_date <= self.min_trade_date:
+                if current_date <= self.start_trade_date:
                     break
                  
                 self.process_row(df, idx,current_date)
@@ -187,9 +213,6 @@ def process_all_stocks(data_type="train", processes_idx=-1):
             p.process() 
         elif i % PROCESSES_NUM == processes_idx:
             p.process()
-        
-        # if i>1:
-        #     break
         
     time_end = time.time() 
     time_c = time_end - time_start   #运行所花时间

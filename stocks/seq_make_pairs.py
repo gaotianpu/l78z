@@ -17,6 +17,7 @@ def load_ids_by_date(date,dateset_type=0):
     df = pd.read_sql(sql, conn)
     return df['pk_date_stock']
 
+
 def load_idjson_by_date(date,dateset_type=0,field="f_high_mean_rate"):
     sql = "select pk_date_stock,data_json from stock_for_transfomer where trade_date='%s' and dataset_type='%d'" %(date,dateset_type)
     df = pd.read_sql(sql, conn)
@@ -29,9 +30,8 @@ def load_idjson_by_date(date,dateset_type=0,field="f_high_mean_rate"):
         rate = obj[field]
         ret.append([date_stock,rate])
     return ret 
-        
-    
 
+      
 def load_idjson_by_stockno(stockno,dateset_type=0,field="f_high_mean_rate"):
     sql = "select pk_date_stock,data_json from stock_for_transfomer where stock_no='%s' and dataset_type='%d'" %(stockno,dateset_type)
     df = pd.read_sql(sql, conn)
@@ -44,17 +44,6 @@ def load_idjson_by_stockno(stockno,dateset_type=0,field="f_high_mean_rate"):
         ret.append([date_stock,rate])
     return ret 
 
-# def convert():
-#     for i,line in enumerate(sys.stdin):
-#         line = line.strip().replace("'",'"')
-#         obj = json.loads(line)
-#         # current_date,stock_no,dataset_type,data_json
-#         date = obj.get("current_date")
-#         stock_no = obj.get('stock_no')
-#         pk = str(date) + stock_no
-#         print("%s;%s;%s;0;%s" % (pk,date,stock_no,line))
-#         # if i>500000: #小数据测试,debug
-#         #     break
 
 def make_pairs(rows):
     count = len(rows)
