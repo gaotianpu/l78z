@@ -24,6 +24,11 @@ sqlite3 data/stocks.db <<EOF
 EOF
 
 # sqlite3 data/stocks.db <<EOF
+# .separator ","
+# .import uncollect_stock_no.txt stock_basic_info
+# EOF
+
+# sqlite3 data/stocks.db <<EOF
 # .separator ";"
 # .import data/history/002913.csv stock_raw_daily_2
 # EOF
@@ -33,4 +38,4 @@ python seq_preprocess.py predict > data/seq_predict.data.$cur_date #
 cp data/seq_predict.data.$cur_date seq_predict.data
 
 echo "3. 调取模型，预测" # data/predict_merged.txt
-python seq_model.py predict # > ret.seq_predict.txt.$cur_date
+python seq_model.py predict # > ret.seq_predict.txt.$cur_date  predict_buy_price.txt

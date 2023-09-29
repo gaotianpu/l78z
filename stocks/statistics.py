@@ -39,6 +39,35 @@ def get_update_sql():
         usql = ("update stock_raw_daily_2 set TURNOVER_rate=%s where stock_no='%s' and TURNOVER_rate='-';" %(row["TURNOVER_rate"],row["stock_no"]))
         print(usql)
 
+def fix_TURNOVER_rate():
+    conn = sqlite3.connect("file:data/stocks.db", uri=True)
+    commit_id_list = []
+    with open('uncollect_stock_no.txt','r') as f:
+        for line in f:
+            fields = line.strip().split(',') 
+            stock_no = fields[0]
+            # 
+            sql = "select stock_no,round(avg(TURNOVER_rate),2) as TURNOVER_rate from stock_raw_daily_2 where stock_no='%s' and  TURNOVER_rate<>'-'"%(stock_no)
+            # sql = "select TURNOVER_rate from stock_raw_daily_2 where stock_no='%s' and  TURNOVER_rate<>'-'"%(stock_no)
+            # sql = "select distinct stock_no from stock_raw_daily_2 where TURNOVER_rate='-'"
+            # sql = "select trade_date,stock_no from stock_raw_daily_2 where stock_no='%s' and  TURNOVER_rate='-'"%(stock_no)
+            df = pd.read_sql(sql, conn)
+            # if len(df)>0:
+            #     for index, row in df.iterrows():
+            #         print(row['trade_date'],row['stock_no'])
+            commit_id_list.append( ( df.loc[0]['TURNOVER_rate'],df.loc[0]['stock_no'] ) )
+            # break
+    print(commit_id_list)    
+    # commit_id_list = [(dataset_type, sid) for sid in selected_ids] 
+    cursor = conn.cursor()
+    try:
+        sql = "update stock_raw_daily_2 set TURNOVER_rate=? where stock_no=? and TURNOVER_rate='-';"
+        cursor.executemany(sql, commit_id_list)  # commit_id_list上面已经说明
+        conn.commit()
+    except:
+        print("exception")
+        conn.rollback()
+
 def map_val_range(val,val_ranges):
     for i,val_range in enumerate(val_ranges):
         if val<val_range:
@@ -309,7 +338,8 @@ if __name__ == "__main__":
         # print(map_val_range(0.0934))
         # print(map_val_range(0.0936))
         #val_ranges = [-0.0049, 0.0143, 0.0251, 0.0395, 0.0499, 0.0652, 0.0935]
-    
+    if op_type == "fix_TURNOVER_rate":
+        fix_TURNOVER_rate()
     
     # print(get_all_fields())
     

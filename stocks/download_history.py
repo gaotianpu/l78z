@@ -71,7 +71,7 @@ def download(stock_no, start=None, allow_cache=True):
             if i == 2:  # 超过最大次数
                 logging.warning("download fail,retry_times=%s,stock=%s,url=%s" %
                                 (i, stock_no, source_url))
-                return
+                return #彻底失败，就放弃下面的处理流程了
             else:
                 continue
 
@@ -116,10 +116,19 @@ def download_failed(stocknos):
         download(stockno)
         time.sleep(0.1)  # 0.1s 间隔
 
+def download_new():
+    with open('uncollect_stock_no.txt','r') as f:
+        for line in f:
+            fields = line.strip().split(',') 
+            stock_no = fields[0]
+            # print(stock_no)
+            download(stock_no,start=20150802)
 # 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     process_idx = -1 if len(sys.argv) != 2 else int(sys.argv[1])
     download_all(process_idx) 
+    
+    # download_new()
 
     # download("515790")
     # download("002913", start="20150801", allow_cache=False)

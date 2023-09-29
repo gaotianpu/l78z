@@ -50,6 +50,7 @@ CREATE INDEX idx_stock_raw_daily_2_2 on stock_raw_daily_2 (stock_no, trade_date)
 
 /*
 update stock_raw_daily_2 set change_rate=replace(change_rate,'%',''),TURNOVER_rate=replace(TURNOVER_rate,'%','') where stock_no='002913' and trade_date='20171201'
+TURNOVER_rate = '-' 的情况？
 */
 
 /*stock的统计信息，价格，成交量等均值和标准差，用于对数据的标准化处理*/
@@ -76,13 +77,41 @@ CREATE TABLE stock_for_transfomer(
     pk_date_stock UNSIGNED BIG INT NOT NULL,
     trade_date  INT    NOT NULL,
     stock_no    CHAR(6)    NOT NULL,
-    dataset_type TINYINT NOT NULL DEFAULT 0,   
+    dataset_type TINYINT NOT NULL DEFAULT 0,  
+    list_label TINYINT NOT NULL DEFAULT 0,    
     data_json   TEXT    NOT NULL,
     primary key (pk_date_stock)
 );
 CREATE INDEX idx_stock_for_transfomer_2 on stock_for_transfomer (stock_no, trade_date);
-CREATE INDEX idx_stock_for_transfomer_3 on stock_for_transfomer (trade_date, stock_no);
-CREATE INDEX idx_stock_for_transfomer_4 on stock_for_transfomer (dataset_type);
+CREATE INDEX idx_stock_for_transfomer_3 on stock_for_transfomer (stock_no,dataset_type,list_label);
+CREATE INDEX idx_stock_for_transfomer_4 on stock_for_transfomer (trade_date,dataset_type,list_label);
+CREATE INDEX idx_stock_for_transfomer_5 on stock_for_transfomer (dataset_type,list_label);
+
+/* 
+DROP INDEX idx_stock_for_xgb_2;
+DROP TABLE stock_for_transfomer_test; 
+DROP INDEX idx_stock_for_transfomer_test_2;
+DROP INDEX idx_stock_for_transfomer_test_3;
+
+DROP INDEX  idx_stock_for_transfomer_4;
+DROP INDEX  idx_stock_for_transfomer_5; 
+CREATE INDEX idx_stock_for_transfomer_4 on stock_for_transfomer (trade_date,dataset_type,list_label);
+CREATE INDEX idx_stock_for_transfomer_5 on stock_for_transfomer (dataset_type,list_label);
+*/
+
+-- CREATE TABLE stock_for_transfomer_1(
+--     pk_date_stock UNSIGNED BIG INT NOT NULL,
+--     trade_date  INT    NOT NULL,
+--     stock_no    CHAR(6)    NOT NULL,
+--     dataset_type TINYINT NOT NULL DEFAULT 0, 
+--     list_label TINYINT NOT NULL DEFAULT 0,   
+--     data_json   TEXT    NOT NULL,
+--     primary key (pk_date_stock)
+-- );
+-- CREATE INDEX idx_stock_for_transfomer_1_2 on stock_for_transfomer_1 (stock_no, trade_date);
+-- CREATE INDEX idx_stock_for_transfomer_1_3 on stock_for_transfomer_1 (trade_date, stock_no);
+-- CREATE INDEX idx_stock_for_transfomer_1_4 on stock_for_transfomer_1 (trade_date,list_label,dataset_type);
+-- CREATE INDEX idx_stock_for_transfomer_1_5 on stock_for_transfomer_1 (dataset_type);
 
 
 

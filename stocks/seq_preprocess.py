@@ -223,12 +223,22 @@ def process_all_stocks(data_type="train", processes_idx=-1):
     # 2. 增量添加
     conn.close()
 
+def process_new_stocks(data_type):
+    with open('uncollect_stock_no.txt','r') as f:
+        for line in f:
+            fields = line.strip().split(',') 
+            stock_no = fields[0]
+            p = PreProcessor(conn,stock_no,FUTURE_DAYS,PAST_DAYS,data_type,MIN_TRADE_DATE)
+            p.process() 
+            
 # python seq_preprocess.py train 0 > data/seq_train.txt_0 &
 # python seq_preprocess.py predict > data/rnn_predict.txt &
 if __name__ == "__main__":
     data_type = sys.argv[1]
     process_idx = -1 if len(sys.argv) != 3 else int(sys.argv[2])
     process_all_stocks(data_type, process_idx)
+    
+    # process_new_stocks(data_type)
     
     # p = PreProcessor(conn,"000001",FUTURE_DAYS,PAST_DAYS, data_type)
     # p.process()

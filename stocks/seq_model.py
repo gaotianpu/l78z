@@ -14,9 +14,7 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from common import load_trade_dates,load_prices
-
-conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+from common import load_prices
 
 SEQUENCE_LENGTH = 20 #序列长度
 D_MODEL = 9  #维度
@@ -50,12 +48,23 @@ class StockPointDataset(Dataset):
     def __init__(self,datatype="validate",trade_date=None, field="f_high_mean_rate"): 
         dtmap = {"train":0,"validate":1,"test":2}
         self.field = field
-        self.conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+        self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
         # order by trade_date desc
         sql = (
-            "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
-            % (dtmap.get(datatype))
-        ) 
+                "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
+                % (dtmap.get(datatype))
+            )
+        
+        # sql = (
+        #     "select pk_date_stock from stock_for_transfomer where dataset_type=%d and (list_label>5 or list_label<2)"
+        #     % (dtmap.get(datatype))
+        # ) 
+        # if datatype!="train":
+        #     sql = (
+        #         "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
+        #         % (dtmap.get(datatype))
+        #     )
+            
         if trade_date:
             sql = (
                 "select pk_date_stock from stock_for_transfomer where trade_date='%s' and dataset_type=%d"
@@ -76,14 +85,15 @@ class StockPointDataset(Dataset):
         
         data_json = json.loads(df_item.iloc[0]['data_json']) #.replace("'",'"'))
         true_score = data_json.get(self.field)
-        return pk_date_stock, torch.tensor(true_score), torch.tensor(data_json["past_days"]) 
+        list_label = df_item.iloc[0]['list_label']
+        return pk_date_stock, torch.tensor(true_score), torch.tensor(list_label), torch.tensor(data_json["past_days"]) 
 
 
 class StockPairDataset(Dataset):
     def __init__(self, data_type="train", field="f_high_mean_rate"):
         assert data_type in ("train", "validate", "test")
         self.df = pd.read_csv("%s.data" % (data_type), sep=" ", header=None)
-        self.conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+        self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
     def __len__(self):
@@ -189,7 +199,7 @@ def predict():
     dataloader = DataLoader(dataset, batch_size=128) 
     # print(next(iter(dataset)))
     
-    model_files="pair_high,point_pair_high,point_high,point_low".split(",") 
+    model_files="pair_high,point_pair_high,point_high,point_low,point_low1".split(",") 
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     li_df = []
     for model_name in model_files:
@@ -209,18 +219,21 @@ def predict():
             df = pd.DataFrame(all,columns=["pk_date_stock",model_name])
             df = df.sort_values(by=[model_name],ascending=False)
             df = df.round(4)
-            df['idx_' + model_name] = range(len(df))
+            # df['idx_' + model_name] = range(len(df))
             df.to_csv("data/predict_%s.txt"%(model_name),sep=";",index=False)
             li_df.append(df)
             
     # 几个模型合并
     trade_date = str(li_df[0]["pk_date_stock"][0])[:8]
     
-    df = li_df[0].merge(li_df[1],on="pk_date_stock",how='left')
-    df = df.merge(li_df[2],on="pk_date_stock",how='left')
-    df = df.merge(li_df[3],on="pk_date_stock",how='left')
+    df = li_df[0].merge(li_df[1],on="pk_date_stock",how='left') #pair_high,point_pair_high
+    df = df.merge(li_df[2],on="pk_date_stock",how='left') # point_high
+    df = df.merge(li_df[3],on="pk_date_stock",how='left') #point_low
+    df = df.merge(li_df[4],on="pk_date_stock",how='left') #point_low1
     # df['idx_merge'] = df.apply(lambda x: x['idx_pair_high'] + x['idx_point_pair_high'], axis=1)
     
+    # data/stocks.db
+    conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
     df_prices = load_prices(conn,trade_date)
     df = df.merge(df_prices,on="pk_date_stock",how='left')
     df['buy_low_price'] = df.apply(lambda x: x['CLOSE_price'] * (1 + x['point_low']), axis=1)
@@ -230,7 +243,7 @@ def predict():
     # df_static.to_csv("data/static_seq_stocks.txt",sep=";",index=False)
     
     # point_pair_high 效果更好些？
-    df = df.sort_values(by=["idx_point_pair_high"]) #,ascending=False 
+    df = df.sort_values(by=["point_pair_high"]) #,ascending=False 
     df.to_csv("data/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
     df.to_csv("data/predict_merged.txt",sep=";",index=False) 
     

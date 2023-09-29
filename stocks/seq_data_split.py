@@ -10,18 +10,17 @@ SAMPLE_COUNT_PER_DAY = 24  #每个交易日抽取多少条作为样本
 
 conn = sqlite3.connect("file:data/stocks.db", uri=True)
 
-
-def load_ids_by_date(date,dateset_type=0):
+def load_ids_by_date(date,dateset_type=0,conn=conn):
     sql = "select pk_date_stock from stock_for_transfomer where trade_date=%s and dataset_type=%d" %(date,dateset_type)
     df = pd.read_sql(sql, conn)
     return df['pk_date_stock']
 
-def load_ids_by_date_label(date,dateset_type=0,label=1):
+def load_ids_by_date_label(date,dateset_type=0,label=1,conn=conn):
     sql = "select pk_date_stock from stock_for_transfomer where trade_date=%s and dataset_type=%d and list_label=%s " %(date,dateset_type,label)
     df = pd.read_sql(sql, conn)
     return df['pk_date_stock']
 
-def upate_dataset_type(selected_ids,dataset_type):
+def upate_dataset_type(selected_ids,dataset_type,conn=conn):
     '''
     dataset_type: 1=验证集 2=测试集
     '''
@@ -73,18 +72,29 @@ def process_all():
         validate_dataset_split(date)
         # break 
 
+def update_dataset_type_from_file():
+    conn = sqlite3.connect("file:data/stocks_train.db", uri=True)
+    with open("dataset_type_1.txt",'r') as f :
+       upate_dataset_type([line.strip() for line in f.readlines()],1,conn=conn)
+       
+    with open("dataset_type_2.txt",'r') as f :
+       upate_dataset_type([line.strip() for line in f.readlines()],2,conn=conn)
 
 # https://www.zditect.com/main-advanced/database/5-ways-to-run-sql-script-from-file-sqlite.html
 # sqlite3 data/stocks.db ".read validate.sql"
 
 if __name__ == "__main__":
     data_type = sys.argv[1] 
+    print(data_type)
     if data_type == "all":
         process_all()
         # # python seq_data_split.py all  > all_seq_data_split.txt &
         # test_dataset_split(trade_dates)  
         # # run update sql 后，才能执行下一个? test/validate的先后执行顺序？
         # validate_dataset_split(trade_dates)
+    if data_type == "update_from_file":
+        # python seq_data_split.py update_from_file
+        update_dataset_type_from_file()
     if data_type == "validate":
         # python seq_data_split.py validate > validate.sql
         validate_dataset_split(20230815)

@@ -35,12 +35,6 @@ python seq_preprocess.py train 2 > data/seq_train_2.txt &
 python seq_preprocess.py train 3 > data/seq_train_3.txt &
 python seq_preprocess.py train 4 > data/seq_train_4.txt 
 python seq_preprocess.py predict > data/seq_predict.data #
-#find data/ -name 'seq_train_*.txt' | xargs sed 'a\' | grep -v nan | sort -nr > data/seq_all_data_new.csv
-
-# end_time=$(date +%s)
-# cost_time=$[ $end_time-$start_time ]
-# echo "1.done $(($cost_time/60))min $(($cost_time%60))s"
-# start_time=$end_time 
 
 # 将股票的序列数据导入到sqlite3中
 echo "2.1. import into sqlite3.  stocks sequence data -> table:stock_for_transfomer"
@@ -52,6 +46,21 @@ sqlite3 data/stocks.db <<EOF
 .import data/seq_train_3.txt stock_for_transfomer
 .import data/seq_train_4.txt stock_for_transfomer
 EOF
+
+# data/stocks_train.db . 还要执行数据集拆分？
+sqlite3 data/stocks.db <<EOF
+.separator ";"
+.import new_stocks_seq.txt.20230928 stock_for_transfomer
+EOF
+
+# sqlite3 data/stocks_train.db <<EOF
+# .separator ";"
+# .import data/seq_train_0.txt stock_for_transfomer
+# .import data/seq_train_1.txt stock_for_transfomer
+# .import data/seq_train_2.txt stock_for_transfomer
+# .import data/seq_train_3.txt stock_for_transfomer
+# .import data/seq_train_4.txt stock_for_transfomer
+# EOF
 
 # .import data/seq_train.txt.0915.2 stock_for_transfomer
 
@@ -89,6 +98,10 @@ python seq_regress.py training > seq_regress.log.$cur_date
 echo "Done!"
 
 
+# end_time=$(date +%s)
+# cost_time=$[ $end_time-$start_time ]
+# echo "1.done $(($cost_time/60))min $(($cost_time%60))s"
+# start_time=$end_time 
 
 # #导出
 # sqlite3 data/stocks.db <<EOF
