@@ -15,7 +15,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
 from common import load_trade_dates
-from seq_model import StockForecastModel,StockPairDataset,StockPointDataset
+from seq_model import StockForecastModel,StockPointDataset
 
 SEQUENCE_LENGTH = 20 #序列长度
 D_MODEL = 9  #维度
@@ -52,6 +52,31 @@ def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
         #learning_rate = np.sin(learning_rate)  #预热学习率结束后,学习率呈sin衰减
         learning_rate = learning_rate**1.0001 #预热学习率结束后,学习率呈指数衰减(近似模拟指数衰减)
     return learning_rate 
+
+class StockPairDataset(Dataset):
+    def __init__(self, data_type="train", field="f_high_mean_rate"):
+        assert data_type in ("train", "validate", "test")
+        self.df = pd.read_csv("%s.data" % (data_type), sep=" ", header=None)
+        self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
+        self.field = field  # 基于哪个预测值做比较
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        sql = (
+            "select pk_date_stock,data_json from stock_for_transfomer where pk_date_stock in (%s,%s)"
+            % (self.df.iloc[idx][0], self.df.iloc[idx][1])
+        )
+        df_pair = pd.read_sql(sql, self.conn)
+        a = json.loads(df_pair.iloc[0]["data_json"])
+        b = json.loads(df_pair.iloc[1]["data_json"])
+        a_t = torch.tensor(a["past_days"])
+        b_t = torch.tensor(b["past_days"]) 
+        if a[self.field] > b[self.field]:
+            return a_t, b_t
+        else:
+            return b_t, a_t
 
 # 2. pair形式的损失函数
 class LogExpLoss(nn.Module):

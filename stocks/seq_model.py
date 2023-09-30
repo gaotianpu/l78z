@@ -55,15 +55,11 @@ class StockPointDataset(Dataset):
                 % (dtmap.get(datatype))
             )
         
-        # sql = (
-        #     "select pk_date_stock from stock_for_transfomer where dataset_type=%d and (list_label>5 or list_label<2)"
-        #     % (dtmap.get(datatype))
-        # ) 
-        # if datatype!="train":
-        #     sql = (
-        #         "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
-        #         % (dtmap.get(datatype))
-        #     )
+        if datatype=="train": #and list_label>5
+            sql = (
+                "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
+                % (dtmap.get(datatype))
+            ) 
             
         if trade_date:
             sql = (
@@ -89,30 +85,6 @@ class StockPointDataset(Dataset):
         return pk_date_stock, torch.tensor(true_score), torch.tensor(list_label), torch.tensor(data_json["past_days"]) 
 
 
-class StockPairDataset(Dataset):
-    def __init__(self, data_type="train", field="f_high_mean_rate"):
-        assert data_type in ("train", "validate", "test")
-        self.df = pd.read_csv("%s.data" % (data_type), sep=" ", header=None)
-        self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
-        self.field = field  # 基于哪个预测值做比较
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        sql = (
-            "select pk_date_stock,data_json from stock_for_transfomer where pk_date_stock in (%s,%s)"
-            % (self.df.iloc[idx][0], self.df.iloc[idx][1])
-        )
-        df_pair = pd.read_sql(sql, self.conn)
-        a = json.loads(df_pair.iloc[0]["data_json"])
-        b = json.loads(df_pair.iloc[1]["data_json"])
-        a_t = torch.tensor(a["past_days"])
-        b_t = torch.tensor(b["past_days"]) 
-        if a[self.field] > b[self.field]:
-            return a_t, b_t
-        else:
-            return b_t, a_t
 
 
 # 3. 定义模型
