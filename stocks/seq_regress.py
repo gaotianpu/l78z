@@ -14,14 +14,13 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from seq_model import StockForecastModel,StockPointDataset
-from seq_transfomer import estimate_ndcg_score
+from seq_model import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores
 
 SEQUENCE_LENGTH = 20 #序列长度
 D_MODEL = 9  #维度
 
 #StockForecastModel.point_low1.pth # point,point_low1
-MODEL_FILE = "StockForecastModel.point_low1.pth" 
+MODEL_FILE = "StockForecastModel.point_high1.pth" 
 
 # conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
@@ -92,33 +91,19 @@ def test(dataloader, model, loss_fn):
     test_loss = test_loss ** 0.5
     print(f"Test Avg loss: {test_loss:>8f}")
     
-    evaluate_loss_and_ndcg(all_ret)
-    
-            
-def evaluate_loss_and_ndcg(all_ret):
-    # 分档位loss trade_date = str(df_predict['pk_date_stock'][0])[:8]
     df = pd.DataFrame(all_ret,columns=["pk_date_stock","predict","true","label"])
+    evaluate_label_loss(df)
+    evaluate_ndcg_and_scores(df)
+
+         
+def evaluate_label_loss(df):
+    # 分档位loss trade_date = str(df_predict['pk_date_stock'][0])[:8]
     df["trade_date"] = df.apply(lambda x: str(x['pk_date_stock'])[:8] , axis=1)
     df["mse_loss"] = df.apply(lambda x: (x['predict'] - x['true'])**2 , axis=1)
     label_groups = df.groupby('label')
     for label,data in label_groups:
         mse_loss_mean = data['mse_loss'].mean()
         print(label,len(data), round(mse_loss_mean**0.5,4)) 
-    
-    # 计算ndcg情况
-    li_ndcg = []
-    date_groups = df.groupby('trade_date')
-    for trade_date,data in date_groups: 
-        y_true = np.expand_dims(data['label'].to_numpy(),axis=0)
-        y_predict = np.expand_dims(data['predict'].to_numpy(),axis=0)
-        ndcg = ndcg_score(y_true,y_predict)
-        ndcg_5 = ndcg_score(y_true,y_predict,k=5)
-        ndcg_3 = ndcg_score(y_true,y_predict,k=3)
-        li_ndcg.append([ndcg,ndcg_5,ndcg_3])
-        # print(trade_date,ndcg,ndcg_5,ndcg_3)
-    
-    ndcg_scores = [round(v,4) for v in np.mean(li_ndcg,axis=0).tolist()]
-    print("ndcg_scores totoal:%s top_5:%s top_3:%s" % tuple(ndcg_scores) )  
     # df.to_csv("data/test_label_loss.txt",sep=";",index=False)
         
 
@@ -154,7 +139,7 @@ def training(field="f_high_mean_rate"):
         print("load success")
 
     epochs = 3
-    start = 7
+    start = 1
     for t in range(epochs):
         print(f"Epoch {t+start}\n-------------------------------")   
         train(train_dataloader, model, criterion, optimizer,t+start)
@@ -187,49 +172,39 @@ def evaluate_model_checkpoints(field="f_high_mean_rate"):
             model.load_state_dict(torch.load(fname))
             test(vali_dataloader, model, criterion)
             test(test_dataloader, model, criterion)
-        break 
-
-def tmp(): 
-    ndcg_data = StockPointDataset(datatype="test",field="f_high_mean_rate") #validate
-    ndcg_dataloader = DataLoader(ndcg_data, batch_size=128)   
-    
-    model_files="pair_high,point_pair_high,point_high,point_low".split(",") 
-    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-    for model_name in model_files:
-        print(model_name)
-        mfile = "StockForecastModel.pth.%s"%(model_name)
-        if os.path.isfile(mfile):
-            model.load_state_dict(torch.load(mfile)) 
-        
-        model.eval()
-        with torch.no_grad():
-            estimate_ndcg_score(ndcg_dataloader,model)
-    
-     
-            
+        break            
 
 if __name__ == "__main__":
     op_type = sys.argv[1]
     field = sys.argv[2] #"f_low_mean_rate" # next_low_rate, f_high_mean_rate, f_low_mean_rate
     print(op_type)
     if op_type == "training":
-        # python seq_regress.py training f_high_mean_rate
+        # python seq_regress.py training next_high_rate #f_high_mean_rate 
         training(field)
     if op_type == "checkpoints": 
         # python seq_regress.py checkpoints next_low_rate #f_high_mean_rate
         evaluate_model_checkpoints(field)  
     if op_type == "tmp":
-        # python seq_regress.py tmp next_low_rate
-        test_data = StockPointDataset(datatype="test",field="next_low_rate")
+        # python seq_regress.py tmp next_high_rate
+        test_data = StockPointDataset(datatype="test",field=field)
         test_dataloader = DataLoader(test_data, batch_size=128)  
-        model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-        model.load_state_dict(torch.load("StockForecastModel.point_low1.pth")) 
         criterion = nn.MSELoss() #均方差损失函数
+        model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+        
+        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.pair_11")) 
         test(test_dataloader, model, criterion)
         
-    # tmp()
-
-    # test_data = StockPointDataset(datatype="validate",field=field)
-    # test_dataloader = DataLoader(test_data, batch_size=8)  
-    # a = next(iter(test_dataloader))
-    # print(a)
+        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.pair_15")) 
+        test(test_dataloader, model, criterion)
+        
+        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.pair_16")) 
+        test(test_dataloader, model, criterion)
+        
+        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.point_pair_high")) 
+        test(test_dataloader, model, criterion)
+        
+        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.point_4")) 
+        test(test_dataloader, model, criterion)
+        
+        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.point_5")) 
+        test(test_dataloader, model, criterion)

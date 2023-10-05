@@ -39,7 +39,7 @@ def get_max_trade_date(conn,stock_no,table_name="stock_raw_daily_2"):
         # return df['min_trade_date'][0]
 
 def load_prices(conn,trade_date):
-    sql = "select  cast(trade_date||stock_no as int64) as pk_date_stock,stock_no,CLOSE_price,LOW_price from stock_raw_daily_2 where trade_date=%s"%(trade_date)
+    sql = "select  cast(trade_date||stock_no as int64) as pk_date_stock,stock_no,CLOSE_price,LOW_price,HIGH_price from stock_raw_daily_2 where trade_date=%s"%(trade_date)
     df = pd.read_sql(sql, conn)
     return df 
     

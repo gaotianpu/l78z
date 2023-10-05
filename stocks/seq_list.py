@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import os
+import sys
+from typing import Optional
 import pandas as pd
+import numpy as np
 import sqlite3
 import json
 import torch
@@ -8,10 +12,16 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
+from sklearn.metrics import ndcg_score
+
+from seq_model import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores
 
 SEQUENCE_LENGTH = 20 #序列长度
 D_MODEL = 9  #维度
 MODEL_FILE = "StockForecastModel.list.pth"
+
+# https://blog.csdn.net/qq_36478718/article/details/122598406
+# ListNet ・ ListMLE ・ RankCosine ・ LambdaRank ・ ApproxNDCG ・ WassRank ・ STListNet ・ LambdaLoss
 
 device = (
     "cuda"
@@ -22,9 +32,9 @@ device = (
 )
 
 class StockListDataset(Dataset):
-    def __init__(self, data_type="train", field="f_high_mean_rate"):
-        assert data_type in ("train", "validate", "test")
-        self.df = pd.read_csv("list_random/%s.txt" % (data_type), sep=";", header=None)
+    def __init__(self, datatype="train", field="f_high_mean_rate"):
+        assert datatype in ("train", "validate", "test")
+        self.df = pd.read_csv("list/random_%s.txt" % (datatype), sep=";", header=None)
         self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
@@ -49,45 +59,41 @@ class StockListDataset(Dataset):
         return torch.tensor(li_labels),torch.tensor(li_data)
         
 # https://pytorchltr.readthedocs.io/en/stable/getting-started.html
+# https://github.com/rjagerman/pytorchltr
 
 # https://zhuanlan.zhihu.com/p/148262580
 
 # https://www.cnblogs.com/bentuwuying/p/6690836.html
 
-
-class LambdaRankLoss(nn.Module):
-    """
-    Get loss from one user's score output
-    """
+class ListMLELoss(nn.Module):
     def forward(
-        self, score_predict: torch.Tensor, score_real: torch.Tensor,
+        self, y_pred: torch.Tensor, y_true: torch.Tensor, k=None
     ) -> torch.Tensor:
-        """
-        :param score_predict: 1xN tensor with model output score
-        :param score_real: 1xN tensor with real score
-        :return: Gradient of ranknet
-        """
-        sigma = 1.0
-        score_predict_diff_mat = score_predict - score_predict.t()
-        score_real_diff_mat = score_real - score_real.t()
-        tij = (1.0 + torch.sign(score_real_diff_mat)) / 2.0
-        lambda_ij = torch.sigmoid(sigma * score_predict_diff_mat) - tij
-        loss = lambda_ij.sum(dim=1, keepdim=True) - lambda_ij.t().sum(dim=1, keepdim=True)
-        return loss
+        # y_pred : batch x n_items
+        # y_true : batch x n_items 
+        if k is not None:
+            sublist_indices = (y_pred.shape[1] * torch.rand(size=k)).long()
+            y_pred = y_pred[:, sublist_indices] 
+            y_true = y_true[:, sublist_indices] 
+    
+        _, indices = y_true.sort(descending=True, dim=-1)
+        pred_sorted_by_true = y_pred.gather(dim=1, index=indices)
+        cumsums = pred_sorted_by_true.exp().flip(dims=[1]).cumsum(dim=1).flip(dims=[1])
+        listmle_loss = torch.log(cumsums + 1e-10) - pred_sorted_by_true
+        return listmle_loss.sum(dim=1).mean() 
+    
 
 # 4. train 函数
 def train(dataloader, model, loss_fn, optimizer,epoch): 
+    model.train() #训练模式
+    
     size = len(dataloader.dataset) 
     
-    model.train() #训练模式
     total_loss = 0.0 
     for batch, (labels,data) in enumerate(dataloader):
-        labels = torch.squeeze(labels)
-        data = torch.squeeze(data)
-             
-        predict_scores = model(data.to(device)) 
+        predict_scores = model(torch.squeeze(data).to(device)) 
         
-        loss = loss_fn(predict_scores, labels)   
+        loss = loss_fn(torch.unsqueeze(predict_scores,0), labels) #8*8, 只关注头部1/8？  , (1,8) 
         
         # Back propagation 
         loss.backward()
@@ -96,12 +102,12 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         
         total_loss = total_loss + loss.item()
         
-        if batch % 64 == 0:
+        if batch % 512 == 0:
             avg_loss = total_loss / (batch + 1) 
-            loss, current = loss.item(), (batch + 1) * len(output)
-            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d}]") 
-            
-        cp_save_n = 1280 #cp, checkpoint
+            loss, current = loss.item(), (batch + 1) * 1 # len(choose)
+            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d}]")
+                 
+        cp_save_n = 512 #cp, checkpoint
         if batch % cp_save_n == 0:
             cp_idx = int(batch / cp_save_n)
             cp_idx_mod = cp_idx % 23
@@ -110,45 +116,25 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
     torch.save(model.state_dict(), "%s.%s" % (MODEL_FILE,epoch))
 
 # 5. vaildate/test 函数
-def test(dataloader, model):
-    size = len(dataloader.dataset)
-    num_batches = len(dataloader)
-    test_loss = 0
-    
+def test(dataloader, model): 
     model.eval()
     with torch.no_grad():
         all_ret = []
         for _batch, (pk_date_stock,true_scores,list_label,data) in enumerate(dataloader): 
             output = model(data.to(device)) 
-            
             # 准备计算分档loss，ndcg相关的数据
             ret = list(zip(pk_date_stock.tolist(), output.tolist(),true_scores.tolist(),list_label.tolist()))
             all_ret = all_ret + ret   
     
     # 计算ndcg情况
-    li_ndcg = []
     df = pd.DataFrame(all_ret,columns=["pk_date_stock","predict","true","label"])
-    df["trade_date"] = df.apply(lambda x: str(x['pk_date_stock'])[:8] , axis=1)
-    date_groups = df.groupby('trade_date')
-    for trade_date,data in date_groups: 
-        y_true = np.expand_dims(data['label'].to_numpy(),axis=0)
-        y_predict = np.expand_dims(data['predict'].to_numpy(),axis=0)
-        ndcg = ndcg_score(y_true,y_predict)
-        ndcg_5 = ndcg_score(y_true,y_predict,k=5)
-        ndcg_3 = ndcg_score(y_true,y_predict,k=3)
-        li_ndcg.append([ndcg,ndcg_5,ndcg_3])
-        # print(trade_date,ndcg,ndcg_5,ndcg_3)
-    
-    ndcg_scores = [round(v,4) for v in np.mean(li_ndcg,axis=0).tolist()]
-    print("ndcg_scores totoal:%s top_5:%s top_3:%s" % tuple(ndcg_scores) )  
-    # df.to_csv("data/test_label_loss.txt",sep=";",index=False)
-    
-    
+    evaluate_ndcg_and_scores(df)
+   
 
 def training(field="f_high_mean_rate"):
     # 初始化
     train_data = StockListDataset(datatype="train",field=field)
-    train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
+    train_dataloader = DataLoader(train_data, batch_size=1, shuffle=True)
     # a = next(iter(train_dataloader))
     # print(choose.shape,reject.shape)
 
@@ -158,10 +144,10 @@ def training(field="f_high_mean_rate"):
     test_data = StockPointDataset(datatype="test",field=field)
     test_dataloader = DataLoader(test_data, batch_size=128)  
     
-    criterion = LambdaRankLoss() #均方差损失函数
+    criterion = ListMLELoss() #
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.0000001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.00001 #0.00001 #0.000001  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -170,11 +156,21 @@ def training(field="f_high_mean_rate"):
         model.load_state_dict(torch.load(MODEL_FILE)) 
         print("load success")
 
-    epochs = 3
+    epochs = 5
     start = 0
     for t in range(epochs):
-        print(f"Epoch {t+start}\n-------------------------------")   
-        train(train_dataloader, model, criterion, optimizer,t+start)
+        real_epoch = t + start
+        if real_epoch == 0:
+            optimizer.lr = 0.0000001
+        if real_epoch == 1:
+            optimizer.lr = 0.000001
+        if real_epoch == 2:
+            optimizer.lr = 0.00001
+        if real_epoch == 3:
+            optimizer.lr = 0.0001
+            
+        print(f"Epoch {real_epoch}\n-------------------------------")   
+        train(train_dataloader, model, criterion, optimizer,real_epoch)
         # test(vali_dataloader, model, criterion)
         test(test_dataloader, model)
         # scheduler.step()
@@ -189,25 +185,12 @@ if __name__ == "__main__":
     if op_type == "training":
         # python seq_list.py training f_high_mean_rate
         training(field)
-    
-    if op_type == "tmp":  
-        # dataset = StockPairDataset('train')
-        # a,b = next(iter(dataset))
-        # print(a.shape,b.shape) # torch.Size([20, 9]) torch.Size([20, 9])
-        # dataloader = DataLoader(dataset, batch_size=3) 
-        # a,b = next(iter(dataloader))
-        # print(a.shape,b.shape) # torch.Size([3, 20, 9]) torch.Size([3, 20, 9])
+    if op_type == "tmp":
+        loss_fn = ListMLELoss() #
+        predict_scores = torch.tensor([[.1, .2, .3, 4, 70]])
+        labels = torch.tensor([[10, 0, 0, 1, 5]])
+        loss = loss_fn(predict_scores, labels)
+        print(loss)
         
-        dataset = StockListDataset('train')
-        labels,data = next(iter(dataset))
-        print(labels.shape,data.shape) # torch.Size([24]) torch.Size([24, 20, 9])
-        
-        dataloader = DataLoader(dataset, batch_size=1)
-        labels,data = next(iter(dataloader))
-        print(labels.shape,data.shape) #
-        labels = torch.squeeze(labels)
-        data = torch.squeeze(data)
-        print(labels.shape,data.shape) #
-        print(labels.dtype,data.dtype)
     
     

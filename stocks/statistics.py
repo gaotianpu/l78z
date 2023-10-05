@@ -13,8 +13,9 @@ MAX_ROWS_COUNT = 2000 #从数据库中加载多少数据, 差不多8年的交易
 conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
 forecast_fields = 'f_high_mean_rate,f_high_rate,f_low_mean_rate,f_low_rate'.split(",")
-static_fields = 'mean,std,min,25%,50%,75%,max'.split(",")
+static_fields = 'mean,std,25%,50%,75%'.split(",")
 daily_fields = "OPEN_price,CLOSE_price,change_amount,change_rate,LOW_price,HIGH_price,TURNOVER,TURNOVER_amount,TURNOVER_rate,low_rate,high_rate".split(",")
+daily_fields = "open_rate,low_rate,high_rate,change_rate".split(",")
 
 def get_all_fields():
     fields = ['key','count']
@@ -115,53 +116,93 @@ def sample_statics(stocks):
     range_val = [li_[idx] for idx in range_idx]
     # print(li_)
     # print(range_idx)
-    print(range_val)
-    
+    print(range_val)   
 
-def compute_mean_std(stock_no=None):
-    '''抽样计算整体的均值和标准差'''
-    ret = [stock_no]
-    sql = "select * from stock_raw_daily_2 where stock_no='%s' order by trade_date desc"%(stock_no)
-    df = pd.read_sql(sql, conn)
+
+class StockStatics():
+    def __init__(self,stocks,conn):
+        self.static_fields = 'mean,std,25%,50%,75%'.split(",")
+        self.daily_fields = "open_rate,low_rate,high_rate,change_rate".split(",")
+        self.all_fields = self.get_static_fields() 
+        self.stocks = stocks
+        self.conn = conn
     
-    # if stock_no=="002913":
-    #     df['change_rate'] = df['change_rate'].str.replace("%","")
-    #     df['change_rate'] = pd.to_numeric(df['change_rate']) #.astype('double')
-    #     df['TURNOVER_rate'] = df['TURNOVER_rate'].str.replace("%","")
-    #     df['TURNOVER_rate'] = pd.to_numeric(df['TURNOVER_rate'])
-    
-    df['last_close_price'] = df['CLOSE_price'] - df['change_amount'] 
-    df['low_rate'] = c_round((df['LOW_price'] - df['last_close_price']) / df['last_close_price']) 
-    df['high_rate'] = c_round((df['HIGH_price'] - df['last_close_price']) / df['last_close_price']) 
-    df['open_rate'] = c_round((df['OPEN_price'] - df['last_close_price']) / df['last_close_price']) 
-    
-    df_describe = df.describe()  
-    
-    for field in daily_fields:
-        for f2 in static_fields:
-            ret.append(c_round(df_describe[field][f2]))
-    return ret
+    #生成字段名列表
+    def get_static_fields(self):
+        all_fields = ['stock_no','open_rate_label','count'] #max_trade_date
+        for field in daily_fields:
+            for f2 in static_fields: 
+                all_fields.append("%s_%s" %(field,f2)) 
+        return all_fields
+
+    def compute_mean_std(self,stock_no):
+        '''抽样计算整体的均值和标准差'''
+        sql = "select * from stock_raw_daily_2 where stock_no='%s' "%(stock_no)
+        df = pd.read_sql(sql, self.conn)
+
+        # if stock_no=="002913":
+        #     df['change_rate'] = df['change_rate'].str.replace("%","")
+        #     df['change_rate'] = pd.to_numeric(df['change_rate']) #.astype('double')
+        #     df['TURNOVER_rate'] = df['TURNOVER_rate'].str.replace("%","")
+        #     df['TURNOVER_rate'] = pd.to_numeric(df['TURNOVER_rate'])
         
-
-def compute_per_stocks_mean_std():
-    '''计算每个stocks，价格，成交量，成交金额等字段的均值、标准差'''
-    stocks = load_stocks(conn)
-    li = []
-    for i, stock in enumerate(stocks):
-        stock_no = stock[0]
-        try:
-            li.append(compute_mean_std(stock_no))
-        except:
-            print("error:",stock_no)
-        # break
-    
-    all_fields = ['stock_no'] #max_trade_date
-    for field in daily_fields:
-        for f2 in static_fields: 
-            all_fields.append("%s_%s" %(field,f2)) 
+        df['last_close_price'] = df['CLOSE_price'] - df['change_amount'] 
+        df['open_rate'] = c_round((df['OPEN_price'] - df['last_close_price']) / df['last_close_price']) 
+        df['low_rate'] = c_round((df['LOW_price'] - df['last_close_price']) / df['last_close_price']) 
+        df['high_rate'] = c_round((df['HIGH_price'] - df['last_close_price']) / df['last_close_price']) 
+        df['change_rate'] = df.apply(lambda x: x['change_rate']/100, axis=1)
             
-    df = pd.DataFrame(li,columns=all_fields)
-    df.to_csv("data/static_seq_stocks.txt",sep=";",index=False)  
+        all_ret = []
+        
+        # 整体统计
+        df = df[daily_fields]
+        df_describe = df.describe()   
+        ret = [stock_no,0,len(df)]
+        for field in daily_fields:
+            for f2 in static_fields:
+                ret.append(c_round(df_describe[field][f2]))
+        all_ret.append(ret)
+        
+        # 根据open_rate 确定label数值
+        df_statics_stock = dict(zip(self.all_fields,ret))
+        (or25,or50,or75) = (df_statics_stock['open_rate_25%'],df_statics_stock['open_rate_50%'],df_statics_stock['open_rate_75%'])
+        df['open_rate_label'] = df.apply(lambda x: 1 if x['open_rate'] < or25 else 2 if x['open_rate'] < or50 else 3 if x['open_rate'] < or75 else 4, axis=1)
+        # df.to_csv("data/static_seq_stocks_tmp.txt",sep=";",index=False)   
+        
+        # 基于 open_rate_label 统计
+        label_groups = df.groupby('open_rate_label')
+        for open_rate_label,data in label_groups: 
+            ret = [stock_no,open_rate_label,len(data)]
+            df = data[daily_fields]
+            df_describe = df.describe()  
+            # print(df_describe)
+            for field in self.daily_fields:
+                for f2 in self.static_fields:
+                    ret.append(c_round(df_describe[field][f2]))
+            all_ret.append(ret)
+        
+        # for ret in all_ret:
+        #     print(ret)
+
+        return all_ret
+            
+
+    def process(self):
+        '''计算每个stocks，价格，成交量，成交金额等字段的均值、标准差''' 
+        li = []
+        for i, stock in enumerate(self.stocks):
+            stock_no = stock[0]
+            # print(stock_no)
+            li = li + self.compute_mean_std(stock_no)
+            # try:
+            #     li.append(compute_mean_std(stock_no))
+            # except:
+            #     print("error:",stock_no)
+            # break 
+                
+        df = pd.DataFrame(li,columns=self.all_fields)
+        df.to_csv("data/static_seq_stocks.txt",sep=";",index=False)  
+
 
 def tmp():
     stocks = load_stocks(conn)
@@ -311,7 +352,11 @@ if __name__ == "__main__":
     print(op_type)
     if op_type == "stocks":
         # python statistics.py stocks # data/static_seq_stocks.txt
-        compute_per_stocks_mean_std()  
+        stocks = load_stocks(conn) #
+        ss = StockStatics(stocks,conn)
+        ss.process()
+        # compute_per_stocks_mean_std()  
+        # compute_mean_std('600008')
     if op_type == "dates":
         # python statistics.py dates # per_day_mean_std.jsonl
         static_forecast_val()
