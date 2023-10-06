@@ -50,7 +50,7 @@ class StockPointDataset(Dataset):
         self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
         # order by trade_date desc
         sql = (
-                "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
+                "select pk_date_stock from stock_for_transfomer where dataset_type=%d order by trade_date desc"
                 % (dtmap.get(datatype))
             )
         
@@ -82,9 +82,6 @@ class StockPointDataset(Dataset):
         true_score = data_json.get(self.field)
         list_label = df_item.iloc[0]['list_label']
         return pk_date_stock, torch.tensor(true_score), torch.tensor(list_label), torch.tensor(data_json["past_days"]) 
-
-
-
 
 # 3. 定义模型
 class StockForecastModel(nn.Module):
@@ -179,6 +176,7 @@ def predict():
     
     # model_v1
     # model_files="pair_high,point_pair_high,point_high,point_low,point_low1".split(",") 
+    order_models = "point_pair_high,pair_11,pair_15,pair_16,point_4,point_5".split(",")
     model_files="point_pair_high,pair_11,pair_15,pair_16,point_4,point_5,low1.7".split(",")
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     for model_name in model_files:
@@ -198,7 +196,16 @@ def predict():
             
             df = pd.DataFrame(all_li,columns=["pk_date_stock",model_name])
             df = df.round({model_name: 4})
-            # df['idx_' + model_name] = range(len(df))
+            # df[model_name + '_idx'] = range(len(df)) 
+            # 排序,标出top5，top3
+            if model_name in order_models:
+                count = len(all_li)
+                top3 = int(count/8)  # =count*3/24
+                top5 = int(count*5/24) 
+                
+                df = df.sort_values(by=[model_name],ascending=False) # 
+                df[model_name + '_top3'] = [1 if i<top3 else 0 for i in range(count)]
+                df[model_name + '_top5'] = [1 if i<top5 else 0 for i in range(count)]
             
             df.to_csv("data/predict_%s.txt"%(model_name),sep=";",index=False) 
             
@@ -207,6 +214,9 @@ def predict():
                 df_merged = df 
             else: # 
                 df_merged = df_merged.merge(df, on="pk_date_stock",how='left')
+    
+    df_merged['top3'] = df_merged[[ model+'_top3' for model in order_models ]].sum(axis=1)
+    df_merged['top5'] = df_merged[[ model+'_top5' for model in order_models ]].sum(axis=1)
                 
     conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
     trade_date = str(df_merged["pk_date_stock"][0])[:8]
@@ -237,40 +247,14 @@ def predict():
         df_merged.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
     
     # point_pair_high 效果更好些？
-    df_merged = df_merged.sort_values(by=["point_pair_high"],ascending=False) # 
+    df_merged = df_merged.sort_values(by=["top3"],ascending=False) # 
     df_merged.to_csv("data/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
-    df_merged.to_csv("data/predict_merged.txt",sep=";",index=False) 
-
-
-def tmp():
-    model_files="pair_high,point_pair_high,point_high,point_low,point_low1".split(",") 
+    df_merged.to_csv("predict_merged_buy_sell.txt",sep=";",index=False) 
     
-    li_df = []
-    for model_name in model_files: 
-        print("data/predict_%s.txt"%(model_name))
-        df = pd.read_csv("data/predict_%s.txt"%(model_name),sep=";",header=0,index=['pk_date_stock']) 
-        li_df.append(df)
     
-    df = li_df[0] #.merge(li_df[1],on="pk_date_stock",how='left') #pair_high,point_pair_high
-    i = 0
-    for lidf in li_df[1:]:
-        i = i + 1
-        df = df.merge(lidf, on="pk_date_stock",how='left') # point_high 
-    print(i,len(model_files))
-        
-    df.to_csv("data/tmp.txt",sep=";",index=False) 
-    
-
 if __name__ == "__main__":
     op_type = sys.argv[1]
     if op_type == "predict":
         # python seq_model.py predict
         predict()
-    
-    if op_type == "tmp":
-        # python seq_model.py predict
-        tmp()
-    
-    # dataset = StockPointDataset(datatype="validate")
-    # d = next(iter(dataset))
-    # print(d)
+        

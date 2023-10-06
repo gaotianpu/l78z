@@ -73,6 +73,7 @@ def process_all():
         # break 
 
 def update_dataset_type_from_file():
+    # sqlite3 导出 dataset_type 是1,2的脚本
     conn = sqlite3.connect("file:data/stocks_train.db", uri=True)
     with open("dataset_type_1.txt",'r') as f :
        upate_dataset_type([line.strip() for line in f.readlines()],1,conn=conn)
