@@ -121,7 +121,7 @@ def sample_statics(stocks):
 
 class StockStatics():
     def __init__(self,stocks,conn):
-        self.static_fields = 'mean,std,25%,50%,75%'.split(",")
+        self.static_fields = 'mean,std,25%,50%,75%,min,max'.split(",")
         self.daily_fields = "open_rate,low_rate,high_rate,change_rate".split(",")
         self.all_fields = self.get_static_fields() 
         self.stocks = stocks

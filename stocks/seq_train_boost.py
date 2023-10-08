@@ -161,6 +161,7 @@ def c_round(x):
 def buy_sell_model(df,module_name="all"):
     # 成功买入
     low_std = 0.013194
+    high_std = 0.018595
     df['can_buy_0'] = df.apply(lambda x: 1 if (x['low1.7'] - low_std) > x['low_rate'] else 0  , axis=1)
     df['can_buy_1'] = df.apply(lambda x: 1 if (x['low1.7']) > x['low_rate'] else 0  , axis=1)
     df['can_buy_2'] = df.apply(lambda x: 1 if (x['low1.7'] + low_std) > x['low_rate'] else 0  , axis=1)
@@ -170,7 +171,6 @@ def buy_sell_model(df,module_name="all"):
     df['can_buy_5'] = df.apply(lambda x: 1 if (x['low_rate_75%']) > x['low_rate'] else 0  , axis=1)
     
     # 成功卖出
-    high_std = 0.018595
     df['can_sell_0'] = df.apply(lambda x: 1 if (x['point_high1'] - high_std) < x['high_rate'] else 0  , axis=1)
     df['can_sell_1'] = df.apply(lambda x: 1 if (x['point_high1']) < x['high_rate'] else 0  , axis=1)
     df['can_sell_2'] = df.apply(lambda x: 1 if (x['point_high1'] + high_std) < x['high_rate'] else 0  , axis=1)

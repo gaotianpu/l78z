@@ -231,31 +231,34 @@ def predict():
     df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
     df_merged = df_merged.merge(df_static_stocks_0,on="stock_no",how='left')
     
-    df_merged.to_csv("data/predict_merged_middle_tmp.txt",sep=";",index=False) 
+    df_merged.to_csv("data/predict_merged_middle_tmp.txt.%s"%(trade_date),sep=";",index=False) 
     
     df_merged['buy_prices'] = ''
     df_merged['sell_prices'] = ''
     
     # 计算买入价和卖出价格？
-    std_point_low1 = 0.023194 #训练的均方误差
-    std_point_high1 = 0.028595 #
+    std_point_low1 = 0.013194 #训练的均方误差
+    std_point_high1 = 0.018595 #
     for idx,row in df_merged.iterrows():
         low_rates = row[['low_rate_25%','low_rate_50%','low_rate_75%']].values.tolist() 
-        point_low1 = row['point_low1']
+        point_low1 = row['low1.7']
         low_rates = low_rates + [point_low1-std_point_low1, point_low1, point_low1 + std_point_low1]
         buy_prices = (np.array(sorted(low_rates))+1) * row['CLOSE_price']
         df_merged.loc[idx, 'buy_prices'] = ','.join([str(v) for v in buy_prices.round(2)]) 
         
         high_rates = row[['high_rate_25%','high_rate_50%','high_rate_75%']].values.tolist()
-        point_high1 = row['point_high'] #
+        point_high1 = row['point_high1'] #
         high_rates = high_rates + [point_high1-std_point_high1, point_high1, point_high1 + std_point_high1]
         sell_prices = (np.array(sorted(high_rates))+1) * row['CLOSE_price']
         df_merged.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
     
     # point_pair_high 效果更好些？
-    df_merged = df_merged.sort_values(by=["top3"],ascending=False) # 
+    df_merged = df_merged.sort_values(by=["top3","pair_15"],ascending=False) # 
     df_merged.to_csv("data/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
-    df_merged.to_csv("predict_merged_buy_sell.txt",sep=";",index=False) 
+    df_merged.to_csv("data/predict_merged.txt",sep=";",index=False) 
+    
+    sel_fields = "pk_date_stock,stock_no,pair_15,point_high1,low1.7,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
+    df_merged[sel_fields].to_csv("predict_merged_for_show.txt",sep=";",index=False) 
     
     
 if __name__ == "__main__":

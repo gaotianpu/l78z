@@ -132,6 +132,9 @@ def convert_stock_raw_daily():
         df_date['low_rate'] = c_round((df_date['LOW_price'] - df_date['last_close']) / df_date['last_close']) 
         df_date['high_rate'] = c_round((df_date['HIGH_price'] - df_date['last_close']) / df_date['last_close']) 
         df_date['high_low_range'] = c_round(df_date['high_rate'] - df_date['low_rate'])
+        df_date['open_low_rate'] = c_round((df_date['LOW_price'] - df_date['OPEN_price']) / df_date['OPEN_price']) 
+        df_date['open_high_rate'] = c_round((df_date['HIGH_price'] - df_date['OPEN_price']) / df_date['OPEN_price']) 
+        df_date['open_close_rate'] = c_round((df_date['CLOSE_price'] - df_date['OPEN_price']) / df_date['OPEN_price']) 
         df_date.to_csv("data/trade_dates/%s.txt"%(date),sep=";", header=None,index=False) 
         
 
@@ -159,5 +162,6 @@ if __name__ == "__main__":
     
     if data_type == "convert_stock_raw_daily":
         convert_stock_raw_daily()
+        # cat data/trade_dates/*.txt > data/stock_raw_daily_3.txt
         
         

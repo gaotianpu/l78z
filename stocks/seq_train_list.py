@@ -107,7 +107,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         if batch % 512 == 0:
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * 1 # len(choose)
-            rate = current*100/size
+            rate = round(current*100/size,2)
             print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate:>1f}%]")
                  
         cp_save_n = 512 #cp, checkpoint
@@ -157,7 +157,7 @@ def training(field="f_high_mean_rate"):
     epochs = 2
     start = 2
     for t in range(epochs):
-        real_epoch = t + start    
+        real_epoch = t + start + 1
         print(f"Epoch {real_epoch}\n-------------------------------")   
         train(train_dataloader, model, criterion, optimizer,real_epoch)
         test(test_dataloader, model)

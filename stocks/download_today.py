@@ -107,13 +107,16 @@ def process_all():
     columns = "stock_no,stock_name,current,change_rate,change_price,turnover,amount,open,last_close,low,high,low_rate,open_rate,high_rate,current_rate".split(',')
     df = pd.DataFrame(all_li,columns=columns)
     df.to_csv("data/today.txt",sep=";",index=False) 
+    gen_buy_sell_prices(df)
     
-def tmp(df_today):
+def gen_buy_sell_prices(df_today):
     # 1. 获取预测数据
     df_predict = pd.read_csv("data/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
-    df_predict['stock_no'] = df_predict.apply(lambda x: str(x['pk_date_stock'])[8:] , axis=1)
+    
+    # df_predict['stock_no'] = df_predict.apply(lambda x: str(x['pk_date_stock'])[8:] , axis=1)
+    
     # 科创板的暂时先不关注
-    df_predict = df_predict[~ df_predict['stock_no'].str.startswith('688')]
+    df_predict = df_predict[ (df_predict['stock_no'].str.startswith('688') == False)]
     
     # 2. merge今日最新数据
     df_predict = df_predict.merge(df_today,on="stock_no",how='left')
@@ -127,38 +130,36 @@ def tmp(df_today):
     
     # 3. 获取统计数据
     df_static_stocks = pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0,dtype={'stock_no': str})
-    df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
-    df_predict = df_predict.merge(df_static_stocks_0,on="stock_no",how='left')
+    # df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
+    # df_predict = df_predict.merge(df_static_stocks_0,on="stock_no",how='left')
     # (or25,or50,or75) = (df_statics_stock['open_rate_25%'],df_statics_stock['open_rate_50%'],df_statics_stock['open_rate_75%'])
         
-    df_predict['current_open_rate_label'] = df_predict.apply(lambda x: 1 if x['open_rate'] < x['open_rate_25%'] else 2 if x['open_rate'] < x['open_rate_50%'] else 3 if x['open_rate'] < x['open_rate_75%'] else 4, axis=1)
+    df_predict['open_rate_label'] = df_predict.apply(lambda x: 1 if x['open_rate'] < x['open_rate_25%'] else 2 if x['open_rate'] < x['open_rate_50%'] else 3 if x['open_rate'] < x['open_rate_75%'] else 4, axis=1)
     df_predict['buy_prices'] = ''
     df_predict['sell_prices'] = ''
     # 根据open_rate所在区间，计算买入价和卖出价格？
-    std_point_low1 = 0.023
-    std_point_high1 = 0.023 #待定
+    std_point_low1 = 0.013194
+    std_point_high1 = 0.018595 #
     for idx,row in df_predict.iterrows():
         stock_no = row['stock_no']
-        stock_static = df_static_stocks[(df_static_stocks['stock_no']==stock_no) & (df_static_stocks['open_rate_label']==row['current_open_rate_label'])]
+        stock_static = df_static_stocks[(df_static_stocks['stock_no']==stock_no) & (df_static_stocks['open_rate_label']==row['open_rate_label'])]
         
         # point_low1+-,point_high1+-可以移动到 predict_merged.txt 执行？
         low_rates = stock_static.iloc[0][['low_rate_25%','low_rate_50%','low_rate_75%']].values.tolist() 
-        low_rates = low_rates + [row['point_low1']-std_point_low1, row['point_low1'], round(row['point_low1'] + std_point_low1,3)]
+        low_rates = low_rates + [row['low1.7']-std_point_low1, row['low1.7'], round(row['low1.7'] + std_point_low1,3)]
         buy_prices = (np.array(sorted(low_rates))+1) * row['last_close']
         df_predict.loc[idx, 'buy_prices'] = ','.join([str(v) for v in buy_prices.round(2)]) 
         
         high_rates = stock_static.iloc[0][['high_rate_25%','high_rate_50%','high_rate_75%']].values.tolist()
-        high_rates = high_rates + [row['point_high']-std_point_high1, row['point_high'], round(row['point_high'] + std_point_high1,3)]
+        high_rates = high_rates + [row['point_high1']-std_point_high1, row['point_high1'], round(row['point_high1'] + std_point_high1,3)]
         sell_prices = (np.array(sorted(high_rates))+1) * row['last_close']
         df_predict.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
     
-    select_cols='pk_date_stock,stock_no,pair_high,point_pair_high,point_high,last_close,open,open_rate,low,low_rate,high,high_rate,current,buy_prices,sell_prices'.split(',')
-    df_predict = df_predict[select_cols]
+    # sel_fields='pk_date_stock,stock_no,pair_high,point_pair_high,point_high,last_close,open,open_rate,low,low_rate,high,high_rate,current,buy_prices,sell_prices'.split(',')
+    # df_predict = df_predict[sel_fields]
     
-    df_predict.to_csv("data/tmp.txt",sep=";",index=False) 
-    
-
-    return 
+    sel_fields = "pk_date_stock,stock_no,open_rate_label,pair_15,point_high1,low1.7,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
+    df_predict[sel_fields].to_csv("predict_today_show.txt",sep=";",index=False)  
         
     
 # uncollect_stock_no.txt
@@ -168,10 +169,10 @@ if __name__ == "__main__":
     if op_type == "all":
         # process_one_page(2)
         process_all()
-    if op_type == "tmp":
+    if op_type == "gen_buy_sell_prices":
         # python download_today.py  tmp 
         df_today = pd.read_csv("data/today.txt",sep=";",header=0,dtype={'stock_no': str,'stock_name': str})
-        tmp(df_today)
+        gen_buy_sell_prices(df_today)
     
         # today_d = None
         # with open('today.bin', 'rb') as f:

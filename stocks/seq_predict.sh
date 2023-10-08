@@ -23,6 +23,11 @@ sqlite3 data/stocks.db <<EOF
 .import history.data.new stock_raw_daily_2
 EOF
 
+# sqlite3 data/stocks.db <<EOF
+# .separator ";"
+# .import data/stock_raw_daily_3.txt stock_raw_daily
+# EOF
+
 # 更新统计信息
 python statistics.py stocks
 

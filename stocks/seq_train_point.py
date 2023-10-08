@@ -52,7 +52,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         if batch % 64 == 0:
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(output)
-            rate = current*100/size
+            rate = round(current*100/size,2)
             print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate:>2f}%]") 
             
         cp_save_n = 1280 #cp, checkpoint
@@ -140,8 +140,8 @@ def training(field="f_high_mean_rate"):
     epochs = 3
     start = 3
     for t in range(epochs):
-        print(f"Epoch {t+start}\n-------------------------------")   
-        train(train_dataloader, model, criterion, optimizer,t+start)
+        print(f"Epoch {t+start+1}\n-------------------------------")   
+        train(train_dataloader, model, criterion, optimizer,t+start+1)
         # test(vali_dataloader, model, criterion)
         test(test_dataloader, model, criterion)
         # scheduler.step()

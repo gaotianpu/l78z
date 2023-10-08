@@ -113,7 +113,8 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         if batch % 64 == 0:
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(choose)
-            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d}]") 
+            rate = round(current*100/size,2)
+            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate:>2f}%]]") 
         
         if batch % 512 == 0:
             torch.save(model.state_dict(), MODEL_FILE+"."+str(epoch) + "." + str(int(batch / 512)) )
@@ -203,7 +204,7 @@ def training():
     epochs = 1
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
-        train(train_dataloader, model, criterion, optimizer,t)
+        train(train_dataloader, model, criterion, optimizer,t+1)
         # test(validate_dataloader, model, criterion)
         test(test_dataloader, model, criterion)
         estimate_ndcg_score(ndcg_dataloader,model)
