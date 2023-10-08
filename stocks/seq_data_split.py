@@ -84,6 +84,57 @@ def update_dataset_type_from_file():
 # https://www.zditect.com/main-advanced/database/5-ways-to-run-sql-script-from-file-sqlite.html
 # sqlite3 data/stocks.db ".read validate.sql"
 
+def c_round(x):
+    return round(x,4)
+
+def gen_next_day_data(dataset_type=2):
+    sql = 'select pk_date_stock,trade_date,stock_no from stock_for_transfomer where dataset_type=%s order by trade_date'%(dataset_type)
+    df = pd.read_sql(sql, conn)
+    
+    df_all = None
+    for idx,row in df.iterrows():
+        # print(row['pk_date_stock'])
+        sql = "select * from stock_raw_daily_2 where stock_no='%s' and trade_date>%s order by trade_date asc limit 1" % (row['stock_no'],row['trade_date'])
+        df_p = pd.read_sql(sql, conn)
+        df_p["pk_date_stock"] = row['pk_date_stock']
+        # print(idx,row['stock_no'],row['trade_date'])
+        # print(df_p)
+        if idx==0:
+            df_all = df_p
+        else:
+            df_all = pd.concat([df_all,df_p])
+        
+        # if idx>2:
+            # break
+    
+    # print(df_all)
+    df_all['change_rate'] = df_all.apply(lambda x: x['change_rate']/100, axis=1) 
+    df_all['last_close'] = df_all['CLOSE_price'] - df_all['change_amount'] 
+    df_all['open_rate'] = c_round((df_all['OPEN_price'] - df_all['last_close']) / df_all['last_close']) 
+    df_all['low_rate'] = c_round((df_all['LOW_price'] - df_all['last_close']) / df_all['last_close']) 
+    df_all['high_rate'] = c_round((df_all['HIGH_price'] - df_all['last_close']) / df_all['last_close']) 
+    
+    df_all.to_csv("data/test_stock_raw_daily_3.txt",sep=";",index=False)  
+
+def convert_stock_raw_daily():
+    sql = "select distinct trade_date from stock_raw_daily_2 order by trade_date" 
+    df = pd.read_sql(sql, conn)
+    trade_dates = df['trade_date'].sort_values(ascending=False).tolist()
+    print("len(trade_dates)=",len(trade_dates))
+    
+    for idx,date in enumerate(trade_dates):  
+        print(idx,date)
+        sql = "select * from stock_raw_daily_2 where trade_date='%s' order by stock_no"%(date)
+        df_date = pd.read_sql(sql, conn)
+        df_date['change_rate'] = df_date.apply(lambda x: c_round(x['change_rate']/100), axis=1) 
+        df_date['last_close'] = df_date['CLOSE_price'] - df_date['change_amount'] 
+        df_date['open_rate'] = c_round((df_date['OPEN_price'] - df_date['last_close']) / df_date['last_close']) 
+        df_date['low_rate'] = c_round((df_date['LOW_price'] - df_date['last_close']) / df_date['last_close']) 
+        df_date['high_rate'] = c_round((df_date['HIGH_price'] - df_date['last_close']) / df_date['last_close']) 
+        df_date['high_low_range'] = c_round(df_date['high_rate'] - df_date['low_rate'])
+        df_date.to_csv("data/trade_dates/%s.txt"%(date),sep=";", header=None,index=False) 
+        
+
 if __name__ == "__main__":
     data_type = sys.argv[1] 
     print(data_type)
@@ -102,5 +153,11 @@ if __name__ == "__main__":
     if data_type == "test":
         # python seq_data_split.py test  #> test.sql
         test_dataset_split(20230815)
+    if data_type == "next_day":
+        # python seq_data_split.py next_day  
+        gen_next_day_data(2)
+    
+    if data_type == "convert_stock_raw_daily":
+        convert_stock_raw_daily()
         
         

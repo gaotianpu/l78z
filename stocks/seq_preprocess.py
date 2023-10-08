@@ -48,15 +48,6 @@ class PreProcessor:
         self.data_type = data_type
         self.start_trade_date = start_trade_date
         self.val_ranges = [-0.00493,0.01434,0.02506,0.03954,0.04997,0.06524,0.09353]
-        
-        # self.statistics = self.get_statistics(self)
-    
-    # def get_statistics(self):
-    #     sql = "select data_json from stock_statistics_info where stock_no='%s'" % (self.stock_no)
-    #     df_statistics = pd.read_sql(sql, self.conn) 
-        
-    #     ret = json.loads(df_statistics.loc[0]["data_json"])
-    #     return ret
     
     def map_val_range(self, val):
         for i,val_range in enumerate(self.val_ranges):

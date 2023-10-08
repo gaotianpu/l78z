@@ -36,7 +36,7 @@ device = (
 class StockListDataset(Dataset):
     def __init__(self, datatype="train", field="f_high_mean_rate"):
         assert datatype in ("train", "validate", "test")
-        self.df = pd.read_csv("list/random_%s.txt" % (datatype), sep=";", header=None)
+        self.df = pd.read_csv("list/%s_3_8.txt" % (datatype), sep=";", header=None)
         self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
@@ -107,7 +107,8 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         if batch % 512 == 0:
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * 1 # len(choose)
-            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d}]")
+            rate = current*100/size
+            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate:>1f}%]")
                  
         cp_save_n = 512 #cp, checkpoint
         if batch % cp_save_n == 0:
@@ -137,11 +138,6 @@ def training(field="f_high_mean_rate"):
     # 初始化
     train_data = StockListDataset(datatype="train",field=field)
     train_dataloader = DataLoader(train_data, batch_size=1, shuffle=True)
-    # a = next(iter(train_dataloader))
-    # print(choose.shape,reject.shape)
-
-    # vali_data = StockPointDataset(datatype="validate",field=field)
-    # vali_dataloader = DataLoader(vali_data, batch_size=128)  
     
     test_data = StockPointDataset(datatype="test",field=field)
     test_dataloader = DataLoader(test_data, batch_size=128)  
@@ -149,7 +145,7 @@ def training(field="f_high_mean_rate"):
     criterion = ListMLELoss() #
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.0000001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.00001 #0.00001 #0.000001  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -158,8 +154,8 @@ def training(field="f_high_mean_rate"):
         model.load_state_dict(torch.load(MODEL_FILE)) 
         print("load success")
 
-    epochs = 5
-    start = 0
+    epochs = 2
+    start = 2
     for t in range(epochs):
         real_epoch = t + start    
         print(f"Epoch {real_epoch}\n-------------------------------")   
@@ -174,8 +170,18 @@ if __name__ == "__main__":
     print(op_type)
     field = "f_high_mean_rate" #sys.argv[2] #"f_low_mean_rate" # next_low_rate, f_high_mean_rate, f_low_mean_rate
     if op_type == "training":
-        # python seq_train_list.py training f_high_mean_rate
+        # python seq_train_list.py training
         training(field)
+    if op_type == "test":
+        test_data = StockPointDataset(datatype="test",field=field)
+        test_dataloader = DataLoader(test_data, batch_size=128)  
+        
+        model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+        mfile = "StockForecastModel.list.pth.0"
+        if os.path.isfile(mfile):
+            model.load_state_dict(torch.load(mfile)) 
+            test(test_dataloader, model)
+    
     if op_type == "tmp":
         scores = torch.tensor([[0.5, 2.0, 1.0], [0.9, -1.2, 0.0]])
         relevance = torch.tensor([[2, 0, 1], [0, 1, 0]])
@@ -183,11 +189,11 @@ if __name__ == "__main__":
         loss_fn = PairwiseHingeLoss() #ListMLELoss() #
         predict_scores = torch.tensor([[.1, .2, .3, 4, 70]])
         labels = torch.tensor([[10, 0, 0, 1, 5]])
-        n = torch.tensor([5,1])
-        loss = loss_fn(predict_scores, labels, n)
+        n = torch.tensor([5])
+        # loss = loss_fn(predict_scores, labels, n)
+        # print(loss)
         
         loss = loss_fn(scores, relevance, torch.tensor([3,2]))
-        
         print(loss)
         
     

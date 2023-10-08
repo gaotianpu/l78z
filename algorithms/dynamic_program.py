@@ -1,15 +1,12 @@
-import numpy as np
 
-def test():
-    order_models="point_pair_high,pair_11,pair_15,pair_16,point_4,point_5,point_high1".split(",")
+
+def bad(order_models):
     cnt = len(order_models)
-
-    # 2
     model_sets_li = [order_models]
+    # 2
     for i in range(cnt-1):
         for j in range(i+1,cnt):
             model_sets_li.append([order_models[i],order_models[j]])
-
     # 3
     for i in range(cnt-2):
         for j in range(i+1,cnt-1):
@@ -37,32 +34,41 @@ def test():
                     for k in range(j+1,cnt-1):
                         for l in range(k+1,cnt):
                             model_sets_li.append([order_models[a],order_models[b],order_models[i],order_models[j],order_models[k],order_models[l]])
-
-    for m in model_sets_li:
-        mli = sorted(m)
-        print(",".join(mli))
-
-def zscore(x,mean,std):
-    return round((x-mean)/std,4)
-
-def minmax(x,min,max):
-    return round((x-min)/(max-min),4)
-
-def test2():
-    data = [1,2,33,4,5,6,7,8,19]
-    mean = np.mean(data)
-    std = np.std(data)
-    max_v = np.max(data)
-    min_v = np.min(data)
     
-    zscores = [zscore(x,mean,std) for x in data]
-    max_vz = np.max(zscores)
-    min_vz = np.min(zscores)
-    print(zscores)
-    
-    for i in range(len(data)):
-        print(minmax(data[i],min_v,max_v),minmax(zscores[i],min_vz,max_vz) )
-        
-        
+    print("len(model_sets_li):",len(model_sets_li))
 
-test2() 
+
+
+import random
+def the_sort_score(m):
+    return random.random()
+
+def good(): # n/(n+1)/2 = 28 次
+    best_models = []
+    
+    current_best_score = 0
+    for i in range(7):
+        li_ = []
+        for model in order_models:
+            if model in best_models:
+                continue
+              
+            m = best_models + [model] 
+            score = the_sort_score(m)
+            li_.append( [m,score] )
+            
+        best = max(li_, key = lambda x: x[1])
+        if best[1] > current_best_score:
+            best_models = best[0]
+            current_best_score = best[1]
+        else :
+            print("???", best[0])
+    
+    print(best_models)
+
+
+if __name__ == "__main__":
+    order_models="point_pair_high,pair_11,pair_15,pair_16,point_4,point_5,point_high1".split(",")
+    bad(order_models) # 120次
+    good(order_models) # n/(n+1)/2 = 28 次
+     

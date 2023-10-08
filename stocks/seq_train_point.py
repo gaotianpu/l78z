@@ -52,7 +52,8 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         if batch % 64 == 0:
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(output)
-            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d}]") 
+            rate = current*100/size
+            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate:>2f}%]") 
             
         cp_save_n = 1280 #cp, checkpoint
         if batch % cp_save_n == 0:
@@ -92,11 +93,11 @@ def test(dataloader, model, loss_fn):
     print(f"Test Avg loss: {test_loss:>8f}")
     
     df = pd.DataFrame(all_ret,columns=["pk_date_stock","predict","true","label"])
-    df["trade_date"] = df.apply(lambda x: str(x['pk_date_stock'])[:8] , axis=1)
+    # df["trade_date"] = df.apply(lambda x: str(x['pk_date_stock'])[:8] , axis=1)
+    df = evaluate_ndcg_and_scores(df)
     evaluate_label_loss(df)
-    evaluate_ndcg_and_scores(df)
+    
 
-         
 def evaluate_label_loss(df):
     # 分档位loss trade_date = str(df_predict['pk_date_stock'][0])[:8]
     df["mse_loss"] = df.apply(lambda x: (x['predict'] - x['true'])**2 , axis=1)
@@ -111,11 +112,9 @@ def training(field="f_high_mean_rate"):
     # 初始化
     train_data = StockPointDataset(datatype="train",field=field)
     train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
-    # a = next(iter(train_dataloader))
-    # print(choose.shape,reject.shape)
 
-    vali_data = StockPointDataset(datatype="validate",field=field)
-    vali_dataloader = DataLoader(vali_data, batch_size=128)  
+    # vali_data = StockPointDataset(datatype="validate",field=field)
+    # vali_dataloader = DataLoader(vali_data, batch_size=128)  
     
     test_data = StockPointDataset(datatype="test",field=field)
     test_dataloader = DataLoader(test_data, batch_size=128)  
@@ -123,7 +122,7 @@ def training(field="f_high_mean_rate"):
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.00001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.000001 #0.00001 #0.000001  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -139,11 +138,11 @@ def training(field="f_high_mean_rate"):
         print("load success")
 
     epochs = 3
-    start = 1
+    start = 3
     for t in range(epochs):
         print(f"Epoch {t+start}\n-------------------------------")   
         train(train_dataloader, model, criterion, optimizer,t+start)
-        test(vali_dataloader, model, criterion)
+        # test(vali_dataloader, model, criterion)
         test(test_dataloader, model, criterion)
         # scheduler.step()
     

@@ -144,6 +144,8 @@ class StockForecastModel(nn.Module):
 def evaluate_ndcg_and_scores(df):
     # df = pd.DataFrame(all_ret,columns=["pk_date_stock","predict","true","label"])
     # 计算ndcg情况
+    df["trade_date"] = df.apply(lambda x: str(x['pk_date_stock'])[:8] , axis=1)
+    
     li_ndcg = []
     date_groups = df.groupby('trade_date')
     for trade_date,data in date_groups: 
@@ -164,7 +166,8 @@ def evaluate_ndcg_and_scores(df):
         li_ndcg.append([ndcg,ndcg_5,ndcg_3,ta,t5,t3])
     
     ndcg_scores = [round(v,4) for v in np.mean(li_ndcg,axis=0).tolist()]
-    print("ndcg_scores:%s,%s,%s , true_rate:%s,%s,%s" % tuple(ndcg_scores) )  
+    print("ndcg_scores:n=%s,n5=%s,n3=%s , true_rate:t=%s,t5=%s,t3=%s" % tuple(ndcg_scores) )  
+    return df
    
        
 def predict():
@@ -176,8 +179,9 @@ def predict():
     
     # model_v1
     # model_files="pair_high,point_pair_high,point_high,point_low,point_low1".split(",") 
-    order_models = "point_pair_high,pair_11,pair_15,pair_16,point_4,point_5".split(",")
-    model_files="point_pair_high,pair_11,pair_15,pair_16,point_4,point_5,low1.7".split(",")
+    order_models = "pair_15,pair_16,point_4,point_5".split(",")
+    model_files = order_models + "point_high1,low1.7".split(",")
+    
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     for model_name in model_files:
         print(model_name)
@@ -215,8 +219,8 @@ def predict():
             else: # 
                 df_merged = df_merged.merge(df, on="pk_date_stock",how='left')
     
-    df_merged['top3'] = df_merged[[ model+'_top3' for model in order_models ]].sum(axis=1)
-    df_merged['top5'] = df_merged[[ model+'_top5' for model in order_models ]].sum(axis=1)
+    df_merged['top3'] = df_merged[[ model_name + '_top3' for model_name in order_models ]].sum(axis=1)
+    df_merged['top5'] = df_merged[[ model_name + '_top5' for model_name in order_models ]].sum(axis=1)
                 
     conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
     trade_date = str(df_merged["pk_date_stock"][0])[:8]
@@ -227,12 +231,14 @@ def predict():
     df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
     df_merged = df_merged.merge(df_static_stocks_0,on="stock_no",how='left')
     
+    df_merged.to_csv("data/predict_merged_middle_tmp.txt",sep=";",index=False) 
+    
     df_merged['buy_prices'] = ''
     df_merged['sell_prices'] = ''
     
     # 计算买入价和卖出价格？
-    std_point_low1 = 0.023
-    std_point_high1 = 0.023 #待定
+    std_point_low1 = 0.023194 #训练的均方误差
+    std_point_high1 = 0.028595 #
     for idx,row in df_merged.iterrows():
         low_rates = row[['low_rate_25%','low_rate_50%','low_rate_75%']].values.tolist() 
         point_low1 = row['point_low1']
