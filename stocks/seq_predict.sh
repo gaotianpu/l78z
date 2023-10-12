@@ -23,27 +23,30 @@ sqlite3 data/stocks.db <<EOF
 .import history.data.new stock_raw_daily_2
 EOF
 
+echo "1.2 扩展字段，导入stock_raw_daily_1"
+rm -f data/trade_dates/*
+python seq_preprocess_v2.py convert_stock_raw_daily
+cat data/trade_dates/*.txt > data/stock_raw_daily_1.txt
+cp data/stock_raw_daily_1.txt data/stock_raw_daily_1.txt.$cur_date
+sqlite3 data/stocks.db <<EOF
+.separator ";"
+.import data/stock_raw_daily_1.txt stock_raw_daily_1
+EOF
+
+# 废弃掉了，直接生成导入stock_raw_daily_1形式的数据
 # sqlite3 data/stocks.db <<EOF
 # .separator ";"
 # .import data/stock_raw_daily_3.txt stock_raw_daily
 # EOF
 
-# 更新统计信息
-python statistics.py stocks
-
-# sqlite3 data/stocks.db <<EOF
-# .separator ","
-# .import uncollect_stock_no.txt stock_basic_info
-# EOF
-
 # sqlite3 data/stocks.db <<EOF
 # .separator ";"
-# .import data/history/002913.csv stock_raw_daily_2
+# .import data/stock_statics.txt stock_statistics_info
 # EOF
 
 echo "2. 生成predict需要的序列数据"
-python seq_preprocess.py predict > data/seq_predict.data.$cur_date #
-cp data/seq_predict.data.$cur_date seq_predict.data
+python seq_preprocess.py predict > data/seq_predict/$cur_date.data #
+cp data/seq_predict/$cur_date.data seq_predict.data
 
 echo "3. 调取模型，预测" # data/predict_merged.txt
-python seq_model.py predict # > ret.seq_predict.txt.$cur_date  predict_buy_price.txt
+python seq_model.py predict # > predict_merged_for_show.txt

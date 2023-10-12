@@ -36,6 +36,43 @@ CREATE TABLE stock_raw_daily(
 );
 CREATE INDEX idx_stock_raw_daily_0 on stock_raw_daily (stock_no, trade_date);
 
+
+CREATE TABLE stock_raw_daily_1(
+    trade_date  INT    NOT NULL,
+    stock_no    CHAR(6)    NOT NULL,
+    OPEN_price  DECIMAL(10,2) NOT NULL,  
+    CLOSE_price DECIMAL(10,2) NOT NULL,  
+    change_amount   DECIMAL(10,2) NOT NULL,
+    change_rate     DECIMAL(10,2) NOT NULL,
+    LOW_price       DECIMAL(10,2) NOT NULL,
+    HIGH_price      DECIMAL(10,2) NOT NULL,
+    TURNOVER    UNSIGNED BIG INT NOT NULL,   /*成交量*/ 
+    TURNOVER_amount  FLOAT NOT NULL, /*成交金额*/
+    TURNOVER_rate   DECIMAL(10,2) NOT NULL, /*换手率*/
+    last_close  DECIMAL(10,2) NOT NULL, /*昨日收盘价*/
+    open_rate   DECIMAL(10,2) NOT NULL,
+    low_rate    DECIMAL(10,2) NOT NULL,
+    high_rate   DECIMAL(10,2) NOT NULL,
+    high_low_range  DECIMAL(10,2) NOT NULL,
+    open_low_rate   DECIMAL(10,2) NOT NULL,  
+    open_high_rate  DECIMAL(10,2) NOT NULL,
+    open_close_rate DECIMAL(10,2) NOT NULL,
+    TURNOVER_idx    FLOAT NOT NULL,
+    TURNOVER_amount_idx FLOAT NOT NULL,
+    TURNOVER_rate_idx   FLOAT NOT NULL,
+    change_rate_idx FLOAT NOT NULL,
+    last_close_idx  FLOAT NOT NULL,
+    open_rate_idx   FLOAT NOT NULL,
+    low_rate_idx    FLOAT NOT NULL,
+    high_rate_idx   FLOAT NOT NULL,
+    high_low_range_idx  FLOAT NOT NULL,
+    open_low_rate_idx   FLOAT NOT NULL,
+    open_high_rate_idx  FLOAT NOT NULL,
+    open_close_rate_idx FLOAT NOT NULL,
+    primary key (trade_date,stock_no)
+);
+CREATE INDEX idx_stock_raw_daily_1_0 on stock_raw_daily_1 (stock_no, trade_date);
+
 /* DROP TABLE stock_raw_daily_2; 
 update stock_raw_daily_2 set change_rate=replace(change_rate,'%',''),TURNOVER_rate=replace(TURNOVER_rate,'%','') where stock_no='002913' and trade_date='20171201'
 TURNOVER_rate = '-' 的情况？
@@ -64,8 +101,8 @@ CREATE TABLE stock_statistics_info(
    data_json   TEXT    NOT NULL
 );
 
-/* DROP TABLE stock_trade_date; 数量，涨跌数，成交量，4分位 */
-CREATE TABLE stock_trade_date(
+/* DROP TABLE stock_trade_date; 数量，涨跌数，成交量，4分位？ */
+CREATE TABLE stock_tradedate_statistics(
     trade_date  INT PRIMARY KEY NOT NULL,
     stock_count INT NOT NULL DEFAULT 0,
     update_date    INT    NOT NULL,

@@ -24,7 +24,7 @@ run(){
 
     cat train.data_* >  train.data
 
-    python seq_transfomer.py training > log/training.pair.log.$epochs
+    python seq_train_pair.py training > log/training.pair.log.$epochs
 
     cp StockForecastModel.pair.pth StockForecastModel.pair.pth.$epochs #备份
     # mv train.data train.data.$cur_date #备份
@@ -37,7 +37,7 @@ run1(){
     echo $epochs
 }
 
-start=16 # 12之前为随机数据，15-8only,
+start=0 # 12之前为随机数据，15-8only,
 run $(expr $start + 1) 
 run $(expr $start + 2)
 run $(expr $start + 3)  

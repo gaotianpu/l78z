@@ -8,7 +8,7 @@ import sqlite3
 import json
 import logging
 import pandas as pd
-from common import load_stocks
+from common import load_stocks,c_round
 
 PROCESSES_NUM = 5
 
@@ -24,7 +24,7 @@ conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
 mean_std = {"OPEN_price_mean": 17.9043, "OPEN_price_std": 31.569, "CLOSE_price_mean": 17.9258, "CLOSE_price_std": 31.5798, "change_amount_mean": 0.0076, "change_amount_std": 1.1697, "change_rate_mean": 0.0529, "change_rate_std": 3.4192, "LOW_price_mean": 17.5473, "LOW_price_std": 30.9598, "HIGH_price_mean": 18.3079, "HIGH_price_std": 32.2353, "TURNOVER_mean": 157735.6861, "TURNOVER_std": 333532.135, "TURNOVER_amount_mean": 19274.754, "TURNOVER_amount_std": 42239.1776, "TURNOVER_rate_mean": 2.7719, "TURNOVER_rate_std": 4.2903}
 
-FIELDS = "OPEN_price,CLOSE_price,change_amount,change_rate,LOW_price,HIGH_price,TURNOVER,TURNOVER_amount,TURNOVER_rate".split(",")
+FIELDS = "OPEN_price;CLOSE_price;change_amount;change_rate;LOW_price;HIGH_price;TURNOVER;TURNOVER_amount;TURNOVER_rate;last_close;open_rate;low_rate;high_rate;high_low_range;open_low_rate;open_high_rate;open_close_rate;TURNOVER_idx;TURNOVER_amount_idx;TURNOVER_rate_idx;change_rate_idx;last_close_idx;open_rate_idx;low_rate_idx;high_rate_idx;high_low_range_idx;open_low_rate_idx;open_high_rate_idx;open_close_rate_idx".split(";")
 
 
 log_file = "log/seq_preprocess.log"
@@ -39,8 +39,15 @@ def zscore(x,mean,std):
 def compute_rate(x,base): #计算涨跌幅度
     return round((x-base)/base,4)
 
+def get_stocks_static():
+    stocks_statics = {} 
+    df = pd.read_sql("select stock_no,data_json from stock_statistics_info", conn)
+    for idx,row in df.iterrows():
+        stocks_statics[row['stock_no']] = json.loads(row['data_json'])
+    return stocks_statics
+            
 class PreProcessor:
-    def __init__(self, conn,stock_no, future_days = 3,past_days = 20 , data_type="train" , start_trade_date=0):
+    def __init__(self, conn,stock_no, stock_static, future_days = 3,past_days = 20 , data_type="train", start_trade_date=0):
         self.conn = conn
         self.stock_no = stock_no
         self.future_days = future_days
@@ -48,7 +55,8 @@ class PreProcessor:
         self.data_type = data_type
         self.start_trade_date = start_trade_date
         self.val_ranges = [-0.00493,0.01434,0.02506,0.03954,0.04997,0.06524,0.09353]
-    
+        self.stock_static = stock_static
+        
     def map_val_range(self, val):
         for i,val_range in enumerate(self.val_ranges):
             if val<val_range:
@@ -64,6 +72,7 @@ class PreProcessor:
             buy_base = df.loc[idx-1]['OPEN_price'] # df_future.iloc[-1]['TOPEN']
             hold_base = df.loc[idx]['CLOSE_price'] #昨收价格
             
+            next_open_rate = compute_rate(df.loc[idx-1]['OPEN_price'],hold_base)
             #用于预测要卖出的价位
             next_high_rate = compute_rate(df.loc[idx-1]['HIGH_price'],hold_base)
             #用于预测要买入的价位
@@ -114,6 +123,7 @@ class PreProcessor:
             ret['next_high_rate'] = next_high_rate 
             ret['next_low_rate'] = next_low_rate 
             ret['next_close_rate'] = next_close_rate 
+            ret['next_open_rate'] = next_open_rate
             ret['val_label'] = val_label 
         else: #predict
             ret['f_high_rate'] = 0.0
@@ -123,6 +133,7 @@ class PreProcessor:
             ret['next_high_rate'] = 0.0 
             ret['next_low_rate'] = 0.0 
             ret['next_close_rate'] = 0.0
+            ret['next_open_rate'] = 0.0
             ret['val_label'] = 0
         
         # 获取过去所有交易日的均值，标准差
@@ -134,7 +145,10 @@ class PreProcessor:
         for _,row in df_past.iterrows(): 
             feather_ret = []
             for field in FIELDS:
-                feather_ret.append(zscore(row[field],mean_std.get(field+"_mean"),mean_std.get(field+"_std")))
+                mean = self.stock_static.get(field+"_mean")
+                std = self.stock_static.get(field+"_std")
+                # print(field,mean,std)
+                feather_ret.append(zscore(row[field],mean,std))
             ret["past_days"].insert(0,feather_ret) 
             
         # 额外;分割的datestock_uid,current_date,stock_no,dataset_type, 便于后续数据集拆分、pair构造等
@@ -149,7 +163,7 @@ class PreProcessor:
         
 
     def process_train_data(self):
-        sql = "select * from stock_raw_daily_2 where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,MAX_ROWS_COUNT)
+        sql = "select * from stock_raw_daily_1 where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,MAX_ROWS_COUNT)
         df = pd.read_sql(sql, self.conn) 
         
         end_idx = len(df) - self.past_days + 1
@@ -173,7 +187,7 @@ class PreProcessor:
         # statistics = self.get_statistics() 
          
         # max_trade_date = self.get_max_trade_date() #
-        sql = "select * from stock_raw_daily_2 where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,self.past_days+self.future_days)
+        sql = "select * from stock_raw_daily_1 where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,self.past_days+self.future_days)
         df = pd.read_sql(sql, conn) 
         
         current_date = int(df.loc[0]['trade_date'])
@@ -196,14 +210,19 @@ class PreProcessor:
 
   
 def process_all_stocks(data_type="train", processes_idx=-1):
+    stocks_statics = get_stocks_static()
     stocks = load_stocks(conn)
     time_start = time.time()
     for i, stock in enumerate(stocks):
-        p = PreProcessor(conn,stock[0],FUTURE_DAYS,PAST_DAYS,data_type,MIN_TRADE_DATE)
+        stock_static = stocks_statics.get(stock[0],None)
+        assert stock_static # ? 
+        p = PreProcessor(conn,stock[0],stock_static,FUTURE_DAYS,PAST_DAYS,data_type,MIN_TRADE_DATE)
         if processes_idx < 0 or data_type!="train": #predict耗时少，不用拆分
             p.process() 
         elif i % PROCESSES_NUM == processes_idx:
             p.process()
+        # print(stock[0])
+        # break 
         
     time_end = time.time() 
     time_c = time_end - time_start   #运行所花时间
@@ -215,18 +234,62 @@ def process_all_stocks(data_type="train", processes_idx=-1):
     conn.close()
 
 def process_new_stocks(data_type):
+    stocks_statics = get_stocks_static()
     with open('uncollect_stock_no.txt','r') as f:
         for line in f:
             fields = line.strip().split(',') 
             stock_no = fields[0]
-            p = PreProcessor(conn,stock_no,FUTURE_DAYS,PAST_DAYS,data_type,MIN_TRADE_DATE)
+            p = PreProcessor(conn,stock_no,stocks_statics[stock_no],FUTURE_DAYS,PAST_DAYS,data_type,MIN_TRADE_DATE)
             p.process() 
-            
+
+def convert_stock_raw_daily(start_date=None):
+    if not start_date:
+        sql = "select max(trade_date) as trade_date from stock_raw_daily_1"
+        df = pd.read_sql(sql, conn)
+        start_date = df['trade_date'][0]
+        print(start_date) 
+
+    sql = "select distinct trade_date from stock_raw_daily_2 where trade_date>%s order by trade_date" % (start_date)
+    df = pd.read_sql(sql, conn)
+    trade_dates = df['trade_date'].sort_values(ascending=False).tolist()
+    print("len(trade_dates)=",len(trade_dates))
+    
+    for idx,date in enumerate(trade_dates):  
+        print(idx,date)
+        sql = "select * from stock_raw_daily_2 where trade_date='%s' order by stock_no"%(date)
+        df_date = pd.read_sql(sql, conn)
+        
+        cnt = len(df_date)
+        
+        df_date['change_rate'] = df_date.apply(lambda x: c_round(x['change_rate']/100), axis=1) 
+        df_date['last_close'] = df_date['CLOSE_price'] - df_date['change_amount'] 
+        df_date['open_rate'] = c_round((df_date['OPEN_price'] - df_date['last_close']) / df_date['last_close']) 
+        df_date['low_rate'] = c_round((df_date['LOW_price'] - df_date['last_close']) / df_date['last_close']) 
+        df_date['high_rate'] = c_round((df_date['HIGH_price'] - df_date['last_close']) / df_date['last_close']) 
+        df_date['high_low_range'] = c_round(df_date['high_rate'] - df_date['low_rate'])
+        df_date['open_low_rate'] = c_round((df_date['LOW_price'] - df_date['OPEN_price']) / df_date['OPEN_price']) 
+        df_date['open_high_rate'] = c_round((df_date['HIGH_price'] - df_date['OPEN_price']) / df_date['OPEN_price']) 
+        df_date['open_close_rate'] = c_round((df_date['CLOSE_price'] - df_date['OPEN_price']) / df_date['OPEN_price']) 
+        
+        # 当天交易中，各种字段相对位置
+        fields = 'TURNOVER,TURNOVER_amount,TURNOVER_rate,change_rate,last_close,open_rate,low_rate,high_rate,high_low_range,open_low_rate,open_high_rate,open_close_rate'.split(',')
+        for field in fields:
+            df_date = df_date.sort_values(by=[field]) # 
+            df_date[field+"_idx"] = [c_round((idx+1)/cnt) for idx in range(cnt)]
+        
+        df_date = df_date.sort_values(by=['stock_no']) # 
+        df_date.to_csv("data/trade_dates/%s.txt"%(date),sep=";", header=None,index=False) 
+        # df_date.to_csv("tmp_%s.txt"%(date),sep=";", index=False) 
+        # break            
 
 if __name__ == "__main__":
     data_type = sys.argv[1]
-    process_idx = -1 if len(sys.argv) != 3 else int(sys.argv[2])
-    process_all_stocks(data_type, process_idx)
+    if data_type in "train,predict".split(","):
+        process_idx = -1 if len(sys.argv) != 3 else int(sys.argv[2])
+        process_all_stocks(data_type, process_idx)
+    
+    if data_type == "convert_stock_raw_daily":
+        convert_stock_raw_daily()
     
     # process_new_stocks(data_type)
     

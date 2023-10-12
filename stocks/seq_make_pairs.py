@@ -8,7 +8,7 @@ from common import load_stocks,load_trade_dates
 
 PROCESSES_NUM = 5
 
-conn = sqlite3.connect("file:data/stocks.db", uri=True)
+conn = sqlite3.connect("file:data/stocks_train_2.db", uri=True)
             
 
 
@@ -71,7 +71,7 @@ def make_pairs(rows):
             
             # print(id_i,id_j) # 未过滤，190；
             # 0.01 ,过滤后129, 0.05 
-            if abs(rate_i-rate_j)>0.15: 
+            if abs(rate_i-rate_j)>0.15 and 8 in [list_label_j,list_label_i]: 
                 # 在这里把pair的choose,reject排好序。
                 if rate_i>rate_j:
                     # map(lambda x:str(x), [id_i,id_j,list_label_i,list_label_j]) 
@@ -101,7 +101,8 @@ def process_pairs(dataset_type,pair_type="date",field="f_high_mean_rate",last_tr
             #增量的情况？新增一个交易日
     elif pair_type == "stock": 
         # 根据同一股票下，不同日期构造pair对
-        stocks = load_stocks(conn)
+        conn1 = sqlite3.connect("file:data/stocks.db", uri=True)
+        stocks = load_stocks(conn1)
         for idx,stock in enumerate(stocks):
             if (process_idx < 0 or dataset_type!=0) or idx % PROCESSES_NUM == process_idx: 
                 # print("b:",idx)

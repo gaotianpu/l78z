@@ -114,7 +114,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(choose)
             rate = round(current*100/size,2)
-            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate:>2f}%]]") 
+            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate}%]]") 
         
         if batch % 512 == 0:
             torch.save(model.state_dict(), MODEL_FILE+"."+str(epoch) + "." + str(int(batch / 512)) )
@@ -135,7 +135,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
     #         }, PATH+"."+str(epoch))
 
 # 5. vaildate/test 函数
-def test(dataloader, model, loss_fn):
+def test(dataloader, model, loss_fn, data_type="test"):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss = 0
@@ -150,7 +150,7 @@ def test(dataloader, model, loss_fn):
             test_loss += loss.item()
             
     test_loss /= num_batches
-    print(f"Test Avg loss: {test_loss:>8f} \n")
+    print(f"{data_type} Avg loss: {test_loss:>8f} \n")
 
 def estimate_ndcg_score(dataloader, model): 
     model.eval()
@@ -174,8 +174,8 @@ def training():
     # choose,reject = next(iter(train_dataloader))
     # print(choose.shape,reject.shape)
 
-    # validate_data = StockPairDataset("validate","f_high_mean_rate")
-    # validate_dataloader = DataLoader(validate_data, batch_size=128)  
+    validate_data = StockPairDataset("validate","f_high_mean_rate")
+    validate_dataloader = DataLoader(validate_data, batch_size=128)  
     
     test_data = StockPairDataset("test","f_high_mean_rate")
     test_dataloader = DataLoader(test_data, batch_size=128)  
@@ -205,8 +205,8 @@ def training():
     for t in range(epochs):
         print(f"Epoch {t+1}\n-------------------------------")
         train(train_dataloader, model, criterion, optimizer,t+1)
-        # test(validate_dataloader, model, criterion)
-        test(test_dataloader, model, criterion)
+        test(validate_dataloader, model, criterion, "validate")
+        test(test_dataloader, model, criterion, "test")
         estimate_ndcg_score(ndcg_dataloader,model)
         # scheduler.step()
     
@@ -248,7 +248,7 @@ def gen_date_predict_scores(model_version = "pair_high"):
     for date in trade_dates:
         # print(date) 
         df = None
-        data_file = "data/predict_%s_%s.csv"%(date,model_version) #predict_results,predict_regress_high
+        data_file = "data/predict/predict_%s_%s.csv"%(date,model_version) #predict_results,predict_regress_high
         if os.path.exists(data_file):
             df = pd.read_csv(data_file, sep=",", header=0, index_col=0)
             # print(df)

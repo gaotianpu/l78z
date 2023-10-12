@@ -14,13 +14,13 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from seq_model import StockForecastModel,StockPointDataset,SEQUENCE_LENGTH,D_MODEL,evaluate_ndcg_and_scores
+from seq_model import StockForecastModel,evaluate_ndcg_and_scores
 
-# SEQUENCE_LENGTH = 20 #序列长度
-# D_MODEL = 9  #维度
+SEQUENCE_LENGTH = 20 #序列长度
+D_MODEL = 29  #维度 9,17,29
 
-#StockForecastModel.point_low1.pth # point,point_low1
-MODEL_FILE = "StockForecastModel.point_high1.pth" 
+
+MODEL_FILE = "model_point_sampled.pth" 
 
 # conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
@@ -31,6 +31,32 @@ device = (
     if torch.backends.mps.is_available()
     else "cpu"
 )
+
+class StockPointDataset(Dataset):
+    def __init__(self,datatype="validate",trade_date=None, field="f_high_mean_rate"): 
+        dtmap = {"train":0,"validate":1,"test":2}
+        self.field = field
+        self.conn = sqlite3.connect("file:data/stocks_train_2.db?mode=ro", uri=True)
+        dataset_type = dtmap.get(datatype)
+        self.df = pd.read_csv('data2/point_sampled_%s.txt' % (dataset_type))
+        
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        pk_date_stock = self.df.iloc[idx][0] 
+        sql = "select * from stock_for_transfomer where pk_date_stock=%s" % (pk_date_stock)
+        df_item = pd.read_sql(sql, self.conn) 
+        
+        data_json = json.loads(df_item.iloc[0]['data_json']) #.replace("'",'"'))
+        true_score = data_json.get(self.field)
+        
+        past_days = torch.tensor(data_json["past_days"])
+        # past_days = past_days[:,:17]
+        
+        list_label = df_item.iloc[0]['list_label']
+        return pk_date_stock, torch.tensor(true_score), torch.tensor(list_label), past_days 
+
 
 # 4. train 函数
 def train(dataloader, model, loss_fn, optimizer,epoch): 
@@ -53,7 +79,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(output)
             rate = round(current*100/size,2)
-            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate:>2f}%]") 
+            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate}%]") 
             
         cp_save_n = 1280 #cp, checkpoint
         if batch % cp_save_n == 0:
@@ -71,7 +97,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
     #         }, PATH+"."+str(epoch))
 
 # 5. vaildate/test 函数
-def test(dataloader, model, loss_fn):
+def test(dataloader, model, loss_fn,data_type="test"):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss = 0
@@ -90,7 +116,7 @@ def test(dataloader, model, loss_fn):
     
     test_loss /= num_batches
     test_loss = test_loss ** 0.5
-    print(f"Test Avg loss: {test_loss:>8f}")
+    print(f"\n{data_type} Avg loss: {test_loss:>8f}")
     
     df = pd.DataFrame(all_ret,columns=["pk_date_stock","predict","true","label"])
     # df["trade_date"] = df.apply(lambda x: str(x['pk_date_stock'])[:8] , axis=1)
@@ -113,8 +139,8 @@ def training(field="f_high_mean_rate"):
     train_data = StockPointDataset(datatype="train",field=field)
     train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
 
-    # vali_data = StockPointDataset(datatype="validate",field=field)
-    # vali_dataloader = DataLoader(vali_data, batch_size=128)  
+    vali_data = StockPointDataset(datatype="validate",field=field)
+    vali_dataloader = DataLoader(vali_data, batch_size=128)  
     
     test_data = StockPointDataset(datatype="test",field=field)
     test_dataloader = DataLoader(test_data, batch_size=128)  
@@ -122,7 +148,7 @@ def training(field="f_high_mean_rate"):
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.000001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.00001 #0.00001 #0.000001  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -137,13 +163,14 @@ def training(field="f_high_mean_rate"):
         # loss = checkpoint['loss']
         print("load success")
 
-    epochs = 3
-    start = 3
+    epochs = 1
+    start = 0
     for t in range(epochs):
-        print(f"Epoch {t+start+1}\n-------------------------------")   
-        train(train_dataloader, model, criterion, optimizer,t+start+1)
-        # test(vali_dataloader, model, criterion)
-        test(test_dataloader, model, criterion)
+        current_epochs = t+1+start 
+        print(f"Epoch {current_epochs}\n-------------------------------")   
+        train(train_dataloader, model, criterion, optimizer,current_epochs)
+        test(vali_dataloader, model, criterion,"vaildate")
+        test(test_dataloader, model, criterion,"test")
         # scheduler.step()
     
     torch.save(model.state_dict(), MODEL_FILE)
@@ -175,47 +202,28 @@ def evaluate_model_checkpoints(field="f_high_mean_rate"):
 
 if __name__ == "__main__":
     op_type = sys.argv[1]
-    field = sys.argv[2] #"f_low_mean_rate" # next_low_rate, f_high_mean_rate, f_low_mean_rate
+    field = sys.argv[2] ## f_high_mean_rate,f_low_mean_rate, next_low_rate, next_high_rate
     print(op_type)
     if op_type == "training":
-        # python seq_regress.py training next_high_rate #f_high_mean_rate 
+        # python seq_train_point.py training f_high_mean_rate
         training(field)
     if op_type == "checkpoints": 
-        # python seq_regress.py checkpoints next_low_rate #f_high_mean_rate
-        evaluate_model_checkpoints(field)  
+        # python seq_train_point.py checkpoints f_high_mean_rate
+        evaluate_model_checkpoints(field)
     if op_type == "tmp":
-        # python seq_regress.py tmp next_high_rate
-        test_data = StockPointDataset(datatype="test",field=field)
-        test_dataloader = DataLoader(test_data, batch_size=128)  
-        criterion = nn.MSELoss() #均方差损失函数
-        model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+        conn = sqlite3.connect("file:data/stocks_train_2.db?mode=ro", uri=True)
+        pk_date_stock = 20230828600000
+        sql = "select * from stock_for_transfomer where pk_date_stock=%s" % (pk_date_stock)
+        df_item = pd.read_sql(sql, conn) 
         
-        # 随机pairs最好结果
-        # ndcg_scores:0.8231,0.5703,0.5423 , true_rate:0.0191,0.0261,0.0279
-        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.pair_11")) 
-        test(test_dataloader, model, criterion)
+        data_json = json.loads(df_item.iloc[0]['data_json']) #.replace("'",'"'))
+        true_score = data_json.get("f_high_mean_rate")
+        past_days = torch.tensor(data_json["past_days"]) 
+        print(past_days.shape)
         
-        # #只包含8档的pairs
-        # ndcg_scores:0.8243,0.5732,0.5453 , true_rate:0.0191,0.0264,0.0287
-        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.pair_15")) 
-        test(test_dataloader, model, criterion)
-        
-        # #point作为pair的初始化，只包含8档的pairs
-        # ndcg_scores:0.8243,0.5742,0.5418 , true_rate:0.0191,0.0259,0.0278
-        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.pair_16")) 
-        test(test_dataloader, model, criterion)
-        
-        # #point作为pair的初始化，训练数据完全随机
-        # ndcg_scores:0.8243,0.5748,0.5447 , true_rate:0.0191,0.026,0.0276
-        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.point_pair_high")) 
-        test(test_dataloader, model, criterion)
-        
-        # point 随机
-        # ndcg_scores:0.8237,0.5725,0.5431 , true_rate:0.0191,0.0258,0.0272
-        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.point_4")) 
-        test(test_dataloader, model, criterion)
-        
-        # point 7，8档位 only。从ndcgscore看，效果并不明显
-        # 
-        model.load_state_dict(torch.load("model_v2/StockForecastModel.pth.point_5")) 
-        test(test_dataloader, model, criterion)
+        past_days = past_days[:,:17]
+        print(past_days.shape)
+                                          
+        # list_label = df_item.iloc[0]['list_label']
+        # return pk_date_stock, torch.tensor(true_score), torch.tensor(list_label), past_days 
+         

@@ -20,7 +20,7 @@ from pytorchltr.loss import PairwiseHingeLoss
 
 # SEQUENCE_LENGTH = 20 #序列长度
 # D_MODEL = 9  #维度
-MODEL_FILE = "StockForecastModel.list.pth"
+MODEL_FILE = "StockForecastModel.list_235.pth"
 
 # https://blog.csdn.net/qq_36478718/article/details/122598406
 # ListNet ・ ListMLE ・ RankCosine ・ LambdaRank ・ ApproxNDCG ・ WassRank ・ STListNet ・ LambdaLoss
@@ -36,7 +36,7 @@ device = (
 class StockListDataset(Dataset):
     def __init__(self, datatype="train", field="f_high_mean_rate"):
         assert datatype in ("train", "validate", "test")
-        self.df = pd.read_csv("list/%s_3_8.txt" % (datatype), sep=";", header=None)
+        self.df = pd.read_csv("list/%s_22223355.txt" % (datatype), sep=";", header=None)
         self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
@@ -145,7 +145,7 @@ def training(field="f_high_mean_rate"):
     criterion = ListMLELoss() #
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.00001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.0001 #0.00001 #0.000001  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -154,8 +154,8 @@ def training(field="f_high_mean_rate"):
         model.load_state_dict(torch.load(MODEL_FILE)) 
         print("load success")
 
-    epochs = 2
-    start = 2
+    epochs = 3
+    start = 5
     for t in range(epochs):
         real_epoch = t + start + 1
         print(f"Epoch {real_epoch}\n-------------------------------")   

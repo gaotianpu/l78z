@@ -8,12 +8,12 @@ from common import load_trade_dates
 
 SAMPLE_COUNT_PER_DAY = 24  #每个交易日抽取多少条作为样本
 
-conn = sqlite3.connect("file:data/stocks.db", uri=True)
+conn = sqlite3.connect("file:data/stocks_train.db", uri=True)
 
 def load_ids_by_date(date,dateset_type=0,conn=conn):
-    sql = "select pk_date_stock from stock_for_transfomer where trade_date=%s and dataset_type=%d" %(date,dateset_type)
+    sql = "select pk_date_stock,list_label from stock_for_transfomer where trade_date=%s and dataset_type=%d" %(date,dateset_type)
     df = pd.read_sql(sql, conn)
-    return df['pk_date_stock']
+    return df
 
 def load_ids_by_date_label(date,dateset_type=0,label=1,conn=conn):
     sql = "select pk_date_stock from stock_for_transfomer where trade_date=%s and dataset_type=%d and list_label=%s " %(date,dateset_type,label)
@@ -24,6 +24,8 @@ def upate_dataset_type(selected_ids,dataset_type,conn=conn):
     '''
     dataset_type: 1=验证集 2=测试集
     '''
+    print("dt_%s;%s"%(dataset_type,selected_ids))
+    # return 
     commit_id_list = [(dataset_type, sid) for sid in selected_ids] 
     cursor = conn.cursor()
     try:
@@ -36,20 +38,21 @@ def upate_dataset_type(selected_ids,dataset_type,conn=conn):
 
 def validate_dataset_split(date):
     '''分割出验证集数据，抽样分布和整体不同，更关注头部数据'''
-    # label_cnt_map = [4,3,3,3,2,2,2,1]  
-    cnt = 3 #3*8=24，每个档位抽3个，共计抽24个, 相当提升了高档位的占比，让模型更多关注高档位部分
+    label_cnt_map = [5,5,3,3,2,2,2,2] #注意顺序
+    # cnt = 3 #3*8=24，每个档位抽3个，共计抽24个, 相当提升了高档位的占比，让模型更多关注高档位部分
+    df_date = load_ids_by_date(date,0)
+
     selected_ids = []
-    for label in range(8): 
-        df = load_ids_by_date_label(date,0,label+1)
-        # cnt = label_cnt_map[label]
+    for label in range(8):  
+        df = df_date[df_date['list_label']==(label+1)]
+        cnt = label_cnt_map[label]
         if len(df) > cnt*2:
-            c_ids = df.sample(n=cnt).values.tolist()
+            c_ids = df["pk_date_stock"].sample(n=cnt).values.tolist()
             selected_ids = selected_ids + c_ids
         else:
             print("error validate data cnt less date=%s label=%s"%(date,label))
     
     if len(selected_ids) > 0 :
-        print(selected_ids)
         upate_dataset_type(selected_ids,1) #1=验证集
         
         
@@ -57,17 +60,16 @@ def test_dataset_split(date):
     '''分割出测试集数据，抽样分布和整体分布近似'''
     df = load_ids_by_date(date,0) #取dataset_type=0(默认值)的数据
     if len(df) > SAMPLE_COUNT_PER_DAY*5:
-        selected_ids = df.sample(n=SAMPLE_COUNT_PER_DAY).values.tolist()
-        print(selected_ids)    
+        selected_ids = df["pk_date_stock"].sample(n=SAMPLE_COUNT_PER_DAY).values.tolist()
         upate_dataset_type(selected_ids,2) #2=测试集
     else:
         print("error test data cnt less",date)
              
 
 def process_all():
-    trade_dates = load_trade_dates(conn,1) #
+    trade_dates = load_trade_dates(conn,start_date=1) #
     for date in trade_dates:  
-        print(date)
+        print("date:",date)
         test_dataset_split(date)
         validate_dataset_split(date)
         # break 
@@ -114,35 +116,29 @@ def gen_next_day_data(dataset_type=2):
     df_all['low_rate'] = c_round((df_all['LOW_price'] - df_all['last_close']) / df_all['last_close']) 
     df_all['high_rate'] = c_round((df_all['HIGH_price'] - df_all['last_close']) / df_all['last_close']) 
     
+    df_all.rename(columns={'trade_date':'trade_date_next'},inplace=True) #列重命名
     df_all.to_csv("data/test_stock_raw_daily_3.txt",sep=";",index=False)  
 
-def convert_stock_raw_daily():
-    sql = "select distinct trade_date from stock_raw_daily_2 order by trade_date" 
-    df = pd.read_sql(sql, conn)
-    trade_dates = df['trade_date'].sort_values(ascending=False).tolist()
-    print("len(trade_dates)=",len(trade_dates))
-    
-    for idx,date in enumerate(trade_dates):  
-        print(idx,date)
-        sql = "select * from stock_raw_daily_2 where trade_date='%s' order by stock_no"%(date)
-        df_date = pd.read_sql(sql, conn)
-        df_date['change_rate'] = df_date.apply(lambda x: c_round(x['change_rate']/100), axis=1) 
-        df_date['last_close'] = df_date['CLOSE_price'] - df_date['change_amount'] 
-        df_date['open_rate'] = c_round((df_date['OPEN_price'] - df_date['last_close']) / df_date['last_close']) 
-        df_date['low_rate'] = c_round((df_date['LOW_price'] - df_date['last_close']) / df_date['last_close']) 
-        df_date['high_rate'] = c_round((df_date['HIGH_price'] - df_date['last_close']) / df_date['last_close']) 
-        df_date['high_low_range'] = c_round(df_date['high_rate'] - df_date['low_rate'])
-        df_date['open_low_rate'] = c_round((df_date['LOW_price'] - df_date['OPEN_price']) / df_date['OPEN_price']) 
-        df_date['open_high_rate'] = c_round((df_date['HIGH_price'] - df_date['OPEN_price']) / df_date['OPEN_price']) 
-        df_date['open_close_rate'] = c_round((df_date['CLOSE_price'] - df_date['OPEN_price']) / df_date['OPEN_price']) 
-        df_date.to_csv("data/trade_dates/%s.txt"%(date),sep=";", header=None,index=False) 
-        
+
+
+def export_by_label(): #list_label,dataset_type=0
+    conn1 = sqlite3.connect("file:data/stocks_train_2.db", uri=True)
+    for dataset_type in range(3):
+        for label in range(8):
+            list_label = label + 1
+            print(dataset_type,list_label)
+            sql = "select pk_date_stock from stock_for_transfomer where dataset_type=%s and list_label=%s" % (dataset_type,list_label)
+            df = pd.read_sql(sql, conn1)
+            df.to_csv("data2/point_%s_%s.txt"%(dataset_type,list_label),sep=";", header=None,index=False)
+            # break 
+        # break
 
 if __name__ == "__main__":
     data_type = sys.argv[1] 
     print(data_type)
     if data_type == "all":
         process_all()
+        # python seq_data_split.py all  > all_seq_data_split_v2
         # # python seq_data_split.py all  > all_seq_data_split.txt &
         # test_dataset_split(trade_dates)  
         # # run update sql 后，才能执行下一个? test/validate的先后执行顺序？
@@ -161,7 +157,12 @@ if __name__ == "__main__":
         gen_next_day_data(2)
     
     if data_type == "convert_stock_raw_daily":
+        # start_date=20230928
+        # python seq_data_split.py convert_stock_raw_daily
         convert_stock_raw_daily()
-        # cat data/trade_dates/*.txt > data/stock_raw_daily_3.txt
+        # cat data/trade_dates/*.txt > data/stock_raw_daily_4.txt
+    
+    if data_type == "export_by_label":
+        export_by_label()
         
         

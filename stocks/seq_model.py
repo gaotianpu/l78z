@@ -48,25 +48,28 @@ class StockPointDataset(Dataset):
         dtmap = {"train":0,"validate":1,"test":2}
         self.field = field
         self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
+        dataset_type = dtmap.get(datatype)
         # order by trade_date desc
         sql = (
                 "select pk_date_stock from stock_for_transfomer where dataset_type=%d order by trade_date desc"
-                % (dtmap.get(datatype))
+                % (dataset_type)
             )
         
         if datatype=="train": #and list_label>5
             sql = (
                 "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
-                % (dtmap.get(datatype))
+                % (dataset_type)
             ) 
             
         if trade_date:
             sql = (
                 "select pk_date_stock from stock_for_transfomer where trade_date='%s' and dataset_type=%d"
-                % (trade_date,dtmap.get(datatype))
+                % (trade_date,dataset_type)
             )
-            
         self.df = pd.read_sql(sql, self.conn)
+        
+        # self.df = pd.read_csv('point/dataset_type_%s.txt' % (dataset_type))
+        
         
     def __len__(self):
         return len(self.df)
@@ -179,7 +182,7 @@ def predict():
     
     # model_v1
     # model_files="pair_high,point_pair_high,point_high,point_low,point_low1".split(",") 
-    order_models = "pair_15,pair_16,point_4,point_5".split(",")
+    order_models = "pair_15,list_235,point_5,point_4,pair_11".split(",")
     model_files = order_models + "point_high1,low1.7".split(",")
     
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
@@ -211,7 +214,7 @@ def predict():
                 df[model_name + '_top3'] = [1 if i<top3 else 0 for i in range(count)]
                 df[model_name + '_top5'] = [1 if i<top5 else 0 for i in range(count)]
             
-            df.to_csv("data/predict_%s.txt"%(model_name),sep=";",index=False) 
+            df.to_csv("data/predict/predict_%s.txt"%(model_name),sep=";",index=False) 
             
             # 模型结果合并
             if df_merged is None:
@@ -231,7 +234,7 @@ def predict():
     df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
     df_merged = df_merged.merge(df_static_stocks_0,on="stock_no",how='left')
     
-    df_merged.to_csv("data/predict_merged_middle_tmp.txt.%s"%(trade_date),sep=";",index=False) 
+    df_merged.to_csv("data/predict/predict_merged_middle_tmp.txt.%s"%(trade_date),sep=";",index=False) 
     
     df_merged['buy_prices'] = ''
     df_merged['sell_prices'] = ''
@@ -254,10 +257,10 @@ def predict():
     
     # point_pair_high 效果更好些？
     df_merged = df_merged.sort_values(by=["top3","pair_15"],ascending=False) # 
-    df_merged.to_csv("data/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
-    df_merged.to_csv("data/predict_merged.txt",sep=";",index=False) 
+    df_merged.to_csv("data/predict/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
+    df_merged.to_csv("data/predict/predict_merged.txt",sep=";",index=False) 
     
-    sel_fields = "pk_date_stock,stock_no,pair_15,point_high1,low1.7,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
+    sel_fields = "pk_date_stock,stock_no,pair_15,list_235,point_5,point_4,pair_11,point_high1,low1.7,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
     df_merged[sel_fields].to_csv("predict_merged_for_show.txt",sep=";",index=False) 
     
     

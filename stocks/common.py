@@ -6,6 +6,8 @@ import pandas as pd
 # 60:
 # http://www.sse.com.cn/assortment/stock/list/share/
 # 
+def c_round(x):
+    return round(x,4)
 
 def load_stocks_f():
     with open("schema/stocks.txt", 'r') as f:

@@ -203,6 +203,27 @@ class StockStatics():
         df = pd.DataFrame(li,columns=self.all_fields)
         df.to_csv("data/static_seq_stocks.txt",sep=";",index=False)  
 
+def test():
+    fields = "OPEN_price,CLOSE_price,change_amount,change_rate,LOW_price,HIGH_price,TURNOVER,TURNOVER_amount,TURNOVER_rate,last_close,open_rate,low_rate,high_rate,high_low_range,open_low_rate,open_high_rate,open_close_rate,TURNOVER_idx,TURNOVER_amount_idx,TURNOVER_rate_idx,change_rate_idx,last_close_idx,open_rate_idx,low_rate_idx,high_rate_idx,high_low_range_idx,open_low_rate_idx,open_high_rate_idx,open_close_rate_idx".split(",")
+    static_fields = 'mean,std,25%,50%,75%,max,min'.split(",")
+    stocks = load_stocks(conn) 
+    for i, stock in enumerate(stocks):
+        stock_no = stock[0]
+        sql = "select * from stock_raw_daily_1 where stock_no='%s'"%(stock_no)
+        df = pd.read_sql(sql, conn)
+        describe = df.describe() 
+        trade_date_max = df['trade_date'].max()
+        
+        d = {'stock_no':stock_no,'trade_date_max':trade_date_max}
+        # static_li = [stock_no]
+        for f1 in fields:
+            for f2 in static_fields:
+                d['%s_%s'%(f1,f2)] = round(describe[f1][f2],4) 
+                # static_li.append(round(describe[f1][f2],4))
+        # print(static_li)
+        print("%s;%s;%s" %(stock_no,trade_date_max,json.dumps(d)))
+        # break
+        
 
 def tmp():
     stocks = load_stocks(conn)
@@ -286,7 +307,7 @@ def compute_buy_price(df_predict=None):
     select_cols='stock_no,low_rate_25%,low_rate_50%,low_rate_75%,high_rate_25%,high_rate_50%,high_rate_75%'.split(",")
     
     if not df_predict:
-        df_predict = pd.read_csv("data/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
+        df_predict = pd.read_csv("data/predict/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
     
     trade_date = str(df_predict['pk_date_stock'][0])[:8]
     
@@ -300,7 +321,7 @@ def compute_buy_price(df_predict=None):
         df[fieldname] = df.apply(lambda x: x['CLOSE_price'] * (1 + x[col]), axis=1)
         df[fieldname] = df[fieldname].round(2) 
     
-    df.to_csv("data/predict_buy_price.txt.%s"%(trade_date),sep=";",index=False) 
+    df.to_csv("data/predict/predict_buy_price.txt.%s"%(trade_date),sep=";",index=False) 
     df.to_csv("predict_buy_price.txt",sep=";",index=False) 
 
 def hold_days(stock_no):
@@ -385,6 +406,10 @@ if __name__ == "__main__":
         #val_ranges = [-0.0049, 0.0143, 0.0251, 0.0395, 0.0499, 0.0652, 0.0935]
     if op_type == "fix_TURNOVER_rate":
         fix_TURNOVER_rate()
+    
+    if op_type == "test":  
+        # python statistics.py test > data/stock_statics.txt  
+        test()
     
     # print(get_all_fields())
     
