@@ -15,14 +15,11 @@ import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 import random
 
-from common import load_trade_dates
+from common import c_round
 from seq_model import StockForecastModel,StockPointDataset,SEQUENCE_LENGTH,D_MODEL,device,evaluate_ndcg_and_scores
 
 # SEQUENCE_LENGTH = 20 #序列长度
 # D_MODEL = 9  #维度
-
-def c_round(x):
-    return round(x,4)
 
 def get_model_results(model_name,dataloader):
     # 从已经存在的文件中加载

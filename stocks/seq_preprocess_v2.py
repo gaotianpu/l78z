@@ -152,11 +152,7 @@ class PreProcessor:
             ret["past_days"].insert(0,feather_ret) 
             
         # 额外;分割的datestock_uid,current_date,stock_no,dataset_type, 便于后续数据集拆分、pair构造等
-        datestock_uid = str(ret["current_date"]) + ret['stock_no'] 
-        # if len(ret["past_days"]) == self.past_days:
-        #     print("%s;%s;%s;0;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],
-        #                                 json.dumps(ret))) #
-        # #new, 用于list排序
+        datestock_uid = str(ret["current_date"]) + ret['stock_no']
         if len(ret["past_days"]) == self.past_days:
             print("%s;%s;%s;0;%s;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],
                                     ret['val_label'],json.dumps(ret))) #
@@ -243,6 +239,7 @@ def process_new_stocks(data_type):
             p.process() 
 
 def convert_stock_raw_daily(start_date=None):
+    '''基于stock_raw_daily_2，扩展出新的字段'''
     if not start_date:
         sql = "select max(trade_date) as trade_date from stock_raw_daily_1"
         df = pd.read_sql(sql, conn)

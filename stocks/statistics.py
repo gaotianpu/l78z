@@ -7,7 +7,7 @@ import time
 import sqlite3  
 import pandas as pd
 import json
-from common import load_stocks,get_max_trade_date,load_trade_dates
+from common import load_stocks,c_round,load_trade_dates,get_max_trade_date
 
 MAX_ROWS_COUNT = 2000 #从数据库中加载多少数据, 差不多8年的交易日数。
 conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
@@ -24,13 +24,10 @@ def get_all_fields():
             fields.append("%s_%s"%(f1,f2))
     return fields
 
-
-
 #  select * from stock_raw_daily_2 order by RANDOM() limit 2;
 # select stock_no,round(avg(TURNOVER_rate),2) from stock_raw_daily_2 where stock_no in (300879,300880,300881,300882,300883,300884,300885,300886,300887,300889,300892,300893,300894,300895,300896,300897,300898,300899,300900,300901,300902,300910,300911,300912,300913,300915,300916,300919,300925,300928,300929,300935,300939,300940,300946,300948,300949,300951,300952,300953,300958,300959,300960,300961,300968,300971,300973,300999,301000,301001) and  TURNOVER_rate<>'-' group by stock_no;
 # update stock_raw_daily_2 set TURNOVER_rate=%s where stock_no='%s' and TURNOVER_rate='-';
-def c_round(x):
-    return round(x,4)
+
 
 def get_update_sql():
     sql = "select stock_no,round(avg(TURNOVER_rate),2) as TURNOVER_rate from stock_raw_daily_2 where stock_no in ('000596','000796','001914','002074','002789','002798','002801','002809','002819','002820','002821','002840','002893','002899','002900','002901','002923','002926','002937','002939','002950','002952','002953','002959','002961','002962','002963','002965','002966','002973','002976','002984','002987','002988','002990','002991','002992','002993','002997','002999','003000','003003','003006','003011','003012','003015','003016','003017','003018','003019','003026','003027','003030','003035','003036','003037','003040','003816') and  TURNOVER_rate<>'-' group by stock_no;"

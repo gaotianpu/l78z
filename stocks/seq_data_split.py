@@ -4,7 +4,7 @@ import json
 import random
 import pandas as pd
 import sqlite3
-from common import load_trade_dates
+from common import load_trade_dates,c_round
 
 SAMPLE_COUNT_PER_DAY = 24  #每个交易日抽取多少条作为样本
 
@@ -85,9 +85,6 @@ def update_dataset_type_from_file():
 
 # https://www.zditect.com/main-advanced/database/5-ways-to-run-sql-script-from-file-sqlite.html
 # sqlite3 data/stocks.db ".read validate.sql"
-
-def c_round(x):
-    return round(x,4)
 
 def gen_next_day_data(dataset_type=2):
     sql = 'select pk_date_stock,trade_date,stock_no from stock_for_transfomer where dataset_type=%s order by trade_date'%(dataset_type)
