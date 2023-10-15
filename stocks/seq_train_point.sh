@@ -23,23 +23,26 @@ run(){
     # shuf -n 428279 data2/point_0_2.txt > data2/point_0_2.txt_shuf 
     # shuf -n 428279 data2/point_0_3.txt > data2/point_0_3.txt_shuf
     # shuf -n 428279 data2/point_0_4.txt > data2/point_0_4.txt_shuf
-    # cat data2/point_0_5678.txt data2/point_0_*.txt_shuf > data2/point_sampled_0.txt
+    # cat data2/point_0_5678.txt data2/point_0_*.txt_shuf > data2/point_sampled_0.txt.$epochs
     # mv data2/point_sampled_0.txt data2/point_sampled_0.txt.$epochs
 
     ln -sf /mnt/d/github/l78z/stocks/data2/point_sampled_0.txt.$epochs data2/point_sampled_0.txt
-    python seq_train_point.py training f_high_mean_rate
-    cp model_point_sampled.pth model_point_sampled.pth.$epochs #备份
+
+    echo "next_low_rate"
+    python seq_train_point.py training next_low_rate #f_high_mean_rate
+    cp model_point_low1.pth model_point_low1.pth.$epochs #备份
+    # cp model_point_sampled.pth model_point_sampled.pth.$epochs #备份
 }
 
 start=2 #
 run $(expr $start + 1) 
 run $(expr $start + 2)
-run $(expr $start + 3)  
-run $(expr $start + 4)  
-run $(expr $start + 5)
-run $(expr $start + 6)
-run $(expr $start + 7)
-run $(expr $start + 8)
-run $(expr $start + 9)          
+# run $(expr $start + 3)  
+# run $(expr $start + 4) 
+# run $(expr $start + 5)
+# run $(expr $start + 6)
+# run $(expr $start + 7)
+# run $(expr $start + 8)
+# run $(expr $start + 9)          
 
 # sh seq_train_point.sh > log/seq_train_point.log.20231011 &

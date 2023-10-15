@@ -153,11 +153,6 @@ if __name__ == "__main__":
         # python seq_data_split.py next_day  
         gen_next_day_data(2)
     
-    if data_type == "convert_stock_raw_daily":
-        # start_date=20230928
-        # python seq_data_split.py convert_stock_raw_daily
-        convert_stock_raw_daily()
-        # cat data/trade_dates/*.txt > data/stock_raw_daily_4.txt
     
     if data_type == "export_by_label":
         export_by_label()

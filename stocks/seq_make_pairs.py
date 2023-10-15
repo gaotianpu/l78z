@@ -9,14 +9,6 @@ from common import load_stocks,load_trade_dates
 PROCESSES_NUM = 5
 
 conn = sqlite3.connect("file:data/stocks_train_2.db", uri=True)
-            
-
-
-# def load_ids_by_date(date,dateset_type=0):
-#     sql = "select pk_date_stock from stock_for_transfomer where trade_date='%s' and dataset_type='%d'" %(date,dateset_type)
-#     df = pd.read_sql(sql, conn)
-#     return df['pk_date_stock']
-
 
 def load_by_date(date,dateset_type=0,field="f_high_mean_rate"):
     sql = "select pk_date_stock,list_label,data_json from stock_for_transfomer where trade_date='%s' and dataset_type='%d'" %(date,dateset_type)
@@ -125,15 +117,3 @@ if __name__ == "__main__":
     process_idx = -1 if len(sys.argv) != 4 else int(sys.argv[3])
     process_pairs(dataset_type,pair_type,process_idx=process_idx) #train=0,validate=1,test=2
     conn.close()
-    
-    # ret = load_by_date(20230801)
-    # print(ret)
-    
-    # x = load_trade_dates(conn)
-    # print(x)
-    
-    # date = 20230825
-    # dataset_type = 0
-    # field = "f_high_mean_rate"
-    # data_rows = load_by_date(date,dataset_type,field)
-    # make_pairs(data_rows)

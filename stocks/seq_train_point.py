@@ -14,13 +14,13 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from seq_model import StockForecastModel,evaluate_ndcg_and_scores
+from seq_model_v2 import StockForecastModel,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL
 
 SEQUENCE_LENGTH = 20 #序列长度
 D_MODEL = 29  #维度 9,17,29
 
 
-MODEL_FILE = "model_point_sampled.pth" 
+MODEL_FILE = "model_point_low1.pth" 
 
 # conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
 
@@ -31,32 +31,6 @@ device = (
     if torch.backends.mps.is_available()
     else "cpu"
 )
-
-class StockPointDataset(Dataset):
-    def __init__(self,datatype="validate",trade_date=None, field="f_high_mean_rate"): 
-        dtmap = {"train":0,"validate":1,"test":2}
-        self.field = field
-        self.conn = sqlite3.connect("file:data/stocks_train_2.db?mode=ro", uri=True)
-        dataset_type = dtmap.get(datatype)
-        self.df = pd.read_csv('data2/point_sampled_%s.txt' % (dataset_type))
-        
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        pk_date_stock = self.df.iloc[idx][0] 
-        sql = "select * from stock_for_transfomer where pk_date_stock=%s" % (pk_date_stock)
-        df_item = pd.read_sql(sql, self.conn) 
-        
-        data_json = json.loads(df_item.iloc[0]['data_json']) #.replace("'",'"'))
-        true_score = data_json.get(self.field)
-        
-        past_days = torch.tensor(data_json["past_days"])
-        # past_days = past_days[:,:17]
-        
-        list_label = df_item.iloc[0]['list_label']
-        return pk_date_stock, torch.tensor(true_score), torch.tensor(list_label), past_days 
-
 
 # 4. train 函数
 def train(dataloader, model, loss_fn, optimizer,epoch): 
@@ -98,7 +72,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
 
 # 5. vaildate/test 函数
 def test(dataloader, model, loss_fn,data_type="test"):
-    size = len(dataloader.dataset)
+    # size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss = 0
     
@@ -189,41 +163,25 @@ def evaluate_model_checkpoints(field="f_high_mean_rate"):
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
     for i in range(23): #32
-        fname =  MODEL_FILE + ".4."  + str(i)  # + ".0"
-        # fname =  MODEL_FILE + ".4"
-        fname = "StockForecastModel.point_low1.pth."  + str(i) 
-        fname = "StockForecastModel.point.pth.random"
+        fname =  "%s.1.%s" % (MODEL_FILE,17)
+        if not os.path.isfile(fname):
+            print("\n### %s is not exist" % (fname))
+            continue 
+        
         print("\n###" + fname)
-        if os.path.isfile(fname):
-            model.load_state_dict(torch.load(fname))
-            test(vali_dataloader, model, criterion)
-            test(test_dataloader, model, criterion)
-        break            
+        model.load_state_dict(torch.load(fname))
+        test(vali_dataloader, model, criterion,"vaildate")
+        test(test_dataloader, model, criterion,"test")
+        break
+                    
 
+# python seq_train_point.py training f_high_mean_rate
 if __name__ == "__main__":
     op_type = sys.argv[1]
     field = sys.argv[2] ## f_high_mean_rate,f_low_mean_rate, next_low_rate, next_high_rate
     print(op_type)
     if op_type == "training":
-        # python seq_train_point.py training f_high_mean_rate
         training(field)
     if op_type == "checkpoints": 
         # python seq_train_point.py checkpoints f_high_mean_rate
         evaluate_model_checkpoints(field)
-    if op_type == "tmp":
-        conn = sqlite3.connect("file:data/stocks_train_2.db?mode=ro", uri=True)
-        pk_date_stock = 20230828600000
-        sql = "select * from stock_for_transfomer where pk_date_stock=%s" % (pk_date_stock)
-        df_item = pd.read_sql(sql, conn) 
-        
-        data_json = json.loads(df_item.iloc[0]['data_json']) #.replace("'",'"'))
-        true_score = data_json.get("f_high_mean_rate")
-        past_days = torch.tensor(data_json["past_days"]) 
-        print(past_days.shape)
-        
-        past_days = past_days[:,:17]
-        print(past_days.shape)
-                                          
-        # list_label = df_item.iloc[0]['list_label']
-        # return pk_date_stock, torch.tensor(true_score), torch.tensor(list_label), past_days 
-         

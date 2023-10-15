@@ -136,5 +136,9 @@ CREATE INDEX idx_stock_for_transfomer_5 on stock_for_transfomer (dataset_type,li
 .import data/history_all.csv stock_raw_daily
 --  .import data/history/000725.csv stock_raw_daily
 
+# 导出数据时，once会覆盖已有数据，注意！
+.once xx.file 
+.output xx.file 
+
 */
 

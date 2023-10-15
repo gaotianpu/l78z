@@ -73,8 +73,8 @@ def model_boost():
     test_data = StockPointDataset(datatype="test",field="f_high_mean_rate")
     dataloader = DataLoader(test_data, batch_size=120)
     
-    df = get_model_results("list_235",dataloader)
-    return 
+    # df = get_model_results("list_235",dataloader)
+    # return 
     
     # 非模型相关的数据
     df_merged = None

@@ -36,20 +36,20 @@ python seq_preprocess.py train 3 > data/seq_train_3.txt &
 python seq_preprocess.py train 4 > data/seq_train_4.txt 
 python seq_preprocess.py predict > data/seq_predict.data #
 
-# python seq_preprocess_v2.py predict > data2/seq_predict.data & #
-# python seq_preprocess_v2.py train 0 > data2/seq_train_0.txt &
-# python seq_preprocess_v2.py train 1 > data2/seq_train_1.txt &
-# python seq_preprocess_v2.py train 2 > data2/seq_train_2.txt &
-# python seq_preprocess_v2.py train 3 > data2/seq_train_3.txt &
-# python seq_preprocess_v2.py train 4 > data2/seq_train_4.txt &
-# sqlite3 data/stocks_train_2.db <<EOF
-# .separator ";"
-# .import data2/seq_train_0.txt stock_for_transfomer
-# .import data2/seq_train_1.txt stock_for_transfomer
-# .import data2/seq_train_2.txt stock_for_transfomer
-# .import data2/seq_train_3.txt stock_for_transfomer
-# .import data2/seq_train_4.txt stock_for_transfomer
-# EOF
+python seq_preprocess_v2.py predict > data3/seq_predict.data & #
+python seq_preprocess_v2.py train 0 > data3/seq_train_0.txt &
+python seq_preprocess_v2.py train 1 > data3/seq_train_1.txt &
+python seq_preprocess_v2.py train 2 > data3/seq_train_2.txt &
+python seq_preprocess_v2.py train 3 > data3/seq_train_3.txt &
+python seq_preprocess_v2.py train 4 > data3/seq_train_4.txt &
+sqlite3 data/stocks_train_3.db <<EOF
+.separator ";"
+.import data3/seq_train_0.txt stock_for_transfomer
+.import data3/seq_train_1.txt stock_for_transfomer
+.import data3/seq_train_2.txt stock_for_transfomer
+.import data3/seq_train_3.txt stock_for_transfomer
+.import data3/seq_train_4.txt stock_for_transfomer
+EOF
 
 # 将股票的序列数据导入到sqlite3中
 echo "2.1. import into sqlite3.  stocks sequence data -> table:stock_for_transfomer"
