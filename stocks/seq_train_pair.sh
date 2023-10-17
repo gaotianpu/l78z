@@ -4,27 +4,48 @@ run(){
     cur_date="`date +%Y%m%d%H%M`" 
     echo $cur_date , $epochs
 
-    shuf -n 102400  data2/pair.train.date.txt_0  > train.data_0 &
-    shuf -n 102400  data2/pair.train.date.txt_1 > train.data_1 &
-    shuf -n 102400  data2/pair.train.date.txt_2 > train.data_2 
-    shuf -n 102400  data2/pair.train.date.txt_3 > train.data_3 &
-    shuf -n 102400  data2/pair.train.date.txt_4 > train.data_4 &
+    rm -f train.data_*
 
-    shuf -n 102400  data2/pair.train.stock.txt_0 > train.data_5 
-    shuf -n 102400  data2/pair.train.stock.txt_1 > train.data_6 &
-    shuf -n 102400  data2/pair.train.stock.txt_2 > train.data_7 &
-    shuf -n 102400  data2/pair.train.stock.txt_3 > train.data_8
-    shuf -n 102400  data2/pair.train.stock.txt_4 > train.data_9 
+    ## 1.pair.date
+    #
+    # ln -sf /mnt/d/github/l78z/stocks/data2/pair.test.date.txt  data2/pair_dates_2.txt
+    # ln -sf /mnt/d/github/l78z/stocks/data2/pair.validate.date.txt data2/pair_dates_1.txt 
 
-    cat train.data_* >  data2/pair_dates_stocks.train.data_$epochs
+    # shuf -n 204800  data2/pair.train.date.txt_0  > train_pair_date.data_0 &
+    # shuf -n 204800  data2/pair.train.date.txt_1 > train_pair_date.data_1 &
+    # shuf -n 204800  data2/pair.train.date.txt_2 > train_pair_date.data_2 &
+    # shuf -n 204800  data2/pair.train.date.txt_3 > train_pair_date.data_3 
+    # shuf -n 204800  data2/pair.train.date.txt_4 > train_pair_date.data_4
+    # cat train_pair_date.data_* >  data2/pair_dates.train.data_$epochs
+    # ln -sf /mnt/d/github/l78z/stocks/data2/pair_dates.train.data_$epochs data2/pair_dates_0.txt
 
-    # pair_dates_0.txt, pair_stocks_0.txt  pair_dates_stocks_0.txt
+    ## 2.pair.stock
+    #
+    # ln -sf /mnt/d/github/l78z/stocks/data2/pair.test.date.txt data2/pair_stocks_2.txt
+    # ln -sf /mnt/d/github/l78z/stocks/data2/pair.validate.date.txt data2/pair_stocks_1.txt 
+
+    shuf -n 204800  data2/pair.train.stock.txt_0 > train_pair_stock.data_0 &
+    shuf -n 204800  data2/pair.train.stock.txt_1 > train_pair_stock.data_1 &
+    shuf -n 204800  data2/pair.train.stock.txt_2 > train_pair_stock.data_2 &
+    shuf -n 204800  data2/pair.train.stock.txt_3 > train_pair_stock.data_3 
+    shuf -n 204800  data2/pair.train.stock.txt_4 > train_pair_stock.data_4
+
+    cat train_pair_stock.data_* >  data2/pair_stocks.train.data_$epochs
+    ln -sf /mnt/d/github/l78z/stocks/data2/pair_stocks.train.data_$epochs data2/pair_stocks_0.txt
+
+    ## 3.pair_dates_stocks
+    # 
+    # cat train_pair_* >  data2/pair_dates_stocks.train.data_$epochs
     # ln -sf /mnt/d/github/l78z/stocks/data2/pair_dates_stocks.train.data_$epochs data2/pair_dates_stocks_0.txt
-    # python -u seq_train_pair.py training
-    # cp model_pair.pth model_pair.pth.$epochs #备份
-    # mv train.data train.data.$cur_date #备份
+    ## 验证集、测试集
+    # cat data2/pair.test.date.txt data2/pair.test.stock.txt > data2/pair_dates_stocks_2.txt
+    # cat data2/pair.validate.date.txt data2/pair.validate.stock.txt > data2/pair_dates_stocks_1.txt
+    
+    python -u seq_train_pair.py training
 
-    echo $cur_date, $epochs, "`date +%Y%m%d%H%M`" 
+    # cp model_pair_dates_stocks.pth model_pair_dates_stocks.pth.$epochs #备份
+    # cp model_pair_dates.pth model_pair_dates.pth.$epochs #备份
+    cp model_pair_stocks.pth model_pair_stocks.pth.$epochs #备份 
 }
 
 start=0 # 12之前为随机数据，15-8only,

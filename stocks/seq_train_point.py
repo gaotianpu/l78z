@@ -14,11 +14,7 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from seq_model_v2 import StockForecastModel,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL
-
-SEQUENCE_LENGTH = 20 #序列长度
-D_MODEL = 29  #维度 9,17,29
-
+from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL
 
 MODEL_FILE = "model_point_low1.pth" 
 

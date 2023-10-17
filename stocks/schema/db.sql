@@ -110,6 +110,8 @@ CREATE TABLE stock_tradedate_statistics(
 );
 
 
+
+
 /* DROP TABLE stock_for_transfomer; dataset_type 默认值=0,验证集=1,测试集=2
 
 select pk_date_stock from stock_for_transfomer where trade_date='20220101' and dataset_type=0;
@@ -130,6 +132,28 @@ CREATE INDEX idx_stock_for_transfomer_3 on stock_for_transfomer (stock_no,datase
 CREATE INDEX idx_stock_for_transfomer_4 on stock_for_transfomer (trade_date,dataset_type,list_label);
 CREATE INDEX idx_stock_for_transfomer_5 on stock_for_transfomer (dataset_type,list_label);
 
+/* data/stocks_train_4.db */
+CREATE TABLE stock_for_boost_v2(
+    pk_date_stock UNSIGNED BIG INT NOT NULL,
+    trade_date  INT    NOT NULL,
+    stock_no    CHAR(6)    NOT NULL,
+    list_label  TINYINT NOT NULL DEFAULT 0,   
+    true_score  FLOAT NOT NULL,
+    true_high_1 FLOAT NOT NULL,
+    true_low_1  FLOAT NOT NULL,
+    true_open_rate  FLOAT NOT NULL,
+    pair_15     FLOAT NOT NULL,
+    list_235    FLOAT NOT NULL,
+    point_5     FLOAT NOT NULL,
+    point_4     FLOAT NOT NULL,
+    pair_11     FLOAT NOT NULL,
+    point_high1 FLOAT NOT NULL,
+    low1    FLOAT NOT NULL,
+    primary key (pk_date_stock)
+);
+CREATE INDEX stock_for_boost_v2_1 on stock_for_boost_v2 (stock_no,list_label);
+CREATE INDEX stock_for_boost_v2_2 on stock_for_boost_v2 (trade_date,list_label);
+
 /*  
 .separator ","
 .import schema/stocks.txt stock_basic_info
@@ -141,4 +165,7 @@ CREATE INDEX idx_stock_for_transfomer_5 on stock_for_transfomer (dataset_type,li
 .output xx.file 
 
 */
+
+
+
 

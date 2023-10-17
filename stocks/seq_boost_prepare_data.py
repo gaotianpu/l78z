@@ -118,9 +118,27 @@ def process_by_dates():
         print(idx,date)
         process(models,"train",date)
 
+def get_min_max():
+    conn = sqlite3.connect("file:data/stocks_train_4.db?mode=ro", uri=True)
+    fields = "pair_15,list_235,point_5,point_4,pair_11,point_high1,low1,true_open_rate".split(",")
+    sql_min_max_parts = ",".join(["min(%s),max(%s)"%(field,field) for field in fields])
+    sql = "select %s from stock_for_boost_v2" %(sql_min_max_parts)
+    df = pd.read_sql(sql, conn)
+    d = {}
+    for i,field in enumerate(fields):
+        d[field+"_min"] = df.iloc[0][i*2] 
+        d[field+"_max"] = df.iloc[0][i*2 + 1]
+    print(d) 
+    
+
 # mv seq_train_boost_v2.py seq_boost_prepare_data.py
 if __name__ == "__main__":
-    process_by_dates()
+    op_type = sys.argv[1]
+    print(op_type)
+    if op_type == "prepare":
+        process_by_dates()
+    if op_type == "min_max":
+        get_min_max()
     
                            
                 

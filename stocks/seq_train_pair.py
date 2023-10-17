@@ -15,11 +15,11 @@ import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
 from common import load_trade_dates
-from seq_model_v2 import StockForecastModel,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL
+from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL
 
 # MODEL_FILE = "model_pair_dates.pth"
-# MODEL_FILE = "model_pair_stocks.pth"
-MODEL_FILE = "model_pair_dates_stocks.pth"
+MODEL_FILE = "model_pair_stocks.pth"
+# MODEL_FILE = "model_pair_dates_stocks.pth"
 
 conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
 
@@ -58,7 +58,10 @@ class StockPairDataset(Dataset):
         assert data_type in ("train", "validate", "test")
         dtmap = {"train":0,"validate":1,"test":2}
         dataset_type = dtmap.get(data_type)
-        self.df = pd.read_csv("pair_dates_stocks_%s.txt" % (dataset_type), sep=";", header=None)
+        # pair_dates_stocks_
+        # pair_dates_
+        # pair_stocks_
+        self.df = pd.read_csv("data2/pair_stocks_%s.txt" % (dataset_type), sep=";", header=None)
         self.conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
@@ -116,7 +119,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(choose)
             rate = round(current*100/size,2)
-            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate}%]]") 
+            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate}%]") 
         
         cp_save_n = 1280 #cp, checkpoint
         if batch % cp_save_n == 0:
@@ -158,7 +161,7 @@ def test(dataloader, model, loss_fn, data_type="test"):
             test_loss += loss.item()
             
     test_loss /= num_batches
-    print(f"{data_type} Avg loss: {test_loss:>8f} \n")
+    print(f"{data_type} Avg loss: {test_loss:>8f}")
 
 def estimate_ndcg_score(dataloader, model): 
     model.eval()
@@ -221,9 +224,12 @@ def training():
     torch.save(model.state_dict(), MODEL_FILE)
     print("Done!")
 
-def evaluate_model_checkpoints():
-    test_data = StockPairDataset("validate","f_high_mean_rate")
+def evaluate_model_checkpoints(field = "f_high_mean_rate"):
+    test_data = StockPairDataset("test",field)
     test_dataloader = DataLoader(test_data, batch_size=128)   
+    
+    validate_data = StockPairDataset("validate",field)
+    validate_dataloader = DataLoader(validate_data, batch_size=128)  
     
     ndcg_data = StockPointDataset(datatype="test",field="f_high_mean_rate")
     ndcg_dataloader = DataLoader(ndcg_data, batch_size=128)  
@@ -231,12 +237,13 @@ def evaluate_model_checkpoints():
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     criterion = LogExpLoss() #定义损失函数
     
-    for i in range(23): #32
-        fname =  MODEL_FILE + ".0."  + str(i) 
-        print(fname)
+    for i in range(13): #32
+        fname =  MODEL_FILE + ".1."  + str(i) 
+        print("\n" + fname)
         if os.path.isfile(fname):
             model.load_state_dict(torch.load(fname))
-            test(test_dataloader, model, criterion) 
+            test(validate_dataloader, model, criterion, "validate")
+            test(test_dataloader, model, criterion, "test")
             estimate_ndcg_score(ndcg_dataloader,model)
             
 

@@ -57,7 +57,7 @@ class StockPointDataset(Dataset):
             )
             self.df = pd.read_sql(sql, self.conn)
         else:
-            self.df = pd.read_csv('data2/point_sampled_%s.txt' % (dataset_type), header=None)
+            self.df = pd.read_csv('data2/point_%s.txt' % (dataset_type), header=None)
         
     def __len__(self):
         return len(self.df)

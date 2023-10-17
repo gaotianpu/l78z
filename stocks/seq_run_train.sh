@@ -68,6 +68,12 @@ sqlite3 data/stocks.db <<EOF
 .import new_stocks_seq.txt.20230928 stock_for_transfomer
 EOF
 
+# boost 模型需要用到的数据
+sqlite3 data/stocks_train_4.db <<EOF
+.separator ";"
+.import boost_data.all stock_for_boost_v2
+EOF
+
 
 
 # .import data/seq_train.txt.0915.2 stock_for_transfomer

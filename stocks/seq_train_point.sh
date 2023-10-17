@@ -26,7 +26,7 @@ run(){
     # cat data2/point_0_5678.txt data2/point_0_*.txt_shuf > data2/point_sampled_0.txt.$epochs
     # mv data2/point_sampled_0.txt data2/point_sampled_0.txt.$epochs
 
-    ln -sf /mnt/d/github/l78z/stocks/data2/point_sampled_0.txt.$epochs data2/point_sampled_0.txt
+    ln -sf /mnt/d/github/l78z/stocks/data2/point_sampled_0.txt.$epochs data2/point_0.txt
 
     echo "next_low_rate"
     python seq_train_point.py training next_low_rate #f_high_mean_rate
