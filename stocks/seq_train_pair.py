@@ -15,22 +15,12 @@ import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
 from common import load_trade_dates
-from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL
+from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-# MODEL_FILE = "model_pair_dates.pth"
-MODEL_FILE = "model_pair_stocks.pth"
-# MODEL_FILE = "model_pair_dates_stocks.pth"
+MODEL_TYPE = "stocks" # dates,stocks,dates_stocks
+MODEL_FILE = "model_pair_%s.pth" % (MODEL_TYPE)
 
 conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
-
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"  #苹果的Metal Performance Shaders（MPS）
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
-# print(f"Using {device} device")
 
 def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
     """
@@ -58,10 +48,7 @@ class StockPairDataset(Dataset):
         assert data_type in ("train", "validate", "test")
         dtmap = {"train":0,"validate":1,"test":2}
         dataset_type = dtmap.get(data_type)
-        # pair_dates_stocks_
-        # pair_dates_
-        # pair_stocks_
-        self.df = pd.read_csv("data2/pair_stocks_%s.txt" % (dataset_type), sep=";", header=None)
+        self.df = pd.read_csv("data2/pair_%s_%s.txt" % (MODEL_TYPE,dataset_type), sep=";", header=None)
         self.conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
@@ -197,7 +184,7 @@ def training():
     criterion = LogExpLoss() #定义损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.0000001 #0.0001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.00001 #0.0001 #0.00001 #0.000001  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法

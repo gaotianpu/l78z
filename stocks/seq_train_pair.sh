@@ -48,8 +48,8 @@ run(){
     cp model_pair_stocks.pth model_pair_stocks.pth.$epochs #备份 
 }
 
-start=0 # 12之前为随机数据，15-8only,
+start=6 # 12之前为随机数据，15-8only,
 run $(expr $start + 1)
 run $(expr $start + 2)
-run $(expr $start + 3)
-run $(expr $start + 4)
+# run $(expr $start + 3)
+# run $(expr $start + 4)

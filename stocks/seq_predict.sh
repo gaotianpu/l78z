@@ -48,5 +48,9 @@ echo "2. 生成predict需要的序列数据"
 python seq_preprocess.py predict > data/seq_predict/$cur_date.data #
 cp data/seq_predict/$cur_date.data seq_predict.data
 
-echo "3. 调取模型，预测" # data/predict_merged.txt
+python seq_preprocess_v2.py predict > data/seq_predict_v2/$cur_date.data #
+cp data/seq_predict_v2/$cur_date.data seq_predict_v2.data
+
+echo "3. 调取模型，预测"
 python seq_model.py predict # > predict_merged_for_show.txt
+python seq_model_v2.py predict # > predict_merged_for_show_v2.txt

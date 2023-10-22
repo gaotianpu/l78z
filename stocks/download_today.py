@@ -112,7 +112,8 @@ def process_all():
     
 def gen_buy_sell_prices(df_today):
     # 1. 获取预测数据
-    df_predict = pd.read_csv("data/predict/predict_merged.txt.20230928",sep=";",header=0,dtype={'stock_no': str})
+    df_predict = pd.read_csv("data/predict/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
+    trade_date = str(df_predict['pk_date_stock'][0])[:8]
     
     # df_predict['stock_no'] = df_predict.apply(lambda x: str(x['pk_date_stock'])[8:] , axis=1)
     
@@ -134,7 +135,7 @@ def gen_buy_sell_prices(df_today):
     # df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
     # df_predict = df_predict.merge(df_static_stocks_0,on="stock_no",how='left')
     # (or25,or50,or75) = (df_statics_stock['open_rate_25%'],df_statics_stock['open_rate_50%'],df_statics_stock['open_rate_75%'])
-    df_predict['current_open'] = df_predict['current_rate'] - df_predict['open_rate']     
+    df_predict['current_open'] = round(df_predict['current_rate'] - df_predict['open_rate'],4)     
     df_predict['open_rate_label'] = df_predict.apply(lambda x: 1 if x['open_rate'] < x['open_rate_25%'] else 2 if x['open_rate'] < x['open_rate_50%'] else 3 if x['open_rate'] < x['open_rate_75%'] else 4, axis=1)
     df_predict['buy_prices'] = ''
     df_predict['sell_prices'] = ''
@@ -156,7 +157,8 @@ def gen_buy_sell_prices(df_today):
         sell_prices = (np.array(sorted(high_rates))+1) * row['last_close']
         df_predict.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
     
-    trade_date = str(df_predict['pk_date_stock'][0])[:8]
+    print(len(df_predict))
+    
     df_predict.to_csv("data/today/predict_%s.txt"%(trade_date),sep=";",index=False)  
     
     
@@ -166,10 +168,10 @@ def gen_buy_sell_prices(df_today):
     # sel_fields = "pk_date_stock,stock_no,open_rate_label,pair_15,point_high1,low1.7,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
     # df_predict = df_predict[(df_predict['top3']==4 & df_predict['open_rate_label']==4 & df_predict['open_rate']<0.1) ]
     df_predict = df_predict[df_predict['top3']==5]
-    df_predict = df_predict[df_predict['open_rate_label']==4]
-    df_predict = df_predict[df_predict['open_rate']<0.1] #涨停的不考虑
+    df_predict = df_predict[df_predict['open_rate_label']>=3]
+    df_predict = df_predict[df_predict['open_rate']<0.09] #涨停的不考虑
     df_predict = df_predict[df_predict['current_open']>0]
-    sel_fields = "pk_date_stock,stock_no,CLOSE_price,open_rate,low_rate,high_rate,current_rate,current_open".split(",")
+    sel_fields = "pk_date_stock,stock_no,CLOSE_price,open_rate,low_rate,high_rate,current_rate,current_open,buy_prices,sell_prices".split(",")
     df_predict[sel_fields].to_csv("predict_today_show.txt",sep=";",index=False)  
         
     

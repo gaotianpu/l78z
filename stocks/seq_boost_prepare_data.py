@@ -14,34 +14,26 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from seq_model import StockForecastModel,evaluate_ndcg_and_scores
-from common import load_trade_dates
-
-SEQUENCE_LENGTH = 20 #序列长度
-D_MODEL = 9  #维度 9,17,29
-
-
-MODEL_FILE = "model_point_sampled.pth" 
-
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"  #苹果的Metal Performance Shaders（MPS）
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
+from seq_model_v2 import StockForecastModel,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
+from common import load_trade_dates,load_stocks
 
 class StockPointDataset(Dataset):
-    def __init__(self,datatype="validate",trade_date=None, field="f_high_mean_rate"): 
+    def __init__(self, datatype="validate", split_by="dates",split_param=None): 
         dtmap = {"train":0,"validate":1,"test":2}
-        self.field = field
+        # self.field = field #, field="f_high_mean_rate"
         self.conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
         dataset_type = dtmap.get(datatype)
         
-        if trade_date:
+        if split_by=="dates":
             sql = (
                 "select pk_date_stock from stock_for_transfomer where trade_date='%s'"
-                % (trade_date)
+                % (split_param)
+            )
+            self.df = pd.read_sql(sql, self.conn)
+        elif split_by=="stocks":
+            sql = (
+                "select pk_date_stock from stock_for_transfomer where stock_no='%s'"
+                % (split_param)
             )
             self.df = pd.read_sql(sql, self.conn)
         else:
@@ -65,11 +57,16 @@ class StockPointDataset(Dataset):
         list_label = df_item.iloc[0]['list_label'] 
         
         data = torch.tensor(data_json["past_days"])
-        data = data[:,:9] #9,17,29
+        # data = data[:,:9] #9,17,29
         return pk_date_stock, torch.tensor(list_label), torch.tensor(true_score), torch.tensor(high_1), torch.tensor(low_1), torch.tensor(open_rate),  data
 
-def process(models,data_type="train",trade_date=None):
-    dataset = StockPointDataset(data_type,trade_date)
+def process(models,data_type="train",split_by="dates",split_param=None):
+    df_file = "data/boost_%s_%s/boost_%s.txt"%(split_by,data_type,split_param)
+    if os.path.exists(df_file):
+        print(df_file, "is exist")
+        return 
+    
+    dataset = StockPointDataset(data_type, split_by, split_param)
     dataloader = DataLoader(dataset, batch_size=128) 
     
     # 先把每个模型的得分，需要用到的各种数据整理一遍
@@ -91,32 +88,44 @@ def process(models,data_type="train",trade_date=None):
                 df[model_name] = output.tolist() 
                 
             if df_all is None:
-                df_all = df   
+                df_all = df
             else:
                 df_all = pd.concat([df_all,df],axis=0)
-                
-        df_all.to_csv("data/boost_data/boost_%s_%s.txt"%(data_type,trade_date),sep=";",index=False)
+        
+        if df_all is not None:        
+            df_all.to_csv(df_file,sep=";",index=False)
 
-def process_by_dates():
+def process_all(by="dates"): # by_dates():
     # 加载模型文件
-    order_models = "pair_15,list_235,point_5,point_4,pair_11".split(",")
-    model_files = order_models + "point_high1,low1.7".split(",")
-
+    # order_models = "pair_15,list_235,point_5,point_4,pair_11".split(",")
+    # model_files = order_models + "point_high1,low1.7".split(",")
+    model_files = ["pair_stocks"]
+    
     models = {}
     for model_name in model_files:
         print(model_name)
         model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-        mfile = "model_v2/StockForecastModel.pth.%s"%(model_name)
+        mfile = "model_v3/model_%s.pth"%(model_name)
         if os.path.isfile(mfile):
             model.load_state_dict(torch.load(mfile)) 
         model.eval()
         models[model_name] = model
         
-    conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
-    trade_dates = load_trade_dates(conn,0)
-    for idx,date in enumerate(trade_dates):
-        print(idx,date)
-        process(models,"train",date)
+    if by == "dates":
+        conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
+        trade_dates = load_trade_dates(conn,0)
+        for idx,date in enumerate(trade_dates):
+            print(idx,date)
+            process(models,"train",by, date)
+    elif by == "stocks":
+        conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+        stocks = load_stocks(conn)
+        for idx,stock in enumerate(stocks):
+            print(idx,stock[0])
+            process(models,"train",by,stock[0]) 
+    else:
+        pass 
+        
 
 def get_min_max():
     conn = sqlite3.connect("file:data/stocks_train_4.db?mode=ro", uri=True)
@@ -132,11 +141,14 @@ def get_min_max():
     
 
 # mv seq_train_boost_v2.py seq_boost_prepare_data.py
+# python seq_boost_prepare_data.py stocks > log/seq_boost_prepare_data_stocks.log
 if __name__ == "__main__":
     op_type = sys.argv[1]
     print(op_type)
-    if op_type == "prepare":
-        process_by_dates()
+    if op_type == "dates":
+        process_all(by="dates")
+    if op_type == "stocks":
+        process_all(by="stocks")
     if op_type == "min_max":
         get_min_max()
     

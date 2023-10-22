@@ -14,19 +14,10 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL
+from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_FILE = "model_point_low1.pth" 
-
-# conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
-
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"  #苹果的Metal Performance Shaders（MPS）
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
+MODEL_TYPE = "low1" #high,low,high1,low1
+MODEL_FILE = "model_point_%s.pth" % (MODEL_TYPE)
 
 # 4. train 函数
 def train(dataloader, model, loss_fn, optimizer,epoch): 

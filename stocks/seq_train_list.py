@@ -14,30 +14,23 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from sklearn.metrics import ndcg_score
 
-from seq_model import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL
+from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
 from pytorchltr.loss import PairwiseHingeLoss
 
 # SEQUENCE_LENGTH = 20 #序列长度
 # D_MODEL = 9  #维度
-MODEL_FILE = "StockForecastModel.list_235.pth"
+MODEL_FILE = "model_list_stocks.pth"
 
 # https://blog.csdn.net/qq_36478718/article/details/122598406
 # ListNet ・ ListMLE ・ RankCosine ・ LambdaRank ・ ApproxNDCG ・ WassRank ・ STListNet ・ LambdaLoss
 
-device = (
-    "cuda"
-    if torch.cuda.is_available()
-    else "mps"  #苹果的Metal Performance Shaders（MPS）
-    if torch.backends.mps.is_available()
-    else "cpu"
-)
 
 class StockListDataset(Dataset):
     def __init__(self, datatype="train", field="f_high_mean_rate"):
         assert datatype in ("train", "validate", "test")
-        self.df = pd.read_csv("list/%s_22223355.txt" % (datatype), sep=";", header=None)
-        self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
+        self.df = pd.read_csv("data2/list.stocks.%s_22223355.txt" % (datatype), sep=";", header=None)
+        self.conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
     def __len__(self):
@@ -93,9 +86,10 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
     
     total_loss = 0.0 
     for batch, (labels,data) in enumerate(dataloader):
-        predict_scores = model(torch.squeeze(data).to(device)) 
-        
-        loss = loss_fn(torch.unsqueeze(predict_scores,0), labels) #8*8, 只关注头部1/8？  , (1,8) 
+        # predict_scores = model(torch.squeeze(data).to(device)) 
+        # loss = loss_fn(torch.unsqueeze(predict_scores,0), labels) #8*8, 只关注头部1/8？, (1,8) 
+        predict_scores = model(torch.flatten(data,end_dim=1).to(device)) 
+        loss = loss_fn(predict_scores.reshape(labels.size()), labels)
         
         # Back propagation 
         loss.backward()
@@ -104,13 +98,13 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         
         total_loss = total_loss + loss.item()
         
-        if batch % 512 == 0:
+        if batch % 2048 == 0:
             avg_loss = total_loss / (batch + 1) 
-            loss, current = loss.item(), (batch + 1) * 1 # len(choose)
+            loss, current = loss.item(), (batch + 1) * len(labels)
             rate = round(current*100/size,2)
-            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate:>1f}%]")
+            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate}%]")
                  
-        cp_save_n = 512 #cp, checkpoint
+        cp_save_n = 2048 #cp, checkpoint
         if batch % cp_save_n == 0:
             cp_idx = int(batch / cp_save_n)
             cp_idx_mod = cp_idx % 23
@@ -137,7 +131,7 @@ def test(dataloader, model):
 def training(field="f_high_mean_rate"):
     # 初始化
     train_data = StockListDataset(datatype="train",field=field)
-    train_dataloader = DataLoader(train_data, batch_size=1, shuffle=True)
+    train_dataloader = DataLoader(train_data, batch_size=4, shuffle=True)
     
     test_data = StockPointDataset(datatype="test",field=field)
     test_dataloader = DataLoader(test_data, batch_size=128)  
@@ -145,7 +139,7 @@ def training(field="f_high_mean_rate"):
     criterion = ListMLELoss() #
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.0001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.000001 #0.00001 #0.000001  #0.0000001
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -154,8 +148,8 @@ def training(field="f_high_mean_rate"):
         model.load_state_dict(torch.load(MODEL_FILE)) 
         print("load success")
 
-    epochs = 3
-    start = 5
+    epochs = 2
+    start = 0
     for t in range(epochs):
         real_epoch = t + start + 1
         print(f"Epoch {real_epoch}\n-------------------------------")   
@@ -173,14 +167,36 @@ if __name__ == "__main__":
         # python seq_train_list.py training
         training(field)
     if op_type == "test":
-        test_data = StockPointDataset(datatype="test",field=field)
-        test_dataloader = DataLoader(test_data, batch_size=128)  
+        train_data = StockListDataset(datatype="train",field=field)
+        train_dataloader = DataLoader(train_data, batch_size=2, shuffle=True)
         
+        loss_fn = ListMLELoss() #
         model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-        mfile = "StockForecastModel.list.pth.0"
-        if os.path.isfile(mfile):
-            model.load_state_dict(torch.load(mfile)) 
-            test(test_dataloader, model)
+        
+        for batch, (labels,data) in enumerate(train_dataloader):
+            predict_scores = model(torch.flatten(data,end_dim=1).to(device)) 
+            loss = loss_fn(predict_scores.reshape(labels.size()), labels)
+            print(predict_scores.shape)
+            print(predict_scores)
+            print(predict_scores.reshape(labels.size()))
+            print(loss)
+            
+            # print(labels.shape)
+            # print(data.shape,data.size())
+            # x = torch.flatten(data,end_dim=1)
+            # print(x.shape)
+            # x2 = x.reshape(data.size())
+            # print(x2.shape)
+            break 
+    
+        # test_data = StockPointDataset(datatype="test",field=field)
+        # test_dataloader = DataLoader(test_data, batch_size=128)  
+        
+        # model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+        # mfile = "StockForecastModel.list.pth.0"
+        # if os.path.isfile(mfile):
+        #     model.load_state_dict(torch.load(mfile)) 
+        #     test(test_dataloader, model)
     
     if op_type == "tmp":
         scores = torch.tensor([[0.5, 2.0, 1.0], [0.9, -1.2, 0.0]])

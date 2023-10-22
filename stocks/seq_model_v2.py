@@ -29,7 +29,7 @@ device = (
 
 # 1. 定义数据集
 class StockPredictDataset(Dataset):
-    def __init__(self,predict_data_file="seq_predict.data"): 
+    def __init__(self,predict_data_file="seq_predict_v2.data"): 
         self.df = pd.read_csv(predict_data_file, sep=";", header=None)
 
     def __len__(self):
@@ -165,21 +165,21 @@ def evaluate_ndcg_and_scores(df):
    
        
 def predict():
-    dataset = StockPredictDataset(predict_data_file="seq_predict.data")
+    dataset = StockPredictDataset(predict_data_file="seq_predict_v2.data")
     dataloader = DataLoader(dataset, batch_size=128) 
     # print(next(iter(dataset)))
     
     df_merged = None 
     
     # model_v1
-    # model_files="pair_high,point_pair_high,point_high,point_low,point_low1".split(",") 
-    order_models = "pair_15,list_235,point_5,point_4,pair_11".split(",")
-    model_files = order_models + "point_high1,low1.7".split(",")
+    # model_files="point,pair_dates,pair_dates_stocks,point_low1".split(",") 
+    order_models = "point,pair_dates,pair_dates_stocks,pair_stocks".split(",")
+    model_files = order_models + "point_low1".split(",") #point_high1,
     
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     for model_name in model_files:
         print(model_name)
-        mfile = "model_v2/StockForecastModel.pth.%s"%(model_name)
+        mfile = "model_v3/model_%s.pth"%(model_name)
         if os.path.isfile(mfile):
             model.load_state_dict(torch.load(mfile)) 
         
@@ -205,7 +205,7 @@ def predict():
                 df[model_name + '_top3'] = [1 if i<top3 else 0 for i in range(count)]
                 df[model_name + '_top5'] = [1 if i<top5 else 0 for i in range(count)]
             
-            df.to_csv("data/predict/predict_%s.txt"%(model_name),sep=";",index=False) 
+            df.to_csv("data/predict_v2/predict_%s.txt"%(model_name),sep=";",index=False) 
             
             # 模型结果合并
             if df_merged is None:
@@ -225,7 +225,7 @@ def predict():
     df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
     df_merged = df_merged.merge(df_static_stocks_0,on="stock_no",how='left')
     
-    df_merged.to_csv("data/predict/predict_merged_middle_tmp.txt.%s"%(trade_date),sep=";",index=False) 
+    df_merged.to_csv("data/predict_v2/predict_merged_middle_tmp.txt.%s"%(trade_date),sep=";",index=False) 
     
     df_merged['buy_prices'] = ''
     df_merged['sell_prices'] = ''
@@ -235,29 +235,29 @@ def predict():
     std_point_high1 = 0.018595 #
     for idx,row in df_merged.iterrows():
         low_rates = row[['low_rate_25%','low_rate_50%','low_rate_75%']].values.tolist() 
-        point_low1 = row['low1.7']
+        point_low1 = row['point_low1']
         low_rates = low_rates + [point_low1-std_point_low1, point_low1, point_low1 + std_point_low1]
         buy_prices = (np.array(sorted(low_rates))+1) * row['CLOSE_price']
         df_merged.loc[idx, 'buy_prices'] = ','.join([str(v) for v in buy_prices.round(2)]) 
         
-        high_rates = row[['high_rate_25%','high_rate_50%','high_rate_75%']].values.tolist()
-        point_high1 = row['point_high1'] #
-        high_rates = high_rates + [point_high1-std_point_high1, point_high1, point_high1 + std_point_high1]
-        sell_prices = (np.array(sorted(high_rates))+1) * row['CLOSE_price']
-        df_merged.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
+        # high_rates = row[['high_rate_25%','high_rate_50%','high_rate_75%']].values.tolist()
+        # point_high1 = row['point_high1'] #
+        # high_rates = high_rates + [point_high1-std_point_high1, point_high1, point_high1 + std_point_high1]
+        # sell_prices = (np.array(sorted(high_rates))+1) * row['CLOSE_price']
+        # df_merged.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
     
     # point_pair_high 效果更好些？
-    df_merged = df_merged.sort_values(by=["top3","pair_15"],ascending=False) # 
-    df_merged.to_csv("data/predict/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
-    df_merged.to_csv("data/predict/predict_merged.txt",sep=";",index=False) 
+    df_merged = df_merged.sort_values(by=["top3","pair_dates_stocks"],ascending=False) # 
+    df_merged.to_csv("data/predict_v2/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
+    df_merged.to_csv("data/predict_v2/predict_merged.txt",sep=";",index=False) 
     
-    sel_fields = "pk_date_stock,stock_no,pair_15,list_235,point_5,point_4,pair_11,point_high1,low1.7,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
-    df_merged[sel_fields].to_csv("predict_merged_for_show.txt",sep=";",index=False) 
+    sel_fields = "pk_date_stock,stock_no,point,pair_dates,pair_dates_stocks,pair_stocks,point_low1,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
+    df_merged[sel_fields].to_csv("predict_merged_for_show_v2.txt",sep=";",index=False) 
     
     
 if __name__ == "__main__":
     op_type = sys.argv[1]
     if op_type == "predict":
-        # python seq_model.py predict
+        # python seq_model_v2.py predict
         predict()
         

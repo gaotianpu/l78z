@@ -44,17 +44,19 @@ def via_3_8(label_dfs):
             selected_ids = selected_ids + c_ids
         # else:
         #     print("error validate data cnt less date=%s label=%s"%(date,label))
-    print(",".join( [str(v) for v in selected_ids] ))
+    if len(selected_ids)==24:
+        print(",".join( [str(v) for v in selected_ids] ))
 
 def via_22223355(label_dfs):
     cnts = [5,5,3,3,2,2,2,2] #注意顺序
     selected_ids = []
     for label,df in enumerate(label_dfs): #range(8): 
         cnt = cnts[label]
-        if len(df) > cnt*2:
+        if len(df) > cnt:
             c_ids = df["pk_date_stock"].sample(n=cnt).values.tolist()
             selected_ids = selected_ids + c_ids
-    print(",".join( [str(v) for v in selected_ids] ))
+    if len(selected_ids)==24:
+        print(",".join( [str(v) for v in selected_ids] ))
     
 def gen_date_list(cnt_type='22223355'):
     trade_dates = load_trade_dates(conn,0) # start_date=0
