@@ -17,6 +17,8 @@ mv log/download_history.log  log/download_history.log.$cur_date
 cat data/history/* > history.data.$cur_date
 awk -F '%' '{print $1$2}' history.data.$cur_date > history.data.new
 
+# python download_today.py all
+
 echo "1.1 导入stock_raw_daily_2"
 sqlite3 data/stocks.db <<EOF
 .separator ";"
