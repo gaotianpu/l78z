@@ -103,7 +103,7 @@ def convert_history_format(df):
     tmp_df.to_csv("history.data.new",sep=";",index=False,header=None)
     
     
-def process_all(last_df,df_predict_v1,df_predict_v2):
+def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12):
     # https://zhuanlan.zhihu.com/p/110005305
     T1 = time.time()
     
@@ -143,6 +143,8 @@ def process_all(last_df,df_predict_v1,df_predict_v2):
     # 计算买入/卖出价格
     gen_buy_sell_prices(df_predict_v1,df,"v1")
     gen_buy_sell_prices(df_predict_v2,df,"v2")
+    gen_buy_sell_prices(df_predict_v12,df,"v1_2")
+    
     return df
     
 def gen_buy_sell_prices(df_predict,df_today,version=""):
@@ -260,6 +262,11 @@ def run_no_stop():
     df_predict_v2 = df_predict_v2[df_predict_v2['top3']==3]
     df_predict_v2['lowest_rate'] = df_predict_v2['point_low1']
     
+    df_predict_v12 = pd.read_csv("data/predict_v2/predict_merged_v1_2.txt",sep=";",header=0,dtype={'stock_no': str})
+    # 只关注预测结果top3=5部分的数据
+    df_predict_v12 = df_predict_v12[df_predict_v12['top3']>6]
+    df_predict_v12['lowest_rate'] = df_predict_v12['point_low1'] #low1.7
+    
     last_df = None 
     last_file = "data/today/raw_%s.txt" % (int(int((datetime.now()- timedelta(minutes=10)).strftime("%Y%m%d%H%M"))/10))
     if os.path.exists(last_file):
@@ -272,7 +279,7 @@ def run_no_stop():
             trade_time=int(int(datetime.today().strftime("%Y%m%d%H%M"))/10)
             if trade_time != last_trade_time:
                 print(trade_time)
-                last_df = process_all(last_df,df_predict_v1,df_predict_v2)
+                last_df = process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12)
                 
             last_trade_time = trade_time    
         time.sleep(60)
@@ -289,17 +296,23 @@ if __name__ == "__main__":
         # python download_today.py  gen_buy_sell_prices 
         df_today = pd.read_csv("data/today/raw_20231030150.txt",sep=";",header=0,dtype={'stock_no': str,'stock_name': str})
         
-        df_predict = pd.read_csv("data/predict/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
-        # 只关注预测结果top3=5部分的数据
-        df_predict = df_predict[df_predict['top3']==5]
-        df_predict['lowest_rate'] = df_predict['low1.7']
-        gen_buy_sell_prices(df_predict,df_today,"v1")
+        # df_predict = pd.read_csv("data/predict/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
+        # # 只关注预测结果top3=5部分的数据
+        # df_predict = df_predict[df_predict['top3']==5]
+        # df_predict['lowest_rate'] = df_predict['low1.7']
+        # gen_buy_sell_prices(df_predict,df_today,"v1")
         
-        df_predict = pd.read_csv("data/predict_v2/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
+        # df_predict = pd.read_csv("data/predict_v2/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
+        # # 只关注预测结果top3=5部分的数据
+        # df_predict = df_predict[df_predict['top3']==3]
+        # df_predict['lowest_rate'] = df_predict['point_low1']
+        # gen_buy_sell_prices(df_predict,df_today,"v2")
+        
+        df_predict = pd.read_csv("data/predict_v2/predict_merged_v1_2.txt",sep=";",header=0,dtype={'stock_no': str})
         # 只关注预测结果top3=5部分的数据
-        df_predict = df_predict[df_predict['top3']==3]
-        df_predict['lowest_rate'] = df_predict['point_low1']
-        gen_buy_sell_prices(df_predict,df_today,"v2")
+        df_predict = df_predict[df_predict['top3']>6]
+        df_predict['lowest_rate'] = df_predict['point_low1'] #low1.7
+        gen_buy_sell_prices(df_predict,df_today,"v1_2")
         
     if op_type == "no_stop":
         run_no_stop()

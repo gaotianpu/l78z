@@ -29,15 +29,16 @@ run(){
     ln -sf /mnt/d/github/l78z/stocks/data2/point_sampled_0.txt.$epochs data2/point_0.txt
 
     echo "next_low_rate"
-    python seq_train_point.py training next_low_rate #f_high_mean_rate
-    cp model_point_low1.pth model_point_low1.pth.$epochs #备份
+    python seq_train_point.py training next_high_rate #next_low_rate #f_high_mean_rate
+    cp model_point_high1.pth model_point_high1.pth.$epochs #备份
+    # cp model_point_low1.pth model_point_low1.pth.$epochs #备份
     # cp model_point_sampled.pth model_point_sampled.pth.$epochs #备份
 }
 
-start=2 #
+start=0 #
 run $(expr $start + 1) 
 run $(expr $start + 2)
-# run $(expr $start + 3)  
+run $(expr $start + 3)
 # run $(expr $start + 4) 
 # run $(expr $start + 5)
 # run $(expr $start + 6)

@@ -56,3 +56,5 @@ cp data/seq_predict_v2/$cur_date.data seq_predict_v2.data
 echo "3. 调取模型，预测"
 python seq_model.py predict # > predict_merged_for_show.txt
 python seq_model_v2.py predict # > predict_merged_for_show_v2.txt
+
+python seq_model_merge.py #将v1，v2结果合并一处
