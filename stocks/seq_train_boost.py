@@ -16,20 +16,23 @@ from sklearn.metrics import ndcg_score
 import random
 
 from common import c_round
-from seq_model import StockForecastModel,StockPointDataset,SEQUENCE_LENGTH,D_MODEL,device,evaluate_ndcg_and_scores
+from seq_model_v2 import StockForecastModel,StockPointDataset,SEQUENCE_LENGTH,D_MODEL,device,evaluate_ndcg_and_scores
 
 # SEQUENCE_LENGTH = 20 #序列长度
 # D_MODEL = 9  #维度
 
+true_test_file = "data/model_test_2/true_test.txt"
+
 def get_model_results(model_name,dataloader):
     # 从已经存在的文件中加载
-    model_results_file = "data/model_test/%s.txt" % (model_name)
+    model_results_file = "data/model_test_2/%s.txt" % (model_name)
     if os.path.isfile(model_results_file):
         df = pd.read_csv(model_results_file,sep=";",header=0)
         return df
     
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device) 
-    mfile = "model_v2/StockForecastModel.pth.%s"%(model_name)
+    # mfile = "model_v2/StockForecastModel.pth.%s"%(model_name)
+    mfile = "model_v3/model_%s.pth"%(model_name)
     if os.path.isfile(mfile):
         model.load_state_dict(torch.load(mfile)) 
     
@@ -78,7 +81,7 @@ def model_boost():
     
     # 非模型相关的数据
     df_merged = None
-    true_test_file = "data/model_test/true_test.txt"
+    true_test_file = "data/model_test_2/true_test.txt"
     if os.path.isfile(true_test_file): #缓存
         df_merged = pd.read_csv(true_test_file,sep=";",header=0)
     else:
@@ -90,8 +93,13 @@ def model_boost():
         df_merged.to_csv(true_test_file,sep=";",index=False)
     
     # 模型预测相关数据
-    order_models = "pair_15,pair_16,point_4,point_5".split(",")
-    model_files = order_models + "point_high1,low1.7".split(",")
+    # order_models = "pair_15,pair_16,point_4,point_5".split(",")
+    # model_files = order_models + "point_high1,low1.7".split(",")
+    
+    # order_models = "point,point2pair_dates,pair_dates,list_dates,pair_dates_stocks".split(",")
+    order_models = "list_dates,point,point2pair_dates".split(",")
+    model_files = order_models + "point_low,point_low1".split(",") #point_high1,
+    
     for model_name in model_files:
         print(model_name)
         df = get_model_results(model_name,dataloader)
@@ -102,8 +110,8 @@ def model_boost():
     df_merged['top_3'] = df_merged[[ model_name+'_top3' for model_name in order_models ]].sum(axis=1)
     df_merged['top_5'] = df_merged[[ model_name+'_top5' for model_name in order_models ]].sum(axis=1) 
     
-    df_merged = df_merged.sort_values(by=["trade_date","top_3","pair_15"],ascending=False)
-    df_merged.to_csv("data/model_test/test_merged.txt",sep=";",index=False) 
+    df_merged = df_merged.sort_values(by=["trade_date","top_3"],ascending=False)
+    df_merged.to_csv("data/model_test_2/test_merged.txt",sep=";",index=False) 
     
     df_prices = pd.read_csv("data/test_stock_raw_daily_3.txt",sep=";",header=0)
     # 列重命名
@@ -113,9 +121,9 @@ def model_boost():
     df_static =  pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0)
     df_merged = df_merged.merge(df_static, on="stock_no",how='left')
     
-    df_merged.to_csv("data/model_test/test_all.txt",sep=";",index=False) 
+    df_merged.to_csv("data/model_test_2/test_all.txt",sep=";",index=False) 
     #
-    boost_mean_scores(df_merged,None)
+    boost_mean_scores(df_merged,order_models)
 
 
 def boost_mean_scores(df_merged,order_models=None):
@@ -129,7 +137,7 @@ def boost_mean_scores(df_merged,order_models=None):
             # data['top_3'] = data.apply(lambda x: x[[model+'_top3' for model in order_models]].sum() , axis=1)
             # data['top_5'] = data.apply(lambda x: x[[model+'_top5' for model in order_models]].sum() , axis=1)
             
-            # data.to_csv("data/model_test/ms_t_%s_%s.txt"%(str_order_models,trade_date),sep=";",index=False) 
+            # data.to_csv("data/model_test_2/ms_t_%s_%s.txt"%(str_order_models,trade_date),sep=";",index=False) 
             # break
             # print(data)
             # count = len(data)
@@ -251,9 +259,10 @@ def buy_sell():
 def best_boost_mean_scores(): 
     # 采用动态规划思路，先找到单个最优模型，再基于这单个最优模型，寻找2个最优组，依次3个，4个，当数值不再优化，退出   
     # python seq_train_boost.py boost_test 
-    df_merged = pd.read_csv("data/model_test/true_test.txt",sep=";",header=0)
+    df_merged = pd.read_csv("data/model_test_2/true_test.txt",sep=";",header=0)
     
-    order_models="point_pair_high,pair_11,pair_15,pair_16,point_4,point_5,point_high1,list_235".split(",")
+    # order_models="point_pair_high,pair_11,pair_15,pair_16,point_4,point_5,point_high1,list_235".split(",")
+    order_models="point,point2pair_dates,pair_dates,list_dates,pair_dates_stocks".split(",")
     
     # current best is less than last ['point_5', 'point_high1'] ['point_5', 'point_high1', 'pair_15']
     # best_models: ['point_5', 'point_high1']
@@ -273,7 +282,7 @@ def best_boost_mean_scores():
             
             df = df_merged.copy()
             for m in mli:
-                df_t = pd.read_csv("data/model_test/%s.txt" % (m),sep=";",header=0)
+                df_t = pd.read_csv("data/model_test_2/%s.txt" % (m),sep=";",header=0)
                 df = df.merge(df_t, on="pk_date_stock",how='left') 
             
             # df.to_csv("data/tmp.txt",sep=";",index=False) 
@@ -300,15 +309,17 @@ if __name__ == "__main__":
     op_type = sys.argv[1]
     if op_type == "boost": 
         # python seq_train_boost.py boost 
-        # data/model_test/  
+        # data/model_test_2/  
         model_boost()
     
+    if op_type == "best_boost": 
+        best_boost_mean_scores() 
+        
     if op_type == "buy_sell":
         #python seq_train_boost.py buy_sell 
         buy_sell()
     
-    if op_type == "best_boost": 
-        best_boost_mean_scores() 
+    
         
         
     

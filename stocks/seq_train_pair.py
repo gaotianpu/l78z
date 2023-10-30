@@ -17,8 +17,8 @@ from sklearn.metrics import ndcg_score
 from common import load_trade_dates
 from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "stocks" # dates,stocks,dates_stocks
-MODEL_FILE = "model_pair_%s.pth" % (MODEL_TYPE)
+MODEL_TYPE = "dates" # dates,stocks,dates_stocks
+MODEL_FILE = "model_point2pair_%s.pth" % (MODEL_TYPE)
 
 conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
 

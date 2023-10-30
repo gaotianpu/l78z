@@ -16,7 +16,7 @@ from sklearn.metrics import ndcg_score
 
 from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "low1" #high,low,high1,low1
+MODEL_TYPE = "low" #high,low,high1,low1
 MODEL_FILE = "model_point_%s.pth" % (MODEL_TYPE)
 
 # 4. train 函数
@@ -124,8 +124,8 @@ def training(field="f_high_mean_rate"):
         # loss = checkpoint['loss']
         print("load success")
 
-    epochs = 1
-    start = 0
+    epochs = 2
+    start = 1
     for t in range(epochs):
         current_epochs = t+1+start 
         print(f"Epoch {current_epochs}\n-------------------------------")   
@@ -151,6 +151,7 @@ def evaluate_model_checkpoints(field="f_high_mean_rate"):
     
     for i in range(23): #32
         fname =  "%s.1.%s" % (MODEL_FILE,17)
+        fname = "model_point_low.pth.3.4"
         if not os.path.isfile(fname):
             print("\n### %s is not exist" % (fname))
             continue 

@@ -260,6 +260,9 @@ def predict():
     df_merged.to_csv("data/predict/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
     df_merged.to_csv("data/predict/predict_merged.txt",sep=";",index=False) 
     
+    #暂时先不关注科创板
+    df_merged = df_merged[ (df_merged['stock_no'].str.startswith('688') == False)]
+    
     sel_fields = "pk_date_stock,stock_no,pair_15,list_235,point_5,point_4,pair_11,point_high1,low1.7,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
     df_merged[sel_fields].to_csv("predict_merged_for_show.txt",sep=";",index=False) 
     

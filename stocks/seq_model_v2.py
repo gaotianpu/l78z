@@ -171,10 +171,10 @@ def predict():
     
     df_merged = None 
     
-    # model_v1
-    # model_files="point,pair_dates,pair_dates_stocks,point_low1".split(",") 
-    order_models = "point,pair_dates,pair_dates_stocks,pair_stocks".split(",")
-    model_files = order_models + "point_low1".split(",") #point_high1,
+    # model_v3 model_v3/model_point2pair_dates.pth
+    # list_stocks, ,pair_dates,pair_dates_stocks
+    order_models = "list_dates,point,point2pair_dates".split(",")
+    model_files = order_models + "point_low,point_low1".split(",") #point_high1,
     
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     for model_name in model_files:
@@ -247,11 +247,14 @@ def predict():
         # df_merged.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
     
     # point_pair_high 效果更好些？
-    df_merged = df_merged.sort_values(by=["top3","pair_dates_stocks"],ascending=False) # 
+    df_merged = df_merged.sort_values(by=["top3","list_dates"],ascending=False) # 
     df_merged.to_csv("data/predict_v2/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
     df_merged.to_csv("data/predict_v2/predict_merged.txt",sep=";",index=False) 
     
-    sel_fields = "pk_date_stock,stock_no,point,pair_dates,pair_dates_stocks,pair_stocks,point_low1,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
+    # 暂时先不关注科创板
+    df_merged = df_merged[ (df_merged['stock_no'].str.startswith('688') == False)]
+    
+    sel_fields = "pk_date_stock,stock_no,list_dates,point,point2pair_dates,point_low,point_low1,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
     df_merged[sel_fields].to_csv("predict_merged_for_show_v2.txt",sep=";",index=False) 
     
     

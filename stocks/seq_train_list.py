@@ -20,7 +20,8 @@ from pytorchltr.loss import PairwiseHingeLoss
 
 # SEQUENCE_LENGTH = 20 #序列长度
 # D_MODEL = 9  #维度
-MODEL_FILE = "model_list_stocks.pth"
+# MODEL_FILE = "model_list_stocks.pth"
+MODEL_FILE = "model_list_dates.pth"
 
 # https://blog.csdn.net/qq_36478718/article/details/122598406
 # ListNet ・ ListMLE ・ RankCosine ・ LambdaRank ・ ApproxNDCG ・ WassRank ・ STListNet ・ LambdaLoss
@@ -29,7 +30,9 @@ MODEL_FILE = "model_list_stocks.pth"
 class StockListDataset(Dataset):
     def __init__(self, datatype="train", field="f_high_mean_rate"):
         assert datatype in ("train", "validate", "test")
-        self.df = pd.read_csv("data2/list.stocks.%s_22223355.txt" % (datatype), sep=";", header=None)
+        # self.df = pd.read_csv("data2/list.stocks.%s_22223355.txt" % (datatype), sep=";", header=None)
+        self.df = pd.read_csv("data2/list.dates.%s_22223355.txt" % (datatype), sep=";", header=None)
+        # self.df = pd.read_csv("data2/list.%s_22223355.txt" % (datatype), sep=";", header=None)
         self.conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
@@ -139,7 +142,7 @@ def training(field="f_high_mean_rate"):
     criterion = ListMLELoss() #
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.000001 #0.00001 #0.000001  #0.0000001
+    learning_rate = 0.00001 #0.00001 #0.000001  #0.0000001
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -148,8 +151,8 @@ def training(field="f_high_mean_rate"):
         model.load_state_dict(torch.load(MODEL_FILE)) 
         print("load success")
 
-    epochs = 2
-    start = 0
+    epochs = 4
+    start = 8
     for t in range(epochs):
         real_epoch = t + start + 1
         print(f"Epoch {real_epoch}\n-------------------------------")   
@@ -167,36 +170,47 @@ if __name__ == "__main__":
         # python seq_train_list.py training
         training(field)
     if op_type == "test":
-        train_data = StockListDataset(datatype="train",field=field)
-        train_dataloader = DataLoader(train_data, batch_size=2, shuffle=True)
+        # train_data = StockListDataset(datatype="train",field=field)
+        # train_dataloader = DataLoader(train_data, batch_size=2, shuffle=True)
         
-        loss_fn = ListMLELoss() #
-        model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-        
-        for batch, (labels,data) in enumerate(train_dataloader):
-            predict_scores = model(torch.flatten(data,end_dim=1).to(device)) 
-            loss = loss_fn(predict_scores.reshape(labels.size()), labels)
-            print(predict_scores.shape)
-            print(predict_scores)
-            print(predict_scores.reshape(labels.size()))
-            print(loss)
-            
-            # print(labels.shape)
-            # print(data.shape,data.size())
-            # x = torch.flatten(data,end_dim=1)
-            # print(x.shape)
-            # x2 = x.reshape(data.size())
-            # print(x2.shape)
-            break 
-    
-        # test_data = StockPointDataset(datatype="test",field=field)
-        # test_dataloader = DataLoader(test_data, batch_size=128)  
-        
+        # loss_fn = ListMLELoss() #
         # model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-        # mfile = "StockForecastModel.list.pth.0"
-        # if os.path.isfile(mfile):
-        #     model.load_state_dict(torch.load(mfile)) 
-        #     test(test_dataloader, model)
+        
+        # for batch, (labels,data) in enumerate(train_dataloader):
+        #     predict_scores = model(torch.flatten(data,end_dim=1).to(device)) 
+        #     loss = loss_fn(predict_scores.reshape(labels.size()), labels)
+        #     print(predict_scores.shape)
+        #     print(predict_scores)
+        #     print(predict_scores.reshape(labels.size()))
+        #     print(loss)
+            
+        #     # print(labels.shape)
+        #     # print(data.shape,data.size())
+        #     # x = torch.flatten(data,end_dim=1)
+        #     # print(x.shape)
+        #     # x2 = x.reshape(data.size())
+        #     # print(x2.shape)
+        #     break 
+    
+        test_data = StockPointDataset(datatype="test",field=field)
+        test_dataloader = DataLoader(test_data, batch_size=128)  
+        
+        model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+        mfile = "model_list_stocks.pth.3"
+        if os.path.isfile(mfile):
+            model.load_state_dict(torch.load(mfile)) 
+            test(test_dataloader, model)
+        
+        mfile = "model_list_stocks.pth.4"
+        if os.path.isfile(mfile):
+            model.load_state_dict(torch.load(mfile)) 
+            test(test_dataloader, model)
+        
+        for i in range(23):
+            mfile = "model_list_stocks.pth.5." + str(i)
+            if os.path.isfile(mfile):
+                model.load_state_dict(torch.load(mfile)) 
+                test(test_dataloader, model)
     
     if op_type == "tmp":
         scores = torch.tensor([[0.5, 2.0, 1.0], [0.9, -1.2, 0.0]])
