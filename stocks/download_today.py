@@ -168,15 +168,14 @@ def gen_buy_sell_prices(df_predict,df_today,version=""):
     
     df_predict['current_open'] = round(df_predict['current_rate'] - df_predict['open_rate'],4)  
     df_predict['current_minmax'] = round((df_predict['current'] - df_predict['low'])/(df_predict['high'] - df_predict['low']),4) 
+    df_predict['open_rate_label'] = df_predict.apply(lambda x: 1 if x['open_rate'] < x['open_rate_25%'] else 2 if x['open_rate'] < x['open_rate_50%'] else 3 if x['open_rate'] < x['open_rate_75%'] else 4, axis=1)
+    df_predict['in_hold'] = round(df_predict['low_rate'] - df_predict['lowest_rate'],2) 
     
     # 3. 获取统计数据
     df_static_stocks = pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0,dtype={'stock_no': str})
     # df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
     # df_predict = df_predict.merge(df_static_stocks_0,on="stock_no",how='left')
     # (or25,or50,or75) = (df_statics_stock['open_rate_25%'],df_statics_stock['open_rate_50%'],df_statics_stock['open_rate_75%'])
-       
-    df_predict['open_rate_label'] = df_predict.apply(lambda x: 1 if x['open_rate'] < x['open_rate_25%'] else 2 if x['open_rate'] < x['open_rate_50%'] else 3 if x['open_rate'] < x['open_rate_75%'] else 4, axis=1)
-    df_predict['in_hold'] = round(df_predict['low_rate'] - df_predict['lowest_rate'],2) 
     
     # df_predict['buy_prices'] = ''
     # df_predict['sell_prices'] = ''
@@ -199,7 +198,7 @@ def gen_buy_sell_prices(df_predict,df_today,version=""):
     #     sell_prices = (np.array(sorted(high_rates))+1) * row['last_close']
     #     df_predict.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
     
-    print(len(df_predict))
+    
     
     
     #df_predict.apply(lambda x: 1 if x['current_rate'] > x['lowest_rate'] else 0)
@@ -224,7 +223,7 @@ def gen_buy_sell_prices(df_predict,df_today,version=""):
     sel_fields = "stock_no,stock_name,in_hold,open_rate_label,current_rate,current_minmax,current_rate_delta,lowest_rate".split(",")
     df_html = df_predict[sel_fields]
     html_li = []
-    html_li.append("<head>%s</head>" % (datetime.today().strftime("%Y%m%d %H%M")))
+    html_li.append("<head>%s, count=%s</head>" % (datetime.today().strftime("%Y%m%d %H%M"),len(df_predict)))
     html_li.append("<table>")
     html_li.append("<tr>" + "".join(["<td>%s</td>"%(f) for f in sel_fields]) + "</tr>")
     for idx,row in df_html.iterrows():
@@ -250,20 +249,24 @@ def gen_buy_sell_prices(df_predict,df_today,version=""):
     with open('predict_today_show_%s.html'%(version),'w') as f:
         f.writelines(html_li)
         f.close()
+    
+    Hm = int(datetime.today().strftime("%H%M"))
+    if Hm>1500:
+        today = datetime.today().strftime("%Y%m%d") 
+        with open('data/today/predict_today_show_%s_%s.html'%(version,today),'w') as f:
+            f.writelines(html_li)
+            f.close()
 
-def run_no_stop():
+def run_no_stop(one_time=False):
     df_predict_v1 = pd.read_csv("data/predict/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
-    # 只关注预测结果top3=5部分的数据
     df_predict_v1 = df_predict_v1[df_predict_v1['top3']==5]
     df_predict_v1['lowest_rate'] = df_predict_v1['low1.7']
     
     df_predict_v2 = pd.read_csv("data/predict_v2/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
-    # 只关注预测结果top3=3部分的数据
     df_predict_v2 = df_predict_v2[df_predict_v2['top3']==3]
     df_predict_v2['lowest_rate'] = df_predict_v2['point_low1']
     
     df_predict_v12 = pd.read_csv("data/predict_v2/predict_merged_v1_2.txt",sep=";",header=0,dtype={'stock_no': str})
-    # 只关注预测结果top3=5部分的数据
     df_predict_v12 = df_predict_v12[df_predict_v12['top3']>6]
     df_predict_v12['lowest_rate'] = df_predict_v12['point_low1'] #low1.7
     
@@ -272,10 +275,14 @@ def run_no_stop():
     if os.path.exists(last_file):
         last_df = pd.read_csv(last_file,sep=";",header=0,dtype={'stock_no': str})
     
+    if one_time:    
+        process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12)
+        return 
+    
     last_trade_time = 0
     while True:
         Hm = int(datetime.today().strftime("%H%M"))
-        if (Hm > 935  and Hm < 1140) or (Hm>1300 and Hm<1510): 
+        if (Hm > 935  and Hm < 1140) or (Hm>1305 and Hm<1510): 
             trade_time=int(int(datetime.today().strftime("%Y%m%d%H%M"))/10)
             if trade_time != last_trade_time:
                 print(trade_time)
@@ -292,6 +299,11 @@ if __name__ == "__main__":
     if op_type == "all":
         # process_one_page(2)
         process_all()
+    
+    if op_type == "no_stop":
+        one_time = False # True 
+        run_no_stop(one_time)
+        
     if op_type == "gen_buy_sell_prices":
         # python download_today.py  gen_buy_sell_prices 
         df_today = pd.read_csv("data/today/raw_20231030150.txt",sep=";",header=0,dtype={'stock_no': str,'stock_name': str})
@@ -314,5 +326,4 @@ if __name__ == "__main__":
         df_predict['lowest_rate'] = df_predict['point_low1'] #low1.7
         gen_buy_sell_prices(df_predict,df_today,"v1_2")
         
-    if op_type == "no_stop":
-        run_no_stop()
+    

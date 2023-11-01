@@ -35,7 +35,7 @@ run(){
     # cp model_point_sampled.pth model_point_sampled.pth.$epochs #备份
 }
 
-start=0 #
+start=3 #
 run $(expr $start + 1) 
 run $(expr $start + 2)
 run $(expr $start + 3)

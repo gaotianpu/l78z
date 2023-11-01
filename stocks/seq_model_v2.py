@@ -173,7 +173,7 @@ def predict():
     
     # model_v3 model_v3/model_point2pair_dates.pth
     # list_stocks, ,pair_dates,pair_dates_stocks
-    order_models = "list_dates,point,point2pair_dates".split(",")
+    order_models = "list_dates,point,point2pair_dates,point_high1".split(",")
     model_files = order_models + "point_low,point_low1".split(",") #point_high1,
     
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
@@ -254,7 +254,7 @@ def predict():
     # 暂时先不关注科创板
     df_merged = df_merged[ (df_merged['stock_no'].str.startswith('688') == False)]
     
-    sel_fields = "pk_date_stock,stock_no,list_dates,point,point2pair_dates,point_low,point_low1,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
+    sel_fields = "pk_date_stock,stock_no,list_dates,point,point2pair_dates,point_low,point_high1,point_low1,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
     df_merged[sel_fields].to_csv("predict_merged_for_show_v2.txt",sep=";",index=False) 
     
     
