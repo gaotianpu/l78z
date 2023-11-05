@@ -179,10 +179,10 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
     
     # 过滤涨停\跌停股票？
     # 最高最低价相等，视为一种特殊的涨跌停形式
-    df_predict = df_predict[(df_predict['high'] - df_predict['low'])>0]
-    # 其他的涨停？
-    df_predict = df_predict[~ ((df_predict['current_rate']>0.19) & (df_predict['stock_no'].str.startswith('30')))]
-    df_predict = df_predict[~ ((df_predict['current_rate']>0.09) & ~(df_predict['stock_no'].str.startswith('30')))]
+    # df_predict = df_predict[(df_predict['high'] - df_predict['low'])>0]
+    # # 其他的涨停？
+    # df_predict = df_predict[~ ((df_predict['current_rate']>0.19) & (df_predict['stock_no'].str.startswith('30')))]
+    # df_predict = df_predict[~ ((df_predict['current_rate']>0.09) & ~(df_predict['stock_no'].str.startswith('30')))]
     
     df_predict['current_open'] = round(df_predict['current_rate'] - df_predict['open_rate'],4)  
     df_predict['current_minmax'] = round((df_predict['current'] - df_predict['low'])/(df_predict['high'] - df_predict['low']),4) 
