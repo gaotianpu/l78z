@@ -306,7 +306,7 @@ def compute_buy_price(df_predict=None):
     if not df_predict:
         df_predict = pd.read_csv("data/predict/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
     
-    trade_date = str(df_predict['pk_date_stock'][0])[:8]
+    trade_date = str(df_predict['pk_date_stock'].values[0])[:8]
     
     df = df_predict.merge(
         pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0,dtype={'stock_no': str})[select_cols],

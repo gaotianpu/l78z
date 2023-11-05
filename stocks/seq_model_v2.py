@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from common import load_prices
+from common import load_prices,c_round
 
 SEQUENCE_LENGTH = 20 #序列长度
 D_MODEL = 29  #维度 
@@ -164,8 +164,13 @@ def evaluate_ndcg_and_scores(df):
     return df
    
        
-def predict():
-    dataset = StockPredictDataset(predict_data_file="seq_predict_v2.data")
+def predict(trade_date=None):
+    predict_data_file="seq_predict_v2.data"
+    if trade_date:
+        predict_data_file=f"data/seq_predict_v2/{trade_date}.data"
+    
+    print(predict_data_file)
+    dataset = StockPredictDataset(predict_data_file=predict_data_file)
     dataloader = DataLoader(dataset, batch_size=128) 
     # print(next(iter(dataset)))
     
@@ -218,6 +223,7 @@ def predict():
                 
     conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
     trade_date = str(df_merged["pk_date_stock"][0])[:8]
+    # 当天的 CLOSE_price,LOW_price,HIGH_price，作为对比基线
     df_prices = load_prices(conn,trade_date)
     df_merged = df_merged.merge(df_prices,on="pk_date_stock",how='left')
     
@@ -227,40 +233,53 @@ def predict():
     
     df_merged.to_csv("data/predict_v2/predict_merged_middle_tmp.txt.%s"%(trade_date),sep=";",index=False) 
     
+    point_low1_options = [-0.0299, -0.0158, 0, 0.0193, 0.025]
+    for i,p in  enumerate(point_low1_options):
+        df_merged[f'point_low1_{i}'] = c_round(df_merged['point_low1'] + p)
+    
+    point_high1_options = [-0.0266, -0.0158, 0, 0.0193, 0.0251]
+    for i,p in  enumerate(point_high1_options):
+        df_merged[f'point_high_{i}'] = c_round(df_merged['point_high1'] + p)
+  
     df_merged['buy_prices'] = ''
     df_merged['sell_prices'] = ''
     
     # 计算买入价和卖出价格？
-    std_point_low1 = 0.013194 #训练的均方误差
-    std_point_high1 = 0.018595 #
     for idx,row in df_merged.iterrows():
-        low_rates = row[['low_rate_25%','low_rate_50%','low_rate_75%']].values.tolist() 
-        point_low1 = row['point_low1']
-        low_rates = low_rates + [point_low1-std_point_low1, point_low1, point_low1 + std_point_low1]
+        low_rates = [row['point_low1'] + p for p in point_low1_options]
         buy_prices = (np.array(sorted(low_rates))+1) * row['CLOSE_price']
         df_merged.loc[idx, 'buy_prices'] = ','.join([str(v) for v in buy_prices.round(2)]) 
         
-        # high_rates = row[['high_rate_25%','high_rate_50%','high_rate_75%']].values.tolist()
-        # point_high1 = row['point_high1'] #
-        # high_rates = high_rates + [point_high1-std_point_high1, point_high1, point_high1 + std_point_high1]
-        # sell_prices = (np.array(sorted(high_rates))+1) * row['CLOSE_price']
-        # df_merged.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
+        high_rates = [row['point_high1'] + p for p in point_high1_options]
+        sell_prices = (np.array(sorted(high_rates))+1) * row['CLOSE_price']
+        df_merged.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
     
-    # point_pair_high 效果更好些？
-    df_merged = df_merged.sort_values(by=["top3","list_dates"],ascending=False) # 
+    # point_high1 效果更好些？
+    df_merged = df_merged.sort_values(by=["top3","point_high1"],ascending=False) # 
     df_merged.to_csv("data/predict_v2/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
     df_merged.to_csv("data/predict_v2/predict_merged.txt",sep=";",index=False) 
     
     # 暂时先不关注科创板
     df_merged = df_merged[ (df_merged['stock_no'].str.startswith('688') == False)]
     
-    sel_fields = "pk_date_stock,stock_no,list_dates,point,point2pair_dates,point_low,point_high1,point_low1,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
+    sel_fields = "pk_date_stock,stock_no,top3,point_high1,point2pair_dates,point,point_low,point_low1,CLOSE_price,LOW_price,HIGH_price,buy_prices,sell_prices".split(",")
     df_merged[sel_fields].to_csv("predict_merged_for_show_v2.txt",sep=";",index=False) 
-    
+
+def predict_many():
+    start_date=20231017
+    conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+    sql = f"select distinct trade_date from stock_raw_daily_2 where trade_date>{start_date}"
+    df = pd.read_sql(sql, conn)
+    trade_dates = df['trade_date'].sort_values(ascending=True).tolist()
+    for idx,trade_date in enumerate(trade_dates):
+        print(trade_date) 
+        predict(trade_date)
     
 if __name__ == "__main__":
     op_type = sys.argv[1]
     if op_type == "predict":
         # python seq_model_v2.py predict
         predict()
+    if op_type == "many":
+        predict_many()
         

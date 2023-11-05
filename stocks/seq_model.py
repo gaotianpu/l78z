@@ -183,7 +183,7 @@ def predict():
     # model_v1
     # model_files="pair_high,point_pair_high,point_high,point_low,point_low1".split(",") 
     order_models = "pair_15,list_235,point_5,point_4,pair_11".split(",")
-    model_files = order_models + "point_high1,low1.7".split(",")
+    model_files = order_models + "point_high1,point_low1".split(",")
     
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     for model_name in model_files:
@@ -244,7 +244,7 @@ def predict():
     std_point_high1 = 0.018595 #
     for idx,row in df_merged.iterrows():
         low_rates = row[['low_rate_25%','low_rate_50%','low_rate_75%']].values.tolist() 
-        point_low1 = row['low1.7']
+        point_low1 = row['point_low1']
         low_rates = low_rates + [point_low1-std_point_low1, point_low1, point_low1 + std_point_low1]
         buy_prices = (np.array(sorted(low_rates))+1) * row['CLOSE_price']
         df_merged.loc[idx, 'buy_prices'] = ','.join([str(v) for v in buy_prices.round(2)]) 
@@ -263,7 +263,7 @@ def predict():
     #暂时先不关注科创板
     df_merged = df_merged[ (df_merged['stock_no'].str.startswith('688') == False)]
     
-    sel_fields = "pk_date_stock,stock_no,pair_15,list_235,point_5,point_4,pair_11,point_high1,low1.7,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
+    sel_fields = "pk_date_stock,stock_no,pair_15,list_235,point_5,point_4,pair_11,point_high1,point_low1,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
     df_merged[sel_fields].to_csv("predict_merged_for_show.txt",sep=";",index=False) 
     
     
