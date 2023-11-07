@@ -230,19 +230,8 @@ def predict(trade_date=None):
     # df_static_stocks = pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0,dtype={'stock_no': str})
     # df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
     # df_merged = df_merged.merge(df_static_stocks_0,on="stock_no",how='left')
-    # df_merged.to_csv("data/predict_v2/predict_merged_middle_tmp.txt.%s"%(trade_date),sep=";",index=False) 
     
-    
-    
-    
-    # for i,p in  enumerate(point_low1_options):
-    #     df_merged[f'point_low1_{i}'] = c_round(df_merged['point_low1'] + p)
-    # for i,p in  enumerate(point_high1_options):
-    #     df_merged[f'point_high_{i}'] = c_round(df_merged['point_high1'] + p)
-  
-    # df_merged['buy_prices'] = ''
-    # df_merged['sell_prices'] = ''
-    
+    # 计算买入价和卖出价格？
     point_low1_options = [-0.0299, -0.0158, 0, 0.0193, 0.025]
     df_merged['buy_prices'] = df_merged.apply(
         lambda x: ','.join([str(c_round((x['point_low1'] + p + 1) * x['CLOSE_price'])) for p in point_low1_options]),
@@ -252,18 +241,6 @@ def predict(trade_date=None):
     df_merged['sell_prices'] = df_merged.apply(
         lambda x:','.join([str(c_round((x['point_high1'] + p + 1) * x['CLOSE_price'])) for p in point_high1_options]),
         axis=1)
-    
-    # 计算买入价和卖出价格？
-    # for idx,row in df_merged.iterrows():
-    #     df_merged.loc[idx, 'buy_prices'] = ','.join([str(c_round((row['point_low1'] + p + 1) * row['CLOSE_price'])) for p in point_low1_options])
-    #     df_merged.loc[idx, 'sell_prices'] = ','.join([str(c_round((row['point_high1'] + p + 1) * row['CLOSE_price'])) for p in point_high1_options])
-        
-        # low_rates = [row['point_low1'] + p for p in point_low1_options]
-        # buy_prices = (np.array(sorted(low_rates))+1) * row['CLOSE_price']
-        # df_merged.loc[idx, 'buy_prices'] = ','.join([str(v) for v in buy_prices.round(2)]) 
-        # high_rates = [row['point_high1'] + p for p in point_high1_options]
-        # sell_prices = (np.array(sorted(high_rates))+1) * row['CLOSE_price']
-        # df_merged.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
     
     # point_high1 效果更好些？
     df_merged = df_merged.sort_values(by=["top3","point_high1"],ascending=False) # 
