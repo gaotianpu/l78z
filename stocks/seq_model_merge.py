@@ -31,7 +31,7 @@ def model_intersection():
 
     # pair_15,list_dates
     df_predict_v1 = df_predict_v1.sort_values(
-        by=["point2pair_dates_top5", "list_dates_top5"], ascending=False
+        by=["top3", "point_high1"], ascending=False
     )
     df_predict_v1.to_csv(
         "data/predict_v2/predict_merged_v1_2.txt", sep=";", index=False
@@ -42,12 +42,12 @@ def model_intersection():
     # df_predict_v2['lowest_rate'] = df_predict_v2['point_low1']
 
 
-def statics(df, trade_date, orderby, topN):
+def buy_statics(df, trade_date, orderby, topN):
     df = df.sort_values(by=["top3", orderby], ascending=False)  #
     df_topN = df.head(topN)
     li = [trade_date, orderby, topN]
     for i in range(5):
-        tmpdf = df_topN[df_topN[f"high2_rate_{i}"] != 0]
+        tmpdf = df_topN[df_topN[f"point_low1_buy_{i}"] != 0] #
         success_rate = c_round(len(tmpdf) / topN)
         mean_earn_rate = 0
         real_earn_rate = 0
@@ -57,53 +57,125 @@ def statics(df, trade_date, orderby, topN):
         li = li + [success_rate, mean_earn_rate, real_earn_rate]
     return li
 
+def sell_statics(df, trade_date, orderby, topN):
+    df = df.sort_values(by=["top3", orderby], ascending=False)  #
+    df_topN = df.head(topN)
+    li = [trade_date, orderby, topN]
+    for i in range(5):
+        tmpdf = df_topN[df_topN[f"point_high1_sell_{i}"] != 0]
+        success_rate = c_round(len(tmpdf) / topN)
+        li.append(success_rate)
+    return li
 
 def merge_one(trade_date, df_predict, df_real, version="v2"):
     filename = f"data/predict_{version}/predict_true_{trade_date}.txt"
     print(filename)
+    # rm -f data/predict_v2/predict_true_20231*
     
-    df_predict = df_predict.merge(df_real, on="stock_no", how="left")
+    if os.path.exists(filename):
+        df_predict = pd.read_csv(filename, sep=";", header=0, dtype={"stock_no": str})
+    else:    
+        df_predict = df_predict.merge(df_real, on="stock_no", how="left")
 
-    df_predict["low_rate"] = c_round(
-        (df_predict["LOW_1"] - df_predict["CLOSE_price"]) / df_predict["CLOSE_price"]
-    )
-    df_predict["high2_rate"] = c_round(
-        (df_predict["high_2"] - df_predict["CLOSE_price"]) / df_predict["CLOSE_price"]
-    )
-    df_predict["high3_rate"] = c_round(
-        (df_predict["high_3"] - df_predict["CLOSE_price"]) / df_predict["CLOSE_price"]
-    )
-
-    for i in range(5):
-        df_predict[f"point_low1_buy_{i}"] = df_predict.apply(
-            lambda x: 0 if x["low_rate"] >= x[f"point_low1_{i}"] else 1, axis=1
-        )
-        df_predict[f"high2_rate_{i}"] = df_predict.apply(
-            lambda x: 0
-            if x["low_rate"] >= x[f"point_low1_{i}"]
-            else (x["high2_rate"] - x[f"point_low1_{i}"]),
+        # 实际达到的最低价
+        # df_predict["low_rate"] = c_round(
+        #     (df_predict["LOW_1"] - df_predict["CLOSE_price"]) / df_predict["CLOSE_price"]
+        # )
+        
+        # 买入价格 buy_prices
+        df_predict["succ_buy_cnt"] = df_predict.apply(
+                lambda x: len([float(p) for p in x['buy_prices'].split(",") if float(p)>=x["LOW_1"] ]) ,
+                axis=1)
+        df_predict["succ_buy_price"] = df_predict.apply(
+                lambda x: min([float(p) for p in x['buy_prices'].split(",") if float(p)>=x["LOW_1"]]) if x['succ_buy_cnt']>0 else 0,
+                axis=1)
+        
+        # 按买入价格计算收益，t+1的最大收益
+        df_predict[f"high2_rate"] = df_predict.apply(
+            lambda x: c_round((x['high_2'] - x['succ_buy_price'])/x["CLOSE_price"]) if x['succ_buy_cnt']>0 else 0 ,
             axis=1,
         )
-        df_predict[f"high3_rate_{i}"] = df_predict.apply(
-            lambda x: 0
-            if x["low_rate"] >= x[f"point_low1_{i}"]
-            else (x["high3_rate"] - x[f"point_low1_{i}"]),
+        # 按买入价格计算收益，t+2的最大收益
+        df_predict[f"high3_rate"] = df_predict.apply(
+            lambda x: c_round((x['high_3'] - x['succ_buy_price'])/x["CLOSE_price"]) if x['succ_buy_cnt']>0 else 0 ,
             axis=1,
         )
+        
+        # 成功卖出的价格，selL_price
+        df_predict["succ_sell_cnt"] = df_predict.apply(
+                lambda x: len([float(p) for p in x['sell_prices'].split(",") if float(p)<=x["HIGH_1"]]) ,
+                axis=1)
+        df_predict["succ_sell_price"] = df_predict.apply(
+                lambda x: max([float(p) for p in x['sell_prices'].split(",") if float(p)<=x["HIGH_1"]]) if x['succ_sell_cnt']>0 else 0,
+                axis=1)
+        # 按昨日收盘价，卖出价的盈利
+        df_predict[f"high1_rate"] = df_predict.apply(
+            lambda x: c_round((x['succ_sell_price'] - x['CLOSE_price'])/x["CLOSE_price"]) if x['succ_sell_cnt']>0 else 0 ,
+            axis=1,
+        )
+        
+        df_predict.to_csv(filename, sep=";", index=False)
+    
+    # HIGH_1, T
+    # df_predict["high1_rate"] = c_round(
+    #     (df_predict["HIGH_1"] - df_predict["CLOSE_price"]) / df_predict["CLOSE_price"]
+    # )
+    # # T+1
+    # df_predict["high2_rate"] = c_round(
+    #     (df_predict["high_2"] - df_predict["CLOSE_price"]) / df_predict["CLOSE_price"]
+    # )
+    # # T+2
+    # df_predict["high3_rate"] = c_round(
+    #     (df_predict["high_3"] - df_predict["CLOSE_price"]) / df_predict["CLOSE_price"]
+    # ) 
+
+    # for i in range(5):
+    #     # 设定的卖出价是否可以成交
+    #     df_predict[f"point_high1_sell_{i}"] = df_predict.apply(
+    #         lambda x: 0 if x["high1_rate"] < x[f"point_high_{i}"] else 1, axis=1
+    #     )
+        
+    # for i in range(5):
+    #     # 买入价是否可以成交
+    #     df_predict[f"point_low1_buy_{i}"] = df_predict.apply(
+    #         lambda x: 0 if x["low_rate"] >= x[f"point_low1_{i}"] else 1, axis=1
+    #     )
+    #     # 按买入价格计算收益，t+1的最大收益
+    #     df_predict[f"high2_rate_{i}"] = df_predict.apply(
+    #         lambda x: 0
+    #         if x["low_rate"] >= x[f"point_low1_{i}"]
+    #         else c_round(x["high2_rate"] - x[f"point_low1_{i}"]),
+    #         axis=1,
+    #     )
+    #     # 按买入价格计算收益，t+1最大幅度回撤
+    #     df_predict[f"low2_rate_{i}"] = df_predict.apply(
+    #         lambda x: 0
+    #         if x["low_rate"] >= x[f"point_low1_{i}"]
+    #         else c_round((x["low_2"] - x["CLOSE_price"]) / x["CLOSE_price"] - x[f"point_low1_{i}"]),
+    #         axis=1,
+    #     )
+    #     # 按买入价格计算收益，t+2的收益
+    #     df_predict[f"high3_rate_{i}"] = df_predict.apply(
+    #         lambda x: 0
+    #         if x["low_rate"] >= x[f"point_low1_{i}"]
+    #         else c_round(x["high3_rate"] - x[f"point_low1_{i}"]),
+    #         axis=1,
+    #     )
 
     # point_low1_options = [-0.0299, -0.0158, 0, 0.0193, 0.025]
     # df_predict['buy_success_count'] = df_predict.apply(lambda x: sum([0 if x['low_rate']>=(x['point_low1'] + t) else 1  for t in point_low1_options]) , axis=1)
 
-    df_predict.to_csv(filename, sep=";", index=False)
     
-
-    statics_li = []
-    order_fields = "list_dates,point,point2pair_dates,point_high1".split(",")
-    for field in order_fields:
-        for topn in [5, 10]:
-            ret = statics(df_predict, trade_date, field, topn)
-            statics_li.append(ret)
-    return statics_li
+    
+    # buy_statics_li = []
+    # sell_statics_li = []
+    # order_fields = "list_dates,point,point2pair_dates,point_high1".split(",")
+    # for field in order_fields:
+    #     for topn in [5, 10]: 
+    #         buy_statics_li.append(buy_statics(df_predict, trade_date, field, topn))
+    #         sell_statics_li.append(sell_statics(df_predict, trade_date, field, topn))
+            
+    # return buy_statics_li,sell_statics_li
 
 
 def merge_predict_true(start_date=20231017):
@@ -114,7 +186,8 @@ def merge_predict_true(start_date=20231017):
     )
     count = len(trade_dates)
 
-    statics_li = []
+    buy_statics_li = []
+    sell_statics_li = []
     for idx, trade_date in enumerate(trade_dates):
         print(trade_date)
         if idx + 2 >= count:
@@ -122,21 +195,21 @@ def merge_predict_true(start_date=20231017):
 
         # 第一天，昨收，开盘价，最低价
         df_real = pd.read_sql(
-            f"select stock_no,OPEN_price as OPEN_1,LOW_price as LOW_1 from stock_raw_daily_2 where trade_date={trade_dates[idx]}",
+            f"select stock_no,OPEN_price as OPEN_1,LOW_price as LOW_1,HIGH_price as HIGH_1 from stock_raw_daily_2 where trade_date={trade_dates[idx]}",
             conn,
         )
 
         # 第二天，最高价
         df_real = df_real.merge(
             pd.read_sql(
-                f"select stock_no,HIGH_price as high_2 from stock_raw_daily_2 where trade_date={trade_dates[idx+1]}",
+                f"select stock_no,HIGH_price as high_2,LOW_price as low_2 from stock_raw_daily_2 where trade_date={trade_dates[idx+1]}",
                 conn,), on="stock_no", how="left",
         )
 
         # 第三天，最高价
         df_real = df_real.merge(
             pd.read_sql(
-                f"select stock_no,HIGH_price as high_3 from stock_raw_daily_2 where trade_date={trade_dates[idx+2]}",
+                f"select stock_no,HIGH_price as high_3,LOW_price as low_3 from stock_raw_daily_2 where trade_date={trade_dates[idx+2]}",
                 conn,
             ), on="stock_no", how="left",
         )
@@ -151,26 +224,61 @@ def merge_predict_true(start_date=20231017):
             header=0,
             dtype={"stock_no": str},
         )
-        statics_li = statics_li + merge_one(trade_date, df_predict_v2, df_real, "v2")
+        merge_one(trade_date, df_predict_v2, df_real, "v2")
+        
+        # buy_li,sell_li = merge_one(trade_date, df_predict_v2, df_real, "v2")
+        # buy_statics_li = buy_statics_li + buy_li
+        # sell_statics_li = sell_statics_li + sell_li
         # if idx > 1:
         #     break
 
     # success_rate,mean_earn_rate,real_earn_rate
-    columns = "trade_date,order_by,topN".split(",")
-    for i in range(5):
-        columns.append(f"succ{i}")
-        columns.append(f"earn{i}")
-        columns.append(f"Rearn{i}")
-    df = pd.DataFrame(statics_li, columns=columns)
-    filename = f"predict_true_static_{trade_date}.txt"
-    print(filename)
-    df.to_csv(filename, sep=";", index=False)
+    # columns = "trade_date,order_by,topN".split(",")
+    # for i in range(5):
+    #     columns.append(f"succ{i}")
+    #     columns.append(f"earn{i}")
+    #     columns.append(f"Rearn{i}")
+    # df = pd.DataFrame(buy_statics_li, columns=columns)
+    # filename = f"buy_static_{trade_date}.txt"
+    # print(filename)
+    # df.to_csv(filename, sep=";", index=False)
+    
+    # columns = "trade_date,order_by,topN".split(",")
+    # for i in range(5):
+    #     columns.append(f"succ{i}")
+    # df = pd.DataFrame(sell_statics_li, columns=columns)
+    # filename = f"sell_static_{trade_date}.txt"
+    # print(filename)
+    # df.to_csv(filename, sep=";", index=False)
 
+def output_table(df,topN = 5, values_prefix='Rearn'):
+    print(f"### topN={topN} {values_prefix} ###")
+    # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.pivot_table.html
+    table = pd.pivot_table(df[df['topN']==topN],
+                values=[f'{values_prefix}{i}' for i in range(5)],
+                index=['order_by'],columns=None,aggfunc="mean",sort=True)
+    print(table)
+    print("\n")
+        
+def pivot():
+    df = pd.read_csv("buy_static_20231103.txt", sep=";", header=0)
+    output_table(df,5,'Rearn')
+    output_table(df,10,'Rearn')
+    output_table(df,5,'succ')
+    output_table(df,10,'succ')
+    
+    print("sell_static:")
+    df = pd.read_csv("sell_static_20231103.txt", sep=";", header=0)
+    output_table(df,5,'succ')
+    output_table(df,10,'succ')
+    
 
-# python seq_model_merge.py intersection
+# python seq_model_merge.py predict_true
 if __name__ == "__main__":
     op_type = sys.argv[1]
     if op_type == "intersection":
         model_intersection()
     if op_type == "predict_true":
         merge_predict_true()
+    if op_type == "pivot":
+        pivot()

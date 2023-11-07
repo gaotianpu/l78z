@@ -77,7 +77,7 @@ def process_one_page(page_idx=102):
         val.append(round((val[9] - last)/last,4)) #11 low_rate
         val.append(round((val[7] - last)/last,4))  #12 open_rate
         val.append( round((val[10] - last)/last,4)) #13 high_rate
-        val.append( round((val[2] - last)/last,4)) #14 current_rate
+        val.append( round((val[2] - last)/last,4)) #14 rate_now
         val.append( round((val[2] - val[7]),4)) #15 current_open
         
         li_.append(val)  
@@ -120,17 +120,17 @@ def after_download(last_df):
     T2 = time.time()
     print('程序运行时间:%s毫秒' % ((T2 - T1)*1000))
     
-    columns = "stock_no,stock_name,current,change_rate,change_price,turnover,amount,open,last_close,low,high,low_rate,open_rate,high_rate,current_rate,current_open".split(',')
+    columns = "stock_no,stock_name,current,change_rate,change_price,turnover,amount,open,last_close,low,high,low_rate,open_rate,high_rate,rate_now,current_open".split(',')
     df = pd.DataFrame(all_li,columns=columns)
     df = df.drop_duplicates(subset=['stock_no'],keep='last') 
 
-    df["current_rate_delta"] = 0
+    df["rate_delta"] = 0
     if last_df is not None :
-        select_cols = "stock_no,current_rate".split(",")
+        select_cols = "stock_no,rate_now".split(",")
         sel_last_df = last_df[select_cols]
-        sel_last_df = sel_last_df.rename(columns={'current_rate':'last_current_rate'})
+        sel_last_df = sel_last_df.rename(columns={'rate_now':'last_rate'})
         df = df.merge(sel_last_df,on="stock_no",how='left')
-        df["current_rate_delta"] = round(df["current_rate"] - df["last_current_rate"],4)
+        df["rate_delta"] = round(df["rate_now"] - df["last_rate"],4)
     
     trade_time=int(int(datetime.today().strftime("%Y%m%d%H%M"))/10) 
     cache_file = "data/today/raw_%s.txt"%(trade_time)
@@ -142,9 +142,9 @@ def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time=Fals
     df = None
     if one_time:
         print("cache shoot")
-        cache_file = "data/today/raw_20231103150.txt"
+        cache_file = "data/today/raw_20231107150.txt"
         df = pd.read_csv(cache_file,sep=";",header=0,dtype={'stock_no': str,'stock_name': str})
-        df["current_rate"] = df["last_current_rate"]
+        df["rate_now"] = df["last_rate"]
     else:
         df = after_download(last_df)
     
@@ -153,7 +153,9 @@ def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time=Fals
     
     # 计算买入/卖出价格
     gen_buy_sell_prices(df,df_predict_v1,"v1")
-    gen_buy_sell_prices(df,df_predict_v2,"v2")
+    
+    tmp_df = df_predict_v2[df_predict_v2['top3']==4] 
+    gen_buy_sell_prices(df,tmp_df,"v2")
     gen_buy_sell_prices(df,df_predict_v12,"v1_2")
     
     # 持有部分
@@ -161,6 +163,7 @@ def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time=Fals
     with open('hold_stocks.txt','r') as f:
         hold_stocks = [row.strip().split(',')[0] for row in f.readlines()]
     df_holds = df_predict_v2[df_predict_v2['stock_no'].isin(hold_stocks)]
+    df_holds = df_holds.sort_values(by=["top3","point2pair_dates"],ascending=False)
     gen_buy_sell_prices(df,df_holds,"holds")
     
     return df
@@ -181,14 +184,14 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
     # 最高最低价相等，视为一种特殊的涨跌停形式
     # df_predict = df_predict[(df_predict['high'] - df_predict['low'])>0]
     # # 其他的涨停？
-    # df_predict = df_predict[~ ((df_predict['current_rate']>0.19) & (df_predict['stock_no'].str.startswith('30')))]
-    # df_predict = df_predict[~ ((df_predict['current_rate']>0.09) & ~(df_predict['stock_no'].str.startswith('30')))]
+    # df_predict = df_predict[~ ((df_predict['rate_now']>0.19) & (df_predict['stock_no'].str.startswith('30')))]
+    # df_predict = df_predict[~ ((df_predict['rate_now']>0.09) & ~(df_predict['stock_no'].str.startswith('30')))]
     
-    df_predict['current_open'] = round(df_predict['current_rate'] - df_predict['open_rate'],4)  
-    df_predict['current_minmax'] = round((df_predict['current'] - df_predict['low'])/(df_predict['high'] - df_predict['low']),4) 
-    df_predict['open_rate_label'] = df_predict.apply(lambda x: 1 if x['open_rate'] < x['open_rate_25%'] else 2 if x['open_rate'] < x['open_rate_50%'] else 3 if x['open_rate'] < x['open_rate_75%'] else 4, axis=1)
-    df_predict['in_hold'] = round(df_predict['current_rate'] - df_predict['point_low1'],4)
-    df_predict['in_hold_2'] = round(df_predict['current_rate'] - df_predict['point_high1'],4)
+    df_predict['current_open'] = round(df_predict['rate_now'] - df_predict['open_rate'],4)  
+    df_predict['rate_minmax'] = round((df_predict['current'] - df_predict['low'])/(df_predict['high'] - df_predict['low']),4) 
+    # df_predict['open_rate_label'] = df_predict.apply(lambda x: 1 if x['open_rate'] < x['open_rate_25%'] else 2 if x['open_rate'] < x['open_rate_50%'] else 3 if x['open_rate'] < x['open_rate_75%'] else 4, axis=1)
+    df_predict['in_hold'] = round(df_predict['rate_now'] - df_predict['point_low1'],4)
+    df_predict['in_hold_2'] = round(df_predict['rate_now'] - df_predict['point_high1'],4)
     
     # df_predict['lowest'] = round(df_predict['last_close'] * (1+df_predict['point_low1']),2)
     # df_predict['high1_price'] = round(df_predict['last_close'] * (1+df_predict['point_high1']),2)
@@ -202,7 +205,7 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
     
     # 生成html数据
     # open_rate_label,
-    sel_fields = "stock_no,stock_name,current_rate,current_minmax,current_rate_delta,point_low1,low_rate,low,in_hold,buy_prices,point_high1,high_rate,in_hold_2,sell_prices".split(",")
+    sel_fields = "stock_no,stock_name,rate_now,rate_minmax,rate_delta,point_low1,low_rate,low,in_hold,buy_prices,point_high1,high,high_rate,in_hold_2,sell_prices".split(",")
     df_html = df_predict[sel_fields]
     html_li = []
     html_li.append("<head>%s, count=%s</head>" % (datetime.today().strftime("%Y%m%d %H%M"),len(df_predict)))
@@ -210,7 +213,7 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
     html_li.append("<tr><td>idx</td>" + "".join(["<td>%s</td>"%(f) for f in sel_fields]) + "</tr>")
     for idx,row in df_html.iterrows():
         tr_color = "" 
-        if row['current_rate']>0.01:  #row['current_minmax']>0.5 and row['current_rate_delta']>=0:
+        if row['rate_now']>0.01:  #row['rate_minmax']>0.5 and row['rate_delta']>=0:
             # tr_color = 'style="color:red"'
             pass
 
@@ -226,25 +229,33 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
                     else:
                         li.append(x)
                 row['buy_prices'] = ",".join(li)
+            if field == "sell_prices":
+                li = []
+                for x in row['sell_prices'].split(','):
+                    if row["high"] >= float(x) :
+                        li.append('<font style="background-color:%s">%s</font>'%('#FFA500',x))
+                    else:
+                        li.append(x)
+                row['sell_prices'] = ",".join(li)
             if field == "in_hold" : 
                 if row['in_hold'] < -0.0215:
                     color = 'green'
                 if row["low_rate"]<row["point_low1"]:
                     color = '#FFA500'
-            if field == "current_rate_delta":
-                if row['current_rate_delta'] < -0.001:
+            if field == "rate_delta":
+                if row['rate_delta'] < -0.001:
                     color = 'green'
-                if row['current_rate_delta'] > 0.001:
+                if row['rate_delta'] > 0.001:
                     color = '#FFA500'
-            if field == "current_minmax": 
-                if row['current_minmax']<0.35:
+            if field == "rate_minmax": 
+                if row['rate_minmax']<0.35:
                     color = 'green'
-                if row['current_minmax']>0.55:
+                if row['rate_minmax']>0.55:
                     color = '#FFA500'
-            if field == "current_rate": 
-                if row['current_rate']<-0.03:
+            if field == "rate_now": 
+                if row['rate_now']<-0.03:
                     color = 'green'
-                if row['current_rate']>0.025:
+                if row['rate_now']>0.025:
                     color = '#FFA500'
             if field == "point_low1":
                 if row["low_rate"]<row["point_low1"]:
@@ -272,7 +283,7 @@ def run_no_stop(one_time=False):
     df_predict_v1 = df_predict_v1[df_predict_v1['top3']==5]
     
     df_predict_v2 = pd.read_csv("data/predict_v2/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
-    df_predict_v2 = df_predict_v2[df_predict_v2['top3']==4] 
+    
     
     df_predict_v12 = pd.read_csv("data/predict_v2/predict_merged_v1_2.txt",sep=";",header=0,dtype={'stock_no': str})
     df_predict_v12 = df_predict_v12[df_predict_v12['top3']>7]
@@ -293,7 +304,7 @@ def run_no_stop(one_time=False):
             trade_time=int(int(datetime.today().strftime("%Y%m%d%H%M"))/10)
             if trade_time != last_trade_time:
                 print(trade_time)
-                last_df = process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,df_holds,one_time)
+                last_df = process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time)
             last_trade_time = trade_time
         time.sleep(60)
 
@@ -338,6 +349,7 @@ if __name__ == "__main__":
             hold_stocks = [row.strip().split(',')[0] for row in f.readlines()]
         print(hold_stocks) #df_predict_v2.isin({'stock_no': hold_stocks}) #
         df_holds = df_predict_v2[df_predict_v2['stock_no'].isin(hold_stocks)]
+        df_holds = df_holds.sort_values(by=["top3","point2pair_dates"],ascending=False)
         print(df_holds)
         gen_buy_sell_prices(df_today,df_holds,"holds")
     
