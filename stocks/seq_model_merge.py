@@ -73,7 +73,7 @@ def merge_one(trade_date, df_predict, df_real, version="v2"):
     print(filename)
     # rm -f data/predict_v2/predict_true_20231*
     
-    if os.path.exists(filename):
+    if False : #os.path.exists(filename):
         df_predict = pd.read_csv(filename, sep=";", header=0, dtype={"stock_no": str})
     else:    
         df_predict = df_predict.merge(df_real, on="stock_no", how="left")
@@ -130,26 +130,26 @@ def merge_predict_true(start_date=20231017):
     
     for idx, trade_date in enumerate(trade_dates):
         print(trade_date)
-        if idx + 2 >= count:
+        if idx + 3 >= count:
             break
 
         # 第一天，T 昨收，开盘价，最低价
         df_real = pd.read_sql(
-            f"select stock_no,OPEN_price as OPEN_1,LOW_price as LOW_1,HIGH_price as HIGH_1 from stock_raw_daily_2 where trade_date={trade_dates[idx]}",
+            f"select stock_no,OPEN_price as OPEN_1,LOW_price as LOW_1,HIGH_price as HIGH_1 from stock_raw_daily_2 where trade_date={trade_dates[idx+1]}",
             conn,
         )
 
         # 第二天， T+1
         df_real = df_real.merge(
             pd.read_sql(
-                f"select stock_no,HIGH_price as high_2,LOW_price as low_2 from stock_raw_daily_2 where trade_date={trade_dates[idx+1]}",
+                f"select stock_no,HIGH_price as high_2,LOW_price as low_2 from stock_raw_daily_2 where trade_date={trade_dates[idx+2]}",
                 conn,), on="stock_no", how="left",
         )
 
         # 第三天，T+2
         df_real = df_real.merge(
             pd.read_sql(
-                f"select stock_no,HIGH_price as high_3,LOW_price as low_3 from stock_raw_daily_2 where trade_date={trade_dates[idx+2]}",
+                f"select stock_no,HIGH_price as high_3,LOW_price as low_3 from stock_raw_daily_2 where trade_date={trade_dates[idx+3]}",
                 conn,
             ), on="stock_no", how="left",
         )
@@ -157,15 +157,16 @@ def merge_predict_true(start_date=20231017):
         # df_predict_v1 = pd.read_csv(f"data/predict/predict_merged.txt.{trade_date}",sep=";",header=0,dtype={'stock_no': str})
         # df_predict_v1 = df_predict_v1.rename(columns={'low1.7':'point_low1'})
         # merge_one(trade_date,df_predict_v1,df_real,'v1')
-
+        
+        
         df_predict_v2 = pd.read_csv(
             f"data/predict_v2/predict_merged.txt.{trade_date}", sep=";", header=0, dtype={"stock_no": str},
         )
-        
         df_predict_v2 = merge_one(trade_date, df_predict_v2, df_real, "v2")
         
-        sel_fields = "pk_date_stock,stock_no,succ_buy_cnt,high2_rate,high3_rate,succ_sell_cnt,high1_rate".split(",")
-        order_fields = "list_dates,point,point2pair_dates,point_high1".split(",")
+        sel_fields = "pk_date_stock,stock_no,succ_buy_cnt,high2_rate,high3_rate,succ_sell_cnt,high1_rate,LOW_1,buy_prices,sell_prices".split(",")
+        order_fields = "list_dates,point,point2pair_dates,point_high1,point_high_f2".split(",") #,
+        df_predict_v2['top3'] = df_predict_v2[[ model_name + '_top3' for model_name in order_fields ]].sum(axis=1)
         for topN in [5,10]:
             for orderby in  order_fields:
                 df = df_predict_v2.sort_values(by=["top3", orderby], ascending=False)[sel_fields].head(topN) #
@@ -175,7 +176,17 @@ def merge_predict_true(start_date=20231017):
 
 def show_static(merge=True):
     # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.pivot_table.html
-    sel_fields = "pk_date_stock,stock_no,succ_buy_cnt,high2_rate,high3_rate,succ_sell_cnt,high1_rate,order_by".split(",")
+    sel_fields = "pk_date_stock,stock_no,succ_buy_cnt,high2_rate,high3_rate,succ_sell_cnt,high1_rate,LOW_1,buy_prices,sell_prices,order_by".split(",")
+    filename = f'data/predict_v2/mm_v2_10'
+    df = pd.read_csv(filename, sep=";", header=None, names=sel_fields, dtype={"stock_no": str})
+    
+    df["trade_date"] = df.apply(lambda x: int(str(x['pk_date_stock'])[:8]) , axis=1)
+    df = df[df['order_by']=='list_dates']
+    table = pd.pivot_table(df, values=['high2_rate'], index=['trade_date'], fill_value = 0,
+                        columns=['succ_buy_cnt'],aggfunc="mean",sort=True, margins=True)
+    print(table)
+    return
+    
     for topN in [5,10]:
         print(f'## === topN={topN} ===')
         filename = f'data/predict_v2/mm_v2_{topN}'
@@ -184,30 +195,29 @@ def show_static(merge=True):
         df = pd.read_csv(filename, sep=";", header=None, names=sel_fields, dtype={"stock_no": str})
         
         # 买入统计
+        print(f'### buy: {filename},topN={topN}')
+        table = pd.pivot_table(df, values=['high2_rate'], index=['order_by'], fill_value = 0,
+                    columns=['succ_buy_cnt'],aggfunc="count",sort=True, margins=True)
+        # table['% succ_buy_cnt'] = (table['1']/table['All'])*100
+        print(table)
+        
         for val_field in ['high2_rate','high3_rate']:
-            print(f'### buy: {filename},topN={topN},val_field={val_field}')
-            
             table = pd.pivot_table(df, values=[val_field], index=['order_by'], fill_value = 0,
                         columns=['succ_buy_cnt'],aggfunc="mean",sort=True, margins=True)
             print(table)
-            
-            table = pd.pivot_table(df, values=[val_field], index=['order_by'], fill_value = 0,
-                        columns=['succ_buy_cnt'],aggfunc="count",sort=True, margins=True)
-            # table['% succ_buy_cnt'] = (table['1']/table['All'])*100
-            print(table)
-            print("\n")
+        print("\n")
         
-        # 卖出统计
-        for val_field in ['high1_rate']:
-            print(f'### sell: {filename},topN={topN},val_field={val_field}')
-            table = pd.pivot_table(df, values=[val_field], index=['order_by'], fill_value = 0,
-                        columns=['succ_sell_cnt'],aggfunc="mean",sort=True, margins=True)
-            print(table)
+        # # 卖出统计
+        # print(f'### sell: {filename},topN={topN}')
+        # table = pd.pivot_table(df, values=["high1_rate"], index=['order_by'], fill_value = 0,
+        #                 columns=['succ_sell_cnt'],aggfunc="count",sort=True, margins=True)
+        # print(table)
             
-            table = pd.pivot_table(df, values=[val_field], index=['order_by'], fill_value = 0,
-                        columns=['succ_sell_cnt'],aggfunc="count",sort=True, margins=True)
-            print(table)
-            print("\n")
+        # for val_field in ['high1_rate']:
+        #     table = pd.pivot_table(df, values=[val_field], index=['order_by'], fill_value = 0,
+        #                 columns=['succ_sell_cnt'],aggfunc="mean",sort=True, margins=True)
+        #     print(table)
+        # print("\n")
 
 # python seq_model_merge.py predict_true
 if __name__ == "__main__":

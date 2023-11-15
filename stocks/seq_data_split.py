@@ -6,9 +6,12 @@ import pandas as pd
 import sqlite3
 from common import load_trade_dates,c_round
 
-SAMPLE_COUNT_PER_DAY = 24  #每个交易日抽取多少条作为样本
+SAMPLE_COUNT_PER_DAY = 256  #每个交易日抽取多少条作为样本, 256*2=512,
 
-conn = sqlite3.connect("file:data/stocks_train.db", uri=True)
+conn = sqlite3.connect("file:data3_f2/stocks_train_v2_f2.db", uri=True)
+
+# 重置
+# update stock_for_transfomer set dataset_type=0 where dataset_type>0;
 
 def load_ids_by_date(date,dateset_type=0,conn=conn):
     sql = "select pk_date_stock,list_label from stock_for_transfomer where trade_date=%s and dataset_type=%d" %(date,dateset_type)
@@ -36,15 +39,46 @@ def upate_dataset_type(selected_ids,dataset_type,conn=conn):
         print("exception")
         conn.rollback()
 
+def upate_label(commit_id_list,conn=conn):
+    '''
+    dataset_type: 1=验证集 2=测试集
+    '''
+    # print("dt_%s;%s"%(dataset_type,selected_ids))
+    # return 
+    # commit_id_list = [(dataset_type, sid) for sid in selected_ids] 
+    cursor = conn.cursor()
+    try:
+        sql = "update stock_for_transfomer set list_label=? where pk_date_stock=?"
+        cursor.executemany(sql, commit_id_list)  # commit_id_list上面已经说明
+        conn.commit()
+    except:
+        print("exception")
+        conn.rollback()
+        
+def update_labels():
+    df = pd.read_csv("data3_f2/high_rate_value.txt",header=0,sep=";")
+    commit_id_list = []
+    for idx,row in df.iterrows():
+        commit_id_list.append([row['list_label'],row['pk_date_stock']])
+        if idx>0 and idx%5000==0:
+            print(idx)
+            upate_label(commit_id_list,conn=conn)
+            commit_id_list = []
+    print('final')
+    upate_label(commit_id_list,conn=conn)
+            
+    
+
 def validate_dataset_split(date):
     '''分割出验证集数据，抽样分布和整体不同，更关注头部数据'''
-    label_cnt_map = [5,5,3,3,2,2,2,2] #注意顺序
+    label_cnt_map = [5,5,3,3,2,2,2,2] #,总计24，注意顺序
+    label_cnt_map = [64,64,32,32,16,16,8,8,8,2,2,2,2] #总计256,
     # cnt = 3 #3*8=24，每个档位抽3个，共计抽24个, 相当提升了高档位的占比，让模型更多关注高档位部分
     df_date = load_ids_by_date(date,0)
 
     selected_ids = []
-    for label in range(8):  
-        df = df_date[df_date['list_label']==(label+1)]
+    for label in range(13):  
+        df = df_date[df_date['list_label']==label] #(label+1)
         cnt = label_cnt_map[label]
         if len(df) > cnt*2:
             c_ids = df["pk_date_stock"].sample(n=cnt).values.tolist()
@@ -59,7 +93,7 @@ def validate_dataset_split(date):
 def test_dataset_split(date): 
     '''分割出测试集数据，抽样分布和整体分布近似'''
     df = load_ids_by_date(date,0) #取dataset_type=0(默认值)的数据
-    if len(df) > SAMPLE_COUNT_PER_DAY*5:
+    if len(df) > SAMPLE_COUNT_PER_DAY+1:
         selected_ids = df["pk_date_stock"].sample(n=SAMPLE_COUNT_PER_DAY).values.tolist()
         upate_dataset_type(selected_ids,2) #2=测试集
     else:
@@ -76,11 +110,11 @@ def process_all():
 
 def update_dataset_type_from_file():
     # sqlite3 导出 dataset_type 是1,2的脚本
-    conn = sqlite3.connect("file:data/stocks_train.db", uri=True)
-    with open("dataset_type_1.txt",'r') as f :
+    conn = sqlite3.connect("file:data3_f2/stocks_train_v2_f2.db", uri=True)
+    with open("data2/point_1.txt",'r') as f :
        upate_dataset_type([line.strip() for line in f.readlines()],1,conn=conn)
        
-    with open("dataset_type_2.txt",'r') as f :
+    with open("data2/point_2.txt",'r') as f :
        upate_dataset_type([line.strip() for line in f.readlines()],2,conn=conn)
 
 # https://www.zditect.com/main-advanced/database/5-ways-to-run-sql-script-from-file-sqlite.html
@@ -133,6 +167,8 @@ def export_by_label(): #list_label,dataset_type=0
 if __name__ == "__main__":
     data_type = sys.argv[1] 
     print(data_type)
+    if data_type == "update_labels":
+        update_labels()
     if data_type == "all":
         process_all()
         # python seq_data_split.py all  > all_seq_data_split_v2

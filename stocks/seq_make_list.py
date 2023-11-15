@@ -10,7 +10,8 @@ from common import load_stocks,load_trade_dates
 conn = sqlite3.connect("file:data/stocks_train_2.db?mode=ro", uri=True) 
 
 # (6959210-1960*2*24)/1960/64 = 54.7
-SAMPLE_COUNT_PER_DAY = 66 
+SAMPLE_COUNT_PER_DAY = 66
+GROUP_ITEMS_COUNT = 24
 
 def load_pkid_by_date(date,dateset_type=0,field="f_high_mean_rate"):
     sql = "select cast(pk_date_stock as text) as pk_date_stock from stock_for_transfomer where trade_date='%s' and dataset_type='%d' order by random() limit 64" %(date,dateset_type)
@@ -44,11 +45,12 @@ def via_3_8(label_dfs):
             selected_ids = selected_ids + c_ids
         # else:
         #     print("error validate data cnt less date=%s label=%s"%(date,label))
-    if len(selected_ids)==24:
+    if len(selected_ids)==GROUP_ITEMS_COUNT:
         print(",".join( [str(v) for v in selected_ids] ))
 
 def via_22223355(label_dfs):
-    cnts = [5,5,3,3,2,2,2,2] #注意顺序
+    # cnts = [5,5,3,3,2,2,2,2] #注意顺序
+    cnts = [3,3,2,2,2,2,2,2,2,1,1,1,1] #总计24,
     selected_ids = []
     for label,df in enumerate(label_dfs): #range(8): 
         cnt = cnts[label]
@@ -64,8 +66,8 @@ def gen_date_list(cnt_type='22223355'):
         df = load_ids_by_date(date,0)
         
         label_dfs = []
-        for label in range(8): 
-            label_dfs.append(df[df['list_label']==(label+1)]) #load_ids_by_date_label(date,0,label+1)
+        for label in range(13):
+            label_dfs.append(df[df['list_label']==label]) #load_ids_by_date_label(date,0,label+1)
         
         for i in range(SAMPLE_COUNT_PER_DAY*3):
             if cnt_type=='3_8': 

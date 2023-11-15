@@ -142,7 +142,7 @@ def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time=Fals
     df = None
     if one_time:
         print("cache shoot")
-        cache_file = "data/today/raw_20231107150.txt"
+        cache_file = "data/today/raw_20231114150.txt"
         df = pd.read_csv(cache_file,sep=";",header=0,dtype={'stock_no': str,'stock_name': str})
         df["rate_now"] = df["last_rate"]
     else:
@@ -261,7 +261,7 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
                 if row["low_rate"]<row["point_low1"]:
                     color = 'green'   
             if field == "high_rate":
-                if row["high_rate"]>(row["point_high1"]): #0.0151
+                if row["high_rate"]>(row["point_high1"]-0.02): #0.0151
                     color = '#FFA500'
             columns.append('<td style="background-color:%s">%s</td>'%(color,row[field]))
         html_li.append("<tr %s>%s</tr>\n" %(tr_color,"".join(columns)))
@@ -272,9 +272,11 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
         f.close()
     
     Hm = int(datetime.today().strftime("%H%M"))
-    if Hm>1500 and Hm<1550:
+    if Hm>1455 and Hm<1550:
         today = datetime.today().strftime("%Y%m%d") 
-        with open('data/today/predict_today_show_%s_%s.html'%(version,today),'w') as f:
+        fname = f'data/today/predict_today_show_{version}_{today}.html'
+        print(fname)
+        with open(fname,'w') as f:
             f.writelines(html_li)
             f.close()
 
@@ -283,7 +285,7 @@ def run_no_stop(one_time=False):
     df_predict_v1 = df_predict_v1[df_predict_v1['top3']==5]
     
     df_predict_v2 = pd.read_csv("data/predict_v2/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
-    
+    df_predict_v2 = df_predict_v2.sort_values(by=["top3","point2pair_dates"],ascending=False)
     
     df_predict_v12 = pd.read_csv("data/predict_v2/predict_merged_v1_2.txt",sep=";",header=0,dtype={'stock_no': str})
     df_predict_v12 = df_predict_v12[df_predict_v12['top3']>7]
@@ -317,6 +319,7 @@ if __name__ == "__main__":
         # process_one_page(2)
         process_all()
     if op_type == "one_time":
+        # python download_today.py  one_time
         run_no_stop(one_time = True)
     if op_type == "no_stop":
         run_no_stop()

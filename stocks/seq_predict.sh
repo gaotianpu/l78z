@@ -58,3 +58,4 @@ python seq_model.py predict # > predict_merged_for_show.txt
 python seq_model_v2.py predict # > predict_merged_for_show_v2.txt
 
 python seq_model_merge.py intersection #将v1，v2结果取交集
+python seq_model_merge.py predict_true #

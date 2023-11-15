@@ -12,7 +12,7 @@ from common import load_stocks,c_round
 
 PROCESSES_NUM = 5
 
-FUTURE_DAYS = 4 # 预测未来几天的数据, 2,3,5? 2比较合适，3则可能出现重复，在不恰当的数据集划分策略下，训练集和测试可能会重叠？
+FUTURE_DAYS = 2 # 预测未来几天的数据, 2,3,5? 2比较合适，3则可能出现重复，在不恰当的数据集划分策略下，训练集和测试可能会重叠？
 PAST_DAYS = 20 #使用过去几天的数据做特征
 
 MAX_ROWS_COUNT = 3000 #从数据库中加载多少数据, 差不多8年的交易日数。
@@ -47,21 +47,23 @@ def get_stocks_static():
     return stocks_statics
             
 class PreProcessor:
-    def __init__(self, conn,stock_no, stock_static, future_days = 3,past_days = 20 , data_type="train", start_trade_date=0):
+    def __init__(self, conn,stock_no, stock_static, future_days = 2,past_days = 20 , data_type="train", start_trade_date=0):
         self.conn = conn
         self.stock_no = stock_no
         self.future_days = future_days
         self.past_days = past_days
         self.data_type = data_type
         self.start_trade_date = start_trade_date
-        self.val_ranges = [-0.00493,0.01434,0.02506,0.03954,0.04997,0.06524,0.09353]
+        self.val_ranges = [-1.400000e-03,1.380000e-02,2.280000e-02,3.540000e-02,4.470000e-02,5.840000e-02,0.068900,0.084600,0.110700,0.122000,0.138700,0.169200]
         self.stock_static = stock_static
         
     def map_val_range(self, val):
-        for i,val_range in enumerate(self.val_ranges):
-            if val<val_range:
-                return i+1
-        return 8 
+        return len([item for item in self.val_ranges if val>item])
+            
+        # for i,val_range in enumerate(self.val_ranges):
+        #     if val<val_range:
+        #         return i+1
+        # return 8 
     
     def process_row(self, df, idx,current_date):
         # current_date = int(df.loc[idx]['trade_date'])
@@ -154,8 +156,11 @@ class PreProcessor:
         # 额外;分割的datestock_uid,current_date,stock_no,dataset_type, 便于后续数据集拆分、pair构造等
         datestock_uid = str(ret["current_date"]) + ret['stock_no']
         if len(ret["past_days"]) == self.past_days:
-            print("%s;%s;%s;0;%s;%s" % (datestock_uid,ret["current_date"],ret['stock_no'],
-                                    ret['val_label'],json.dumps(ret))) #
+            li = [str(item) for item in [datestock_uid,ret["current_date"],ret['stock_no'],0,
+                                    f_high_mean_rate,f_low_mean_rate,next_high_rate,next_low_rate,
+                                    ret['val_label'],json.dumps(ret)]] #
+            print(';'.join(li))
+            
         
 
     def process_train_data(self):

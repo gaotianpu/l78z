@@ -16,7 +16,7 @@ from sklearn.metrics import ndcg_score
 
 from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "high1" #high,low,high1,low1
+MODEL_TYPE = "high" #high,low,high1,low1  
 MODEL_FILE = "model_point_%s.pth" % (MODEL_TYPE)
 
 # 4. train 函数
@@ -36,7 +36,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
         
         total_loss = total_loss + loss.item()
         
-        if batch % 64 == 0:
+        if batch % 128 == 0:
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(output)
             rate = round(current*100/size,2)
@@ -109,7 +109,7 @@ def training(field="f_high_mean_rate"):
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.00001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.0000001 #0.00001 #0.000001  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -124,7 +124,7 @@ def training(field="f_high_mean_rate"):
         # loss = checkpoint['loss']
         print("load success")
 
-    epochs = 1
+    epochs = 2
     start = 0
     for t in range(epochs):
         current_epochs = t+1+start 

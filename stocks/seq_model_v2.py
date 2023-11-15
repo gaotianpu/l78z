@@ -37,17 +37,16 @@ class StockPredictDataset(Dataset):
 
     def __getitem__(self, idx):
         pk_date_stock = self.df.iloc[idx][0]
-        # date = self.df.iloc[idx][1]
-        # stock_no = self.df.iloc[idx][2]
-        # print(pk_date_stock,self.df.iloc[idx][5])
-        data_json = json.loads(self.df.iloc[idx][5].replace("'",'"'))
-        return pk_date_stock, torch.tensor(data_json["past_days"]) 
+        data_json = json.loads(self.df.iloc[idx][5]) 
+        return pk_date_stock, torch.tensor(data_json["past_days"])
 
 class StockPointDataset(Dataset):
     def __init__(self,datatype="validate",trade_date=None, field="f_high_mean_rate"): 
         dtmap = {"train":0,"validate":1,"test":2}
         self.field = field
-        self.conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
+        # data3_f2/stocks_train_v2_f2.db
+        # data/stocks_train_3.db
+        self.conn = sqlite3.connect("file:data3_f2/stocks_train_v2_f2.db?mode=ro", uri=True)
         dataset_type = dtmap.get(datatype)
         
         if trade_date:
@@ -57,7 +56,7 @@ class StockPointDataset(Dataset):
             )
             self.df = pd.read_sql(sql, self.conn)
         else:
-            self.df = pd.read_csv('data2/point_%s.txt' % (dataset_type), header=None)
+            self.df = pd.read_csv('data3_f2/point_%s.txt' % (dataset_type), header=None)
         
     def __len__(self):
         return len(self.df)
@@ -177,8 +176,8 @@ def predict(trade_date=None):
     df_merged = None 
     
     # model_v3 model_v3/model_point2pair_dates.pth
-    # list_stocks, ,pair_dates,pair_dates_stocks
-    order_models = "list_dates,point,point2pair_dates,point_high1".split(",")
+    # list_dates, model_point_high_f2.pth
+    order_models = "list_dates,point,point2pair_dates,point_high1,point_high_f2".split(",")
     model_files = order_models + "point_low,point_low1".split(",") #point_high1,
     
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
@@ -233,13 +232,15 @@ def predict(trade_date=None):
     
     # 计算买入价和卖出价格？
     point_low1_options = [-0.0299, -0.0158, 0, 0.0193, 0.025]
+    df_merged['buy_prices'] = ''
     df_merged['buy_prices'] = df_merged.apply(
-        lambda x: ','.join([str(c_round((x['point_low1'] + p + 1) * x['CLOSE_price'])) for p in point_low1_options]),
+        lambda x: ','.join([str(c_round((x['point_low1'] + p + 1) * x['CLOSE_price'],2)) for p in point_low1_options]),
         axis=1)
     
     point_high1_options = [-0.0266, -0.0158, 0, 0.0193, 0.0251]
+    df_merged['sell_prices'] = ''
     df_merged['sell_prices'] = df_merged.apply(
-        lambda x:','.join([str(c_round((x['point_high1'] + p + 1) * x['CLOSE_price'])) for p in point_high1_options]),
+        lambda x:','.join([str(c_round((x['point_high1'] + p + 1) * x['CLOSE_price'],2)) for p in point_high1_options]),
         axis=1)
     
     # point_high1 效果更好些？
