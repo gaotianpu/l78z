@@ -11,7 +11,7 @@ PROCESSES_NUM = 5
 MIN_RATE = 0.06
 DIFF_RATE = 0.06
 
-conn = sqlite3.connect("file:data3_f2/stocks_train_v2_f2.db", uri=True)
+conn = sqlite3.connect("file:data3/stocks_train_v3.db", uri=True)
 
 def load_by_date(date,dateset_type=0,field="high_rate"):
     sql = f"select pk_date_stock,list_label,{field} from stock_for_transfomer where trade_date={date} and dataset_type={dateset_type}"
@@ -20,8 +20,8 @@ def load_by_date(date,dateset_type=0,field="high_rate"):
     # 因要两两构造pair对，加载jsons操作比较耗时，在这里做一次处理，可节省不少时间
     ret = []
     for index, row in df.iterrows():
-        date_stock = row["pk_date_stock"]
-        list_label = row["list_label"]
+        date_stock = int(row["pk_date_stock"])
+        list_label = int(row["list_label"])
         # obj = json.loads(row["data_json"])
         rate = row[field]
         ret.append([date_stock,rate,list_label])
@@ -47,10 +47,13 @@ def make_pairs(rows):
     for i in range(0,count-1):
         id_i = rows[i][0] # pk_date_stock
         rate_i = rows[i][1] 
-        list_label_i = rows[i][2] 
+        list_label_i = rows[i][2]
         
         for j in range(i+1,count): 
             id_j = rows[j][0] #rows.loc[j]["pk_date_stock"]
+            
+            rate_j = rows[j][1]
+            list_label_j = rows[j][2]
             
             # DIFF_RATE: 两个比较，数值上有一定的差别才能构成算成pair对？
             # MIN_RATE: 如果两个数值均小于MIN_RATE，不再关注二者大小
@@ -59,8 +62,6 @@ def make_pairs(rows):
             
             # pk_date_stock_1,pk_date_stock_2,dataset_type(train|vaildate|test),field_1,field_2,field_3(0相等，1小于，2大于)
              
-            rate_j = rows[j][1]
-            list_label_j = rows[j][2]
             
             # print(id_i,id_j) # 未过滤，190；
             # 0.01 ,过滤后129, 0.05 
@@ -68,9 +69,9 @@ def make_pairs(rows):
             # 在这里把pair的choose,reject排好序。
             if rate_i>rate_j:
                 # map(lambda x:str(x), [id_i,id_j,list_label_i,list_label_j]) 
-                print(";".join([str(x) for x in [id_i,id_j,list_label_i,list_label_j]])+";")
+                print(";".join([str(x) for x in [id_i,id_j,list_label_i,list_label_j]]))
             else:
-                print(";".join([str(x) for x in [id_j,id_i,list_label_j,list_label_i]])+";")
+                print(";".join([str(x) for x in [id_j,id_i,list_label_j,list_label_i]]))
                     
         #     if j>10:
         #         break #debug
@@ -107,14 +108,12 @@ def process_pairs(dataset_type,pair_type="date",field="high_rate",process_idx=-1
     else:
         pass 
 
-
-# python seq_make_pairs.py 0 high_rate 0 > f_high_mean_rate/train.txt_0 &
-# python seq_make_pairs.py 0 high_rate 1 > f_high_mean_rate/train.txt_1 &
-# python seq_make_pairs.py 1 high_rate> f_high_mean_rate/validate.txt &
-# python seq_make_pairs.py 2 high_rate> f_high_mean_rate/test.txt &
+# python seq_make_pairs.py 1 date > data3/pair.validate.date.txt &
+# python seq_make_pairs.py 2 date > data3/pair.test.date.txt &
+# python seq_make_pairs.py 0 date 0 > data3/pair.train.date.txt_0 &
 if __name__ == "__main__":                       
     dataset_type = int(sys.argv[1])
     pair_type = sys.argv[2]
     process_idx = -1 if len(sys.argv) != 4 else int(sys.argv[3])
-    process_pairs(dataset_type,pair_type,process_idx=process_idx) #train=0,validate=1,test=2
+    process_pairs(dataset_type,pair_type,field="high_rate",process_idx=process_idx) #train=0,validate=1,test=2
     conn.close()

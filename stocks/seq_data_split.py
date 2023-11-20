@@ -8,7 +8,7 @@ from common import load_trade_dates,c_round
 
 SAMPLE_COUNT_PER_DAY = 256  #每个交易日抽取多少条作为样本, 256*2=512,
 
-conn = sqlite3.connect("file:data3_f2/stocks_train_v2_f2.db", uri=True)
+conn = sqlite3.connect("file:data3/stocks_train_v3.db", uri=True)
 
 # 重置
 # update stock_for_transfomer set dataset_type=0 where dataset_type>0;
@@ -27,7 +27,7 @@ def upate_dataset_type(selected_ids,dataset_type,conn=conn):
     '''
     dataset_type: 1=验证集 2=测试集
     '''
-    print("dt_%s;%s"%(dataset_type,selected_ids))
+    # print("dt_%s;%s"%(dataset_type,selected_ids))
     # return 
     commit_id_list = [(dataset_type, sid) for sid in selected_ids] 
     cursor = conn.cursor()

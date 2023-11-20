@@ -63,19 +63,19 @@ sqlite3 data/stocks_train_3.db <<EOF
 .import data3/seq_train_4.txt stock_for_transfomer
 EOF
 
-python seq_preprocess_v2_f2.py train 0 > data3_f2/seq_train_0.txt &
-python seq_preprocess_v2_f2.py train 1 > data3_f2/seq_train_1.txt &
-python seq_preprocess_v2_f2.py train 2 > data3_f2/seq_train_2.txt &
-python seq_preprocess_v2_f2.py train 3 > data3_f2/seq_train_3.txt &
-python seq_preprocess_v2_f2.py train 4 > data3_f2/seq_train_4.txt &
+python seq_preprocess_v3.py train 0 > data3/seq_train_0.txt &
+python seq_preprocess_v3.py train 1 > data3/seq_train_1.txt &
+python seq_preprocess_v3.py train 2 > data3/seq_train_2.txt &
+python seq_preprocess_v3.py train 3 > data3/seq_train_3.txt &
+python seq_preprocess_v3.py train 4 > data3/seq_train_4.txt &
 
-sqlite3 data3_f2/stocks_train_v2_f2.db <<EOF
+sqlite3 data3/stocks_train_v3.db <<EOF
 .separator ";"
-.import data3_f2/seq_train_0.txt stock_for_transfomer
-.import data3_f2/seq_train_1.txt stock_for_transfomer
-.import data3_f2/seq_train_2.txt stock_for_transfomer
-.import data3_f2/seq_train_3.txt stock_for_transfomer
-.import data3_f2/seq_train_4.txt stock_for_transfomer
+.import data3/seq_train_0.txt stock_for_transfomer
+.import data3/seq_train_1.txt stock_for_transfomer
+.import data3/seq_train_2.txt stock_for_transfomer
+.import data3/seq_train_3.txt stock_for_transfomer
+.import data3/seq_train_4.txt stock_for_transfomer
 EOF
 
 
@@ -100,25 +100,25 @@ echo "3. split dataset as train,validate,test"
 python seq_data_split.py
 
 echo "4. make pairs"
-python seq_make_pairs.py 1 date > data3_f2/pair.validate.date.txt &
-python seq_make_pairs.py 1 stock > data3_f2/pair.validate.stock.txt &
-python seq_make_pairs.py 2 date > data3_f2/pair.test.date.txt &
-python seq_make_pairs.py 2 stock > data3_f2/pair.test.stock.txt &
+python seq_make_pairs.py 1 date > data3/pair.validate.date.txt &
+python seq_make_pairs.py 1 stock > data3/pair.validate.stock.txt &
+python seq_make_pairs.py 2 date > data3/pair.test.date.txt &
+python seq_make_pairs.py 2 stock > data3/pair.test.stock.txt &
 # python seq_make_pairs.py 0 f_high_mean_rate > f_high_mean_rate/train.txt 
 
 # date pair
-python seq_make_pairs.py 0 date 0 > data3_f2/pair.train.date.txt_0 &
-python seq_make_pairs.py 0 date 1 > data3_f2/pair.train.date.txt_1 &
-python seq_make_pairs.py 0 date 2 > data3_f2/pair.train.date.txt_2 &
-python seq_make_pairs.py 0 date 3 > data3_f2/pair.train.date.txt_3 &
-python seq_make_pairs.py 0 date 4 > data3_f2/pair.train.date.txt_4 &
+python seq_make_pairs.py 0 date 0 > data3/pair.train.date.txt_0 &
+python seq_make_pairs.py 0 date 1 > data3/pair.train.date.txt_1 &
+python seq_make_pairs.py 0 date 2 > data3/pair.train.date.txt_2 &
+python seq_make_pairs.py 0 date 3 > data3/pair.train.date.txt_3 &
+python seq_make_pairs.py 0 date 4 > data3/pair.train.date.txt_4 &
 
 # stock pair
-python seq_make_pairs.py 0 stock 0 > data3_f2/pair.train.stock.txt_0 &
-python seq_make_pairs.py 0 stock 1 > data3_f2/pair.train.stock.txt_1 &
-python seq_make_pairs.py 0 stock 2 > data3_f2/pair.train.stock.txt_2 &
-python seq_make_pairs.py 0 stock 3 > data3_f2/pair.train.stock.txt_3 &
-python seq_make_pairs.py 0 stock 4 > data3_f2/pair.train.stock.txt_4 &
+python seq_make_pairs.py 0 stock 0 > data3/pair.train.stock.txt_0 &
+python seq_make_pairs.py 0 stock 1 > data3/pair.train.stock.txt_1 &
+python seq_make_pairs.py 0 stock 2 > data3/pair.train.stock.txt_2 &
+python seq_make_pairs.py 0 stock 3 > data3/pair.train.stock.txt_3 &
+python seq_make_pairs.py 0 stock 4 > data3/pair.train.stock.txt_4 &
 
 ###
 # python seq_make_pairs.py 1 date > data2/pair.validate.date.txt &

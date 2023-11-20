@@ -14,10 +14,10 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from common import load_prices
+from common import load_prices,c_round
 
 SEQUENCE_LENGTH = 20 #序列长度
-D_MODEL = 9  #维度 
+D_MODEL = 31  #维度 
 
 device = (
     "cuda"
@@ -29,7 +29,7 @@ device = (
 
 # 1. 定义数据集
 class StockPredictDataset(Dataset):
-    def __init__(self,predict_data_file="seq_predict.data"): 
+    def __init__(self,predict_data_file="seq_predict_v2.data"): 
         self.df = pd.read_csv(predict_data_file, sep=";", header=None)
 
     def __len__(self):
@@ -37,57 +37,49 @@ class StockPredictDataset(Dataset):
 
     def __getitem__(self, idx):
         pk_date_stock = self.df.iloc[idx][0]
-        # date = self.df.iloc[idx][1]
-        # stock_no = self.df.iloc[idx][2]
-        # print(pk_date_stock,self.df.iloc[idx][5])
-        data_json = json.loads(self.df.iloc[idx][5].replace("'",'"'))
-        return pk_date_stock, torch.tensor(data_json["past_days"]) 
+        data_json = json.loads(self.df.iloc[idx][5]) 
+        return pk_date_stock, torch.tensor(data_json["past_days"])
 
 class StockPointDataset(Dataset):
     def __init__(self,datatype="validate",trade_date=None, field="f_high_mean_rate"): 
         dtmap = {"train":0,"validate":1,"test":2}
         self.field = field
-        self.conn = sqlite3.connect("file:data/stocks_train.db?mode=ro", uri=True)
+        self.conn = sqlite3.connect("file:data3/stocks_train_v3.db?mode=ro", uri=True)
         dataset_type = dtmap.get(datatype)
-        # order by trade_date desc
-        sql = (
-                "select pk_date_stock from stock_for_transfomer where dataset_type=%d order by trade_date desc"
-                % (dataset_type)
-            )
         
-        if datatype=="train": #and list_label>5
-            sql = (
-                "select pk_date_stock from stock_for_transfomer where dataset_type=%d"
-                % (dataset_type)
-            ) 
-            
         if trade_date:
             sql = (
                 "select pk_date_stock from stock_for_transfomer where trade_date='%s' and dataset_type=%d"
                 % (trade_date,dataset_type)
             )
-        self.df = pd.read_sql(sql, self.conn)
-        
-        # self.df = pd.read_csv('point/dataset_type_%s.txt' % (dataset_type))
+            self.df = pd.read_sql(sql, self.conn)
+        else:
+            self.df = pd.read_csv('data3/point_%s.txt' % (dataset_type), header=None)
         
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
-        pk_date_stock = self.df.iloc[idx][0]
-        # data_json = json.loads(self.df.iloc[idx][data_json'])
-        
+        pk_date_stock = self.df.iloc[idx][0] 
+        # print(pk_date_stock)
         sql = "select * from stock_for_transfomer where pk_date_stock=%s" % (pk_date_stock)
-        df_item = pd.read_sql(sql, self.conn) 
+        df_item = pd.read_sql(sql, self.conn)
+        if len(df_item)==0:
+            print(pk_date_stock)
         
         data_json = json.loads(df_item.iloc[0]['data_json']) #.replace("'",'"'))
         true_score = data_json.get(self.field)
+        
+        past_days = torch.tensor(data_json["past_days"])
+        # past_days = past_days[:,:17]
+        
         list_label = df_item.iloc[0]['list_label']
-        return pk_date_stock, torch.tensor(true_score), torch.tensor(list_label), torch.tensor(data_json["past_days"]) 
+        return pk_date_stock, torch.tensor(true_score), torch.tensor(list_label), past_days 
+
 
 # 3. 定义模型
 class StockForecastModel(nn.Module):
-    def __init__(self, seq_len : int = 20, d_model: int = 9) -> None:
+    def __init__(self, seq_len : int = 20, d_model: int = 31) -> None:
         super().__init__()
         # https://pytorch.org/docs/stable/generated/torch.nn.TransformerEncoderLayer.html
         # https://pytorch.org/docs/stable/generated/torch.nn.TransformerEncoder.html
@@ -172,22 +164,27 @@ def evaluate_ndcg_and_scores(df):
     return df
    
        
-def predict():
-    dataset = StockPredictDataset(predict_data_file="seq_predict.data")
+def predict(trade_date=None):
+    predict_data_file="seq_predict_v2.data"
+    if trade_date:
+        predict_data_file=f"data/seq_predict_v2/{trade_date}.data"
+    
+    print(predict_data_file)
+    dataset = StockPredictDataset(predict_data_file=predict_data_file)
     dataloader = DataLoader(dataset, batch_size=128) 
     # print(next(iter(dataset)))
     
     df_merged = None 
     
-    # model_v1
-    # model_files="pair_high,point_pair_high,point_high,point_low,point_low1".split(",") 
-    order_models = "pair_15,list_235,point_5,point_4,pair_11".split(",")
-    model_files = order_models + "point_high1,point_low1".split(",")
+    # model_v3 model_v3/model_point2pair_dates.pth
+    # list_dates, model_point_high_f2.pth
+    order_models = "list_dates,point,point2pair_dates,point_high1,point_high_f2".split(",")
+    model_files = order_models + "point_low,point_low1".split(",") #point_high1,
     
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     for model_name in model_files:
         print(model_name)
-        mfile = "model_v2/StockForecastModel.pth.%s"%(model_name)
+        mfile = "model_v3/model_%s.pth"%(model_name)
         if os.path.isfile(mfile):
             model.load_state_dict(torch.load(mfile)) 
         
@@ -213,7 +210,7 @@ def predict():
                 df[model_name + '_top3'] = [1 if i<top3 else 0 for i in range(count)]
                 df[model_name + '_top5'] = [1 if i<top5 else 0 for i in range(count)]
             
-            df.to_csv("data/predict/predict_%s.txt"%(model_name),sep=";",index=False) 
+            df.to_csv("data/predict_v2/predict_%s.txt"%(model_name),sep=";",index=False) 
             
             # 模型结果合并
             if df_merged is None:
@@ -226,49 +223,53 @@ def predict():
                 
     conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
     trade_date = str(df_merged["pk_date_stock"][0])[:8]
+    # 当天的 CLOSE_price,LOW_price,HIGH_price，作为对比基线
     df_prices = load_prices(conn,trade_date)
     df_merged = df_merged.merge(df_prices,on="pk_date_stock",how='left')
     
-    df_static_stocks = pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0,dtype={'stock_no': str})
-    df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
-    df_merged = df_merged.merge(df_static_stocks_0,on="stock_no",how='left')
-    
-    df_merged.to_csv("data/predict/predict_merged_middle_tmp.txt.%s"%(trade_date),sep=";",index=False) 
-    
-    df_merged['buy_prices'] = ''
-    df_merged['sell_prices'] = ''
+    # df_static_stocks = pd.read_csv("data/static_seq_stocks.txt",sep=";",header=0,dtype={'stock_no': str})
+    # df_static_stocks_0 = df_static_stocks[df_static_stocks['open_rate_label']==0]
+    # df_merged = df_merged.merge(df_static_stocks_0,on="stock_no",how='left')
     
     # 计算买入价和卖出价格？
-    std_point_low1 = 0.013194 #训练的均方误差
-    std_point_high1 = 0.018595 #
-    for idx,row in df_merged.iterrows():
-        low_rates = row[['low_rate_25%','low_rate_50%','low_rate_75%']].values.tolist() 
-        point_low1 = row['point_low1']
-        low_rates = low_rates + [point_low1-std_point_low1, point_low1, point_low1 + std_point_low1]
-        buy_prices = (np.array(sorted(low_rates))+1) * row['CLOSE_price']
-        df_merged.loc[idx, 'buy_prices'] = ','.join([str(v) for v in buy_prices.round(2)]) 
-        
-        high_rates = row[['high_rate_25%','high_rate_50%','high_rate_75%']].values.tolist()
-        point_high1 = row['point_high1'] #
-        high_rates = high_rates + [point_high1-std_point_high1, point_high1, point_high1 + std_point_high1]
-        sell_prices = (np.array(sorted(high_rates))+1) * row['CLOSE_price']
-        df_merged.loc[idx, 'sell_prices'] = ','.join([str(v) for v in sell_prices.round(2)])
+    point_low1_options = [-0.0299, -0.0158, 0, 0.0193, 0.025]
+    df_merged['buy_prices'] = ''
+    df_merged['buy_prices'] = df_merged.apply(
+        lambda x: ','.join([str(c_round((x['point_low1'] + p + 1) * x['CLOSE_price'],2)) for p in point_low1_options]),
+        axis=1)
     
-    # point_pair_high 效果更好些？
-    df_merged = df_merged.sort_values(by=["top3","pair_15"],ascending=False) # 
-    df_merged.to_csv("data/predict/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
-    df_merged.to_csv("data/predict/predict_merged.txt",sep=";",index=False) 
+    point_high1_options = [-0.0266, -0.0158, 0, 0.0193, 0.0251]
+    df_merged['sell_prices'] = ''
+    df_merged['sell_prices'] = df_merged.apply(
+        lambda x:','.join([str(c_round((x['point_high1'] + p + 1) * x['CLOSE_price'],2)) for p in point_high1_options]),
+        axis=1)
     
-    #暂时先不关注科创板
+    # point_high1 效果更好些？
+    df_merged = df_merged.sort_values(by=["top3","point_high1"],ascending=False) # 
+    df_merged.to_csv("data/predict_v2/predict_merged.txt.%s"%(trade_date),sep=";",index=False) 
+    df_merged.to_csv("data/predict_v2/predict_merged.txt",sep=";",index=False) 
+    
+    # 暂时先不关注科创板
     df_merged = df_merged[ (df_merged['stock_no'].str.startswith('688') == False)]
     
-    sel_fields = "pk_date_stock,stock_no,pair_15,list_235,point_5,point_4,pair_11,point_high1,point_low1,top3,CLOSE_price,LOW_price,HIGH_price,low_rate_std,low_rate_50%,high_rate_std,high_rate_50%,buy_prices,sell_prices".split(",")
-    df_merged[sel_fields].to_csv("predict_merged_for_show.txt",sep=";",index=False) 
-    
+    sel_fields = "pk_date_stock,stock_no,top3,point_high1,point2pair_dates,point,point_low,point_low1,CLOSE_price,LOW_price,HIGH_price,buy_prices,sell_prices".split(",")
+    df_merged[sel_fields].to_csv("predict_merged_for_show_v2.txt",sep=";",index=False) 
+
+def predict_many():
+    start_date=20231017
+    conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+    sql = f"select distinct trade_date from stock_raw_daily_2 where trade_date>{start_date}"
+    df = pd.read_sql(sql, conn)
+    trade_dates = df['trade_date'].sort_values(ascending=True).tolist()
+    for idx,trade_date in enumerate(trade_dates):
+        print(trade_date) 
+        predict(trade_date)
     
 if __name__ == "__main__":
     op_type = sys.argv[1]
     if op_type == "predict":
-        # python seq_model.py predict
+        # python seq_model_v2.py predict
         predict()
+    if op_type == "many":
+        predict_many()
         

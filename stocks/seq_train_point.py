@@ -14,9 +14,9 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
+from seq_model_v3 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "high" #high,low,high1,low1  
+MODEL_TYPE = "high1" #high,low,high1,low1  
 MODEL_FILE = "model_point_%s.pth" % (MODEL_TYPE)
 
 # 4. train 函数
@@ -93,7 +93,11 @@ def evaluate_label_loss(df):
         mse_loss_mean = data['mse_loss'].mean()
         print(label,len(data), round(mse_loss_mean**0.5,4)) 
     # df.to_csv("data/test_label_loss.txt",sep=";",index=False)
-        
+
+def adjust_learning_rate(optimizer, lr):
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr        
 
 def training(field="f_high_mean_rate"):
     # 初始化
@@ -124,11 +128,21 @@ def training(field="f_high_mean_rate"):
         # loss = checkpoint['loss']
         print("load success")
 
-    epochs = 2
-    start = 0
+    epochs = 1
+    start = 3
     for t in range(epochs):
         current_epochs = t+1+start 
-        print(f"Epoch {current_epochs}\n-------------------------------")   
+        
+        lr = 0.0000001
+        if current_epochs==2:
+            lr = 0.00001
+        elif current_epochs in [3,4]:
+            lr = 0.000001
+        else:
+            lr = 0.0000001
+        adjust_learning_rate(optimizer, lr)
+        
+        print(f"Epoch={current_epochs}, lr={lr} \n-------------------------------")   
         train(train_dataloader, model, criterion, optimizer,current_epochs)
         test(vali_dataloader, model, criterion,"vaildate")
         test(test_dataloader, model, criterion,"test")

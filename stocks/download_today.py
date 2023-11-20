@@ -142,7 +142,8 @@ def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time=Fals
     df = None
     if one_time:
         print("cache shoot")
-        cache_file = "data/today/raw_20231114150.txt"
+        today = datetime.today().strftime("%Y%m%d")
+        cache_file = f"data/today/raw_{today}150.txt"
         df = pd.read_csv(cache_file,sep=";",header=0,dtype={'stock_no': str,'stock_name': str})
         df["rate_now"] = df["last_rate"]
     else:

@@ -123,6 +123,10 @@ CREATE TABLE stock_for_transfomer(
     trade_date  INT    NOT NULL,
     stock_no    CHAR(6)    NOT NULL,
     dataset_type TINYINT NOT NULL DEFAULT 0,  
+    high_rate     DECIMAL(10,2) NOT NULL,
+    low_rate     DECIMAL(10,2) NOT NULL,
+    high1_rate     DECIMAL(10,2) NOT NULL,
+    low1_rate     DECIMAL(10,2) NOT NULL,
     list_label TINYINT NOT NULL DEFAULT 0,    
     data_json   TEXT    NOT NULL,
     primary key (pk_date_stock)

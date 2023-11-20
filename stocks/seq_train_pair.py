@@ -17,10 +17,10 @@ from sklearn.metrics import ndcg_score
 from common import load_trade_dates
 from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "dates" # dates,stocks,dates_stocks
+MODEL_TYPE = "date" # date,stock,date_stock
 MODEL_FILE = "model_point2pair_%s.pth" % (MODEL_TYPE)
 
-conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:data3/stocks_train_v3.db?mode=ro", uri=True)
 
 def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
     """
@@ -46,10 +46,10 @@ def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
 class StockPairDataset(Dataset):
     def __init__(self, data_type="train", field="f_high_mean_rate"):
         assert data_type in ("train", "validate", "test")
-        dtmap = {"train":0,"validate":1,"test":2}
-        dataset_type = dtmap.get(data_type)
-        self.df = pd.read_csv("data2/pair_%s_%s.txt" % (MODEL_TYPE,dataset_type), sep=";", header=None)
-        self.conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
+        # dtmap = {"train":0,"validate":1,"test":2}
+        # dataset_type = dtmap.get(data_type)
+        self.df = pd.read_csv("data3/pair.%s.%s.txt" % (data_type,MODEL_TYPE), sep=";", header=None)
+        self.conn = sqlite3.connect("file:data3/stocks_train_v3.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
     def __len__(self):
