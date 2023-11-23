@@ -14,26 +14,46 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from sklearn.metrics import ndcg_score
 
-from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
+from seq_model_v3 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
 from pytorchltr.loss import PairwiseHingeLoss
 
 # SEQUENCE_LENGTH = 20 #序列长度
 # D_MODEL = 9  #维度
 # MODEL_FILE = "model_list_stocks.pth"
-MODEL_FILE = "model_list_dates.pth"
+MODEL_FILE = "model_list.pth" #默认dates
 
 # https://blog.csdn.net/qq_36478718/article/details/122598406
 # ListNet ・ ListMLE ・ RankCosine ・ LambdaRank ・ ApproxNDCG ・ WassRank ・ STListNet ・ LambdaLoss
 
+def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
+    """
+    Implements gradual warmup, if train_steps < warmup_steps, the
+    learning rate will be `train_steps/warmup_steps * init_lr`.
+    Args:
+        warmup_steps:warmup步长阈值,即train_steps<warmup_steps,使用预热学习率,否则使用预设值学习率
+        train_steps:训练了的步长数
+        init_lr:预设置学习率
+    https://zhuanlan.zhihu.com/p/390261440
+    
+    """
+    if warmup_steps and train_steps < warmup_steps:
+        warmup_percent_done = train_steps / warmup_steps
+        warmup_learning_rate = init_lr * warmup_percent_done  #gradual warmup_lr
+        learning_rate = warmup_learning_rate
+    else:
+        # 这部分代码还有些问题
+        #learning_rate = np.sin(learning_rate)  #预热学习率结束后,学习率呈sin衰减
+        learning_rate = learning_rate**1.0001 #预热学习率结束后,学习率呈指数衰减(近似模拟指数衰减)
+    return learning_rate 
 
 class StockListDataset(Dataset):
     def __init__(self, datatype="train", field="f_high_mean_rate"):
         assert datatype in ("train", "validate", "test")
         # self.df = pd.read_csv("data2/list.stocks.%s_22223355.txt" % (datatype), sep=";", header=None)
-        self.df = pd.read_csv("data2/list.dates.%s_22223355.txt" % (datatype), sep=";", header=None)
+        self.df = pd.read_csv("data3/list.date.%s_22223355.txt" % (datatype), sep=";", header=None)
         # self.df = pd.read_csv("data2/list.%s_22223355.txt" % (datatype), sep=";", header=None)
-        self.conn = sqlite3.connect("file:data/stocks_train_3.db?mode=ro", uri=True)
+        self.conn = sqlite3.connect("file:data3/stocks_train_v3.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
     def __len__(self):
@@ -130,7 +150,11 @@ def test(dataloader, model):
     df = pd.DataFrame(all_ret,columns=["pk_date_stock","predict","true","label"])
     evaluate_ndcg_and_scores(df)
    
-
+def adjust_learning_rate(optimizer, lr):
+    """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr  
+        
 def training(field="f_high_mean_rate"):
     # 初始化
     train_data = StockListDataset(datatype="train",field=field)
@@ -142,22 +166,34 @@ def training(field="f_high_mean_rate"):
     criterion = ListMLELoss() #
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.00001 #0.00001 #0.000001  #0.0000001
+    learning_r = 0.0000001 #0.00001 #0.000001  #0.0000001
     optimizer = torch.optim.Adam(model.parameters(), 
-                                lr=learning_rate, betas=(0.9,0.98), 
+                                lr=learning_r, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
 
     if os.path.isfile(MODEL_FILE):
         model.load_state_dict(torch.load(MODEL_FILE)) 
         print("load success")
 
+    model.to(device)
+    
     epochs = 4
-    start = 8
+    start = 0
     for t in range(epochs):
-        real_epoch = t + start + 1
-        print(f"Epoch {real_epoch}\n-------------------------------")   
-        train(train_dataloader, model, criterion, optimizer,real_epoch)
-        test(test_dataloader, model)
+        current_epoch = t + start + 1
+        
+        learning_r = 0.0000001
+        if current_epoch==2:
+            learning_r = 0.00001
+        elif current_epoch in [3,4]:
+            learning_r = 0.000001
+        else:
+            learning_r = 0.0000001
+        adjust_learning_rate(optimizer, learning_r)
+        
+        print(f"Epoch={current_epoch}, lr={learning_r}\n-------------------------------")   
+        train(train_dataloader, model, criterion, optimizer,current_epoch)
+        # test(test_dataloader, model)
     
     torch.save(model.state_dict(), MODEL_FILE)
     print("Done!")

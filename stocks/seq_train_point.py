@@ -16,7 +16,7 @@ from sklearn.metrics import ndcg_score
 
 from seq_model_v3 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "high1" #high,low,high1,low1  
+MODEL_TYPE = "low1" #high,low,high1,low1  
 MODEL_FILE = "model_point_%s.pth" % (MODEL_TYPE)
 
 # 4. train 函数
@@ -58,7 +58,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
     #         }, PATH+"."+str(epoch))
 
 # 5. vaildate/test 函数
-def test(dataloader, model, loss_fn,data_type="test"):
+def test(dataloader, model, loss_fn,data_type="test",epoch=0):
     # size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss = 0
@@ -80,6 +80,7 @@ def test(dataloader, model, loss_fn,data_type="test"):
     print(f"\n{data_type} Avg loss: {test_loss:>8f}")
     
     df = pd.DataFrame(all_ret,columns=["pk_date_stock","predict","true","label"])
+    df.to_csv(f"point_result_{MODEL_TYPE}_{data_type}_{epoch}.txt",sep=";",index=False)
     # df["trade_date"] = df.apply(lambda x: str(x['pk_date_stock'])[:8] , axis=1)
     df = evaluate_ndcg_and_scores(df)
     evaluate_label_loss(df)
@@ -111,7 +112,7 @@ def training(field="f_high_mean_rate"):
     test_dataloader = DataLoader(test_data, batch_size=128)  
     
     criterion = nn.MSELoss() #均方差损失函数
-    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL)
     
     learning_rate = 0.0000001 #0.00001 #0.000001  #0.0000001  
     optimizer = torch.optim.Adam(model.parameters(), 
@@ -127,25 +128,27 @@ def training(field="f_high_mean_rate"):
         # epoch = checkpoint['epoch']
         # loss = checkpoint['loss']
         print("load success")
+        
+    model.to(device)
 
-    epochs = 1
-    start = 3
+    epochs = 4
+    start = 0
     for t in range(epochs):
-        current_epochs = t+1+start 
+        current_epoch = t+1+start 
         
         lr = 0.0000001
-        if current_epochs==2:
+        if current_epoch==2:
             lr = 0.00001
-        elif current_epochs in [3,4]:
+        elif current_epoch in [3,4]:
             lr = 0.000001
         else:
             lr = 0.0000001
         adjust_learning_rate(optimizer, lr)
         
-        print(f"Epoch={current_epochs}, lr={lr} \n-------------------------------")   
-        train(train_dataloader, model, criterion, optimizer,current_epochs)
-        test(vali_dataloader, model, criterion,"vaildate")
-        test(test_dataloader, model, criterion,"test")
+        print(f"Epoch={current_epoch}, lr={lr} \n-------------------------------")   
+        train(train_dataloader, model, criterion, optimizer,current_epoch)
+        test(vali_dataloader, model, criterion,"vaildate",current_epoch)
+        test(test_dataloader, model, criterion,"test",current_epoch)
         # scheduler.step()
     
     torch.save(model.state_dict(), MODEL_FILE)

@@ -7,7 +7,7 @@ import sqlite3
 
 from common import load_stocks,load_trade_dates
 
-conn = sqlite3.connect("file:data/stocks_train_2.db?mode=ro", uri=True) 
+conn = sqlite3.connect("file:data3/stocks_train_v3.db?mode=ro", uri=True) 
 
 # (6959210-1960*2*24)/1960/64 = 54.7
 SAMPLE_COUNT_PER_DAY = 66
@@ -102,7 +102,7 @@ if __name__ == "__main__":
         # python seq_make_list.py random > list/train_radom.txt
         gen_via_random()
     if op_type == "date":
-        # python seq_make_list.py date > data2/list.date.train_22223355.txt
+        # python seq_make_list.py date > data3/list.date.train_22223355.txt
         gen_date_list("22223355")
     if op_type == "stocks":
         # python seq_make_list.py stocks > data2/list.stocks.train_22223355.txt

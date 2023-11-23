@@ -75,6 +75,8 @@ class PreProcessor:
         # current_date = int(df.loc[idx]['trade_date'])
         ret = {"stock_no": self.stock_no, "current_date":current_date}
         
+        (f_high_mean_rate,f_low_mean_rate,next_high_rate,next_low_rate) = (0.0,0.0,0.0,0.0)
+        
         # 未来值,FUTURE_DAYS最高价，最低价？
         if idx>0: #train
             buy_base = df.loc[idx-1]['OPEN_price'] # df_future.iloc[-1]['TOPEN']

@@ -53,9 +53,13 @@ cp data/seq_predict/$cur_date.data seq_predict.data
 python seq_preprocess_v2.py predict > data/seq_predict_v2/$cur_date.data #
 cp data/seq_predict_v2/$cur_date.data seq_predict_v2.data
 
+python seq_preprocess_v3.py predict > data3/seq_predict/$cur_date.data #
+cp data3/seq_predict/$cur_date.data seq_predict_v3.data
+
 echo "3. 调取模型，预测"
 python seq_model.py predict # > predict_merged_for_show.txt
 python seq_model_v2.py predict # > predict_merged_for_show_v2.txt
+python seq_model_v3.py predict 
 
 python seq_model_merge.py intersection #将v1，v2结果取交集
-python seq_model_merge.py predict_true #
+# python seq_model_merge.py predict_true #

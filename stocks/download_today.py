@@ -138,7 +138,7 @@ def after_download(last_df):
     df.to_csv(cache_file,sep=";",index=False)  
     return df 
     
-def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time=False):
+def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v3,one_time=False):
     df = None
     if one_time:
         print("cache shoot")
@@ -153,23 +153,28 @@ def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time=Fals
     # convert_history_format(df)
     
     # 计算买入/卖出价格
-    gen_buy_sell_prices(df,df_predict_v1,"v1")
+    gen_buy_sell_prices(df,df_predict_v1,"v1","open_rate")
     
     tmp_df = df_predict_v2[df_predict_v2['top3']==4] 
-    gen_buy_sell_prices(df,tmp_df,"v2")
-    gen_buy_sell_prices(df,df_predict_v12,"v1_2")
+    gen_buy_sell_prices(df,tmp_df,"v2","open_rate")
+    # gen_buy_sell_prices(df,df_predict_v12,"v1_2")
+    
+    tmp_df = df_predict_v3[df_predict_v3['top3']==6]
+    # tmp_df = tmp_df.sort_values(by=["top3","rate_now"],ascending=False)
+    gen_buy_sell_prices(df,tmp_df,"v3")
+    gen_buy_sell_prices(df,tmp_df,"v3","open_rate")
     
     # 持有部分
     hold_stocks = []
     with open('hold_stocks.txt','r') as f:
         hold_stocks = [row.strip().split(',')[0] for row in f.readlines()]
-    df_holds = df_predict_v2[df_predict_v2['stock_no'].isin(hold_stocks)]
-    df_holds = df_holds.sort_values(by=["top3","point2pair_dates"],ascending=False)
+    df_holds = df_predict_v3[df_predict_v3['stock_no'].isin(hold_stocks)]
+    df_holds = df_holds.sort_values(by=["top3","pair_date"],ascending=False)
     gen_buy_sell_prices(df,df_holds,"holds")
     
     return df
     
-def gen_buy_sell_prices(df_today,df_predict,version=""):
+def gen_buy_sell_prices(df_today,df_predict,version="",sort_field=""):
     trade_date = str(df_predict['pk_date_stock'].values[0])[:8]
     
     # 科创板的暂时先不关注
@@ -180,6 +185,10 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
     df_predict = df_predict.merge(df_today,on="stock_no",how='left')
     # ST类型股票不参与?
     # df_predict = df_predict[~ (df_predict['stock_name'].str.contains('ST')==True)]
+    
+    if sort_field:
+        # df_predict = df_predict[df_predict['open_rate']>0]
+        df_predict = df_predict.sort_values(by=["top3",sort_field],ascending=False)
     
     # 过滤涨停\跌停股票？
     # 最高最低价相等，视为一种特殊的涨跌停形式
@@ -261,6 +270,9 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
             if field == "point_low1":
                 if row["low_rate"]<row["point_low1"]:
                     color = 'green'   
+            if field == "stock_name":
+                if row["high_rate"] < 0 :
+                    color = 'green'
             if field == "high_rate":
                 if row["high_rate"]>(row["point_high1"]-0.02): #0.0151
                     color = '#FFA500'
@@ -268,14 +280,14 @@ def gen_buy_sell_prices(df_today,df_predict,version=""):
         html_li.append("<tr %s>%s</tr>\n" %(tr_color,"".join(columns)))
     html_li.append("</table>")
     
-    with open('predict_today_show_%s.html'%(version),'w') as f:
+    with open(f'predict_today_show_{version}{sort_field}.html','w') as f:
         f.writelines(html_li)
         f.close()
     
     Hm = int(datetime.today().strftime("%H%M"))
     if Hm>1455 and Hm<1550:
         today = datetime.today().strftime("%Y%m%d") 
-        fname = f'data/today/predict_today_show_{version}_{today}.html'
+        fname = f'data/today/predict_today_show_{version}{sort_field}_{today}.html'
         print(fname)
         with open(fname,'w') as f:
             f.writelines(html_li)
@@ -288,8 +300,11 @@ def run_no_stop(one_time=False):
     df_predict_v2 = pd.read_csv("data/predict_v2/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
     df_predict_v2 = df_predict_v2.sort_values(by=["top3","point2pair_dates"],ascending=False)
     
-    df_predict_v12 = pd.read_csv("data/predict_v2/predict_merged_v1_2.txt",sep=";",header=0,dtype={'stock_no': str})
-    df_predict_v12 = df_predict_v12[df_predict_v12['top3']>7]
+    # df_predict_v12 = pd.read_csv("data/predict_v2/predict_merged_v1_2.txt",sep=";",header=0,dtype={'stock_no': str})
+    # df_predict_v12 = df_predict_v12[df_predict_v12['top3']>7]
+    
+    df_predict_v3 = pd.read_csv("data3/predict/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
+    # df_predict_v3 = df_predict_v3.sort_values(by=["top3","point_high1"],ascending=False)
     
     last_df = None 
     last_file = "data/today/raw_%s.txt" % (int(int((datetime.now()- timedelta(minutes=10)).strftime("%Y%m%d%H%M"))/10))
@@ -297,7 +312,7 @@ def run_no_stop(one_time=False):
         last_df = pd.read_csv(last_file,sep=";",header=0,dtype={'stock_no': str})
     
     if one_time:    
-        process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time)
+        process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v3,one_time)
         return 
     
     last_trade_time = 0
@@ -307,7 +322,7 @@ def run_no_stop(one_time=False):
             trade_time=int(int(datetime.today().strftime("%Y%m%d%H%M"))/10)
             if trade_time != last_trade_time:
                 print(trade_time)
-                last_df = process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,one_time)
+                last_df = process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,df_predict_v3,one_time)
             last_trade_time = trade_time
         time.sleep(60)
 
@@ -347,16 +362,3 @@ if __name__ == "__main__":
         # df_predict = df_predict.sort_values(by=["point2pair_dates_top5","list_dates_top5"],ascending=False)
         # df_predict = df_predict[df_predict['top3']>7]
         # gen_buy_sell_prices(df_today,df_predict,"v1_2")
-        
-        hold_stocks = []
-        with open('hold_stocks.txt','r') as f:
-            hold_stocks = [row.strip().split(',')[0] for row in f.readlines()]
-        print(hold_stocks) #df_predict_v2.isin({'stock_no': hold_stocks}) #
-        df_holds = df_predict_v2[df_predict_v2['stock_no'].isin(hold_stocks)]
-        df_holds = df_holds.sort_values(by=["top3","point2pair_dates"],ascending=False)
-        print(df_holds)
-        gen_buy_sell_prices(df_today,df_holds,"holds")
-    
-        
-        
-    

@@ -105,7 +105,7 @@ class StockForecastModel(nn.Module):
     def forward(
         self, sequences: torch.LongTensor, attention_mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor: 
-        pos = torch.arange(0, self.seq_len, dtype=torch.long).unsqueeze(0)
+        pos = torch.arange(0, self.seq_len, dtype=torch.long).unsqueeze(0).to(device)
         pos_emb = self.position_embedding(pos)
         
         out = self.transformer_encoder(sequences + pos_emb)
@@ -180,12 +180,14 @@ def predict(trade_date=None):
     order_models = "list_dates,point,point2pair_dates,point_high1,point_high_f2".split(",")
     model_files = order_models + "point_low,point_low1".split(",") #point_high1,
     
-    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL)
     for model_name in model_files:
         print(model_name)
         mfile = "model_v3/model_%s.pth"%(model_name)
         if os.path.isfile(mfile):
             model.load_state_dict(torch.load(mfile)) 
+        
+        model.to(device)
         
         model.eval()
         with torch.no_grad():

@@ -15,33 +15,12 @@ import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
 from common import load_trade_dates
-from seq_model_v2 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
+from seq_model_v3 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
 MODEL_TYPE = "date" # date,stock,date_stock
-MODEL_FILE = "model_point2pair_%s.pth" % (MODEL_TYPE)
+MODEL_FILE = "model_pair_%s_r2.pth" % (MODEL_TYPE)
 
 conn = sqlite3.connect("file:data3/stocks_train_v3.db?mode=ro", uri=True)
-
-def get_lr(train_steps, init_lr=0.1,warmup_steps=2500,max_steps=150000):
-    """
-    Implements gradual warmup, if train_steps < warmup_steps, the
-    learning rate will be `train_steps/warmup_steps * init_lr`.
-    Args:
-        warmup_steps:warmup步长阈值,即train_steps<warmup_steps,使用预热学习率,否则使用预设值学习率
-        train_steps:训练了的步长数
-        init_lr:预设置学习率
-    https://zhuanlan.zhihu.com/p/390261440
-    
-    """
-    if warmup_steps and train_steps < warmup_steps:
-        warmup_percent_done = train_steps / warmup_steps
-        warmup_learning_rate = init_lr * warmup_percent_done  #gradual warmup_lr
-        learning_rate = warmup_learning_rate
-    else:
-        # 这部分代码还有些问题
-        #learning_rate = np.sin(learning_rate)  #预热学习率结束后,学习率呈sin衰减
-        learning_rate = learning_rate**1.0001 #预热学习率结束后,学习率呈指数衰减(近似模拟指数衰减)
-    return learning_rate 
 
 class StockPairDataset(Dataset):
     def __init__(self, data_type="train", field="f_high_mean_rate"):
@@ -165,26 +144,35 @@ def estimate_ndcg_score(dataloader, model):
     df = pd.DataFrame(all_ret,columns=["pk_date_stock","predict","true","label"])
     evaluate_ndcg_and_scores(df)
     
-def training():
+def training(epoch=1):
     # 初始化
     train_data = StockPairDataset("train","f_high_mean_rate")
     train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
     # choose,reject = next(iter(train_dataloader))
     # print(choose.shape,reject.shape)
 
-    validate_data = StockPairDataset("validate","f_high_mean_rate")
-    validate_dataloader = DataLoader(validate_data, batch_size=128)  
+    # validate_data = StockPairDataset("validate","f_high_mean_rate")
+    # validate_dataloader = DataLoader(validate_data, batch_size=128)  
     
-    test_data = StockPairDataset("test","f_high_mean_rate")
-    test_dataloader = DataLoader(test_data, batch_size=128)  
+    # test_data = StockPairDataset("test","f_high_mean_rate")
+    # test_dataloader = DataLoader(test_data, batch_size=128)  
     
-    ndcg_data = StockPointDataset(datatype="test",field="f_high_mean_rate")
-    ndcg_dataloader = DataLoader(ndcg_data, batch_size=128)  
+    # ndcg_data = StockPointDataset(datatype="test",field="f_high_mean_rate")
+    # ndcg_dataloader = DataLoader(ndcg_data, batch_size=128)  
     
     criterion = LogExpLoss() #定义损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.00001 #0.0001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.00001 #0.0001 #0.00001 #0.000001  #0.0000001 
+    if epoch in [1]:
+        learning_rate = 0.0000001
+    elif epoch in [2]:
+        learning_rate = 0.00001
+    elif epoch in [3]:
+        learning_rate = 0.000001
+    else:
+        learning_rate = 0.000001
+         
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -199,13 +187,15 @@ def training():
         # loss = checkpoint['loss']
         print("load success")
 
-    epochs = 1
-    for t in range(epochs):
-        print(f"Epoch {t+1}\n-------------------------------")
-        train(train_dataloader, model, criterion, optimizer,t+1)
-        test(validate_dataloader, model, criterion, "validate")
-        test(test_dataloader, model, criterion, "test")
-        estimate_ndcg_score(ndcg_dataloader,model)
+    model.to(device)
+    
+    # epochs = 1
+    # for t in range(epochs):
+    print(f"Epoch {epoch}\n-------------------------------")
+    train(train_dataloader, model, criterion, optimizer,epoch)
+    # test(validate_dataloader, model, criterion, "validate")
+    # test(test_dataloader, model, criterion, "test")
+    # estimate_ndcg_score(ndcg_dataloader,model)
         # scheduler.step()
     
     torch.save(model.state_dict(), MODEL_FILE)
@@ -320,7 +310,8 @@ if __name__ == "__main__":
     op_type = sys.argv[1]
     print(op_type)
     if op_type == "training":
-        training()
+        epoch = int(sys.argv[2])
+        training(epoch)
     if op_type == "evaluate_model_checkpoints":
         evaluate_model_checkpoints() 
     if op_type == "gen_date_predict_scores_all":

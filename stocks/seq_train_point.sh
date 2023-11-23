@@ -28,6 +28,12 @@ run(){
 
     ln -sf /mnt/d/github/l78z/stocks/data2/point_sampled_0.txt.$epochs data2/point_0.txt
 
+    ln -sf /mnt/d/github/l78z/stocks/data3/point_0_all.txt data3/point_0.txt
+    ln -sf /mnt/d/github/l78z/stocks/data3/point_0_9.txt data3/point_0.txt
+    ln -sf /mnt/d/github/l78z/stocks/data3/point_0_10.txt data3/point_0.txt
+    ln -sf /mnt/d/github/l78z/stocks/data3/point_0_11.txt data3/point_0.txt
+    ln -sf /mnt/d/github/l78z/stocks/data3/point_0_12.txt data3/point_0.txt
+
     echo "f_high_mean_rate"
     python seq_train_point.py training f_high_mean_rate #next_low_rate #next_high_rate #f_high_mean_rate 
     cp model_point_high_f2.pth model_point_high_f2.pth.$epochs
