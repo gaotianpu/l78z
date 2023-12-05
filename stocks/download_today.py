@@ -144,6 +144,7 @@ def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v3,one_time=False
         print("cache shoot")
         today = datetime.today().strftime("%Y%m%d")
         cache_file = f"data/today/raw_{today}150.txt"
+        # cache_file = f"data/today/raw_20231201150.txt"
         df = pd.read_csv(cache_file,sep=";",header=0,dtype={'stock_no': str,'stock_name': str})
         df["rate_now"] = df["last_rate"]
     else:
@@ -156,11 +157,12 @@ def process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v3,one_time=False
     gen_buy_sell_prices(df,df_predict_v1,"v1","open_rate")
     
     tmp_df = df_predict_v2[df_predict_v2['top3']==4] 
-    gen_buy_sell_prices(df,tmp_df,"v2","open_rate")
+    gen_buy_sell_prices(df,tmp_df,"v2")
     # gen_buy_sell_prices(df,df_predict_v12,"v1_2")
     
-    tmp_df = df_predict_v3[df_predict_v3['top3']==6]
-    # tmp_df = tmp_df.sort_values(by=["top3","rate_now"],ascending=False)
+    tmp_df = df_predict_v3[df_predict_v3['top3']>0]
+    # tmp_df = df_predict_v3[df_predict_v3['top5']>7]
+    tmp_df = tmp_df.sort_values(by=["top3","list_1"],ascending=False)
     gen_buy_sell_prices(df,tmp_df,"v3")
     gen_buy_sell_prices(df,tmp_df,"v3","open_rate")
     
@@ -213,12 +215,14 @@ def gen_buy_sell_prices(df_today,df_predict,version="",sort_field=""):
     # df_predict = df_predict.merge(df_static_stocks_0,on="stock_no",how='left')
     # (or25,or50,or75) = (df_statics_stock['open_rate_25%'],df_statics_stock['open_rate_50%'],df_statics_stock['open_rate_75%'])
     
+    good_cnt = len(df_predict[df_predict['open_rate']>0])
+    
     # 生成html数据
     # open_rate_label,
     sel_fields = "stock_no,stock_name,rate_now,rate_minmax,rate_delta,point_low1,low_rate,low,in_hold,buy_prices,point_high1,high,high_rate,in_hold_2,sell_prices".split(",")
     df_html = df_predict[sel_fields]
     html_li = []
-    html_li.append("<head>%s, count=%s</head>" % (datetime.today().strftime("%Y%m%d %H%M"),len(df_predict)))
+    html_li.append("<head>%s, count=%s %s</head>" % (datetime.today().strftime("%Y%m%d %H%M"),len(df_predict),good_cnt))
     html_li.append("<table>")
     html_li.append("<tr><td>idx</td>" + "".join(["<td>%s</td>"%(f) for f in sel_fields]) + "</tr>")
     for idx,row in df_html.iterrows():
@@ -304,7 +308,7 @@ def run_no_stop(one_time=False):
     # df_predict_v12 = df_predict_v12[df_predict_v12['top3']>7]
     
     df_predict_v3 = pd.read_csv("data3/predict/predict_merged.txt",sep=";",header=0,dtype={'stock_no': str})
-    # df_predict_v3 = df_predict_v3.sort_values(by=["top3","point_high1"],ascending=False)
+    df_predict_v3 = df_predict_v3.sort_values(by=["top3","point_high"],ascending=False)
     
     last_df = None 
     last_file = "data/today/raw_%s.txt" % (int(int((datetime.now()- timedelta(minutes=10)).strftime("%Y%m%d%H%M"))/10))
@@ -322,7 +326,7 @@ def run_no_stop(one_time=False):
             trade_time=int(int(datetime.today().strftime("%Y%m%d%H%M"))/10)
             if trade_time != last_trade_time:
                 print(trade_time)
-                last_df = process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v12,df_predict_v3,one_time)
+                last_df = process_all(last_df,df_predict_v1,df_predict_v2,df_predict_v3,one_time)
             last_trade_time = trade_time
         time.sleep(60)
 

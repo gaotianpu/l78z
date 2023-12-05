@@ -16,7 +16,7 @@ from sklearn.metrics import ndcg_score
 
 from seq_model_v3 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "low1" #high,low,high1,low1  
+MODEL_TYPE = "high" #high,low,high1,low1  
 MODEL_FILE = "model_point_%s.pth" % (MODEL_TYPE)
 
 # 4. train 函数
@@ -114,7 +114,7 @@ def training(field="f_high_mean_rate"):
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL)
     
-    learning_rate = 0.0000001 #0.00001 #0.000001  #0.0000001  
+    learning_rate = 0.000001 #0.000001 #0.000001  #0.000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -131,24 +131,24 @@ def training(field="f_high_mean_rate"):
         
     model.to(device)
 
-    epochs = 4
-    start = 0
+    epochs = 1
+    start = 4
     for t in range(epochs):
         current_epoch = t+1+start 
         
-        lr = 0.0000001
         if current_epoch==2:
-            lr = 0.00001
+            learning_rate = 0.00001
         elif current_epoch in [3,4]:
-            lr = 0.000001
+            learning_rate = 0.000001
         else:
-            lr = 0.0000001
-        adjust_learning_rate(optimizer, lr)
+            learning_rate = 0.000001
+        adjust_learning_rate(optimizer, learning_rate)
         
-        print(f"Epoch={current_epoch}, lr={lr} \n-------------------------------")   
+        print(f"Epoch={current_epoch}, lr={learning_rate} \n-------------------------------")   
         train(train_dataloader, model, criterion, optimizer,current_epoch)
-        test(vali_dataloader, model, criterion,"vaildate",current_epoch)
-        test(test_dataloader, model, criterion,"test",current_epoch)
+        if current_epoch>2:
+            test(vali_dataloader, model, criterion,"vaildate",current_epoch)
+            test(test_dataloader, model, criterion,"test",current_epoch)
         # scheduler.step()
     
     torch.save(model.state_dict(), MODEL_FILE)
@@ -166,9 +166,9 @@ def evaluate_model_checkpoints(field="f_high_mean_rate"):
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    for i in range(23): #32
-        fname =  "%s.1.%s" % (MODEL_FILE,17)
-        fname = "model_point_low.pth.3.4"
+    for i in range(4,6): #32
+        # fname =  "%s.1.%s" % (MODEL_FILE,17)
+        fname = f"model_point_high_09_2.pth"
         if not os.path.isfile(fname):
             print("\n### %s is not exist" % (fname))
             continue 

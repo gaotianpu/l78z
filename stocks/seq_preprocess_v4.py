@@ -12,10 +12,10 @@ from common import load_stocks,c_round
 
 PROCESSES_NUM = 5
 
-FUTURE_DAYS = 2 # 预测未来几天的数据, 2,3,5? 2比较合适，3则可能出现重复，在不恰当的数据集划分策略下，训练集和测试可能会重叠？
+FUTURE_DAYS = 5 # 预测未来几天的数据, 2,3,5? 2比较合适，3则可能出现重复，在不恰当的数据集划分策略下，训练集和测试可能会重叠？
 PAST_DAYS = 20 #使用过去几天的数据做特征
 
-MAX_ROWS_COUNT = 3000 #从数据库中加载多少数据, 差不多8年的交易日数。
+#MAX_ROWS_COUNT = 3000 #从数据库中加载多少数据, 差不多8年的交易日数。
 
 # select max(trade_date) from stock_for_transfomer;
 MIN_TRADE_DATE = 0 #20230825
@@ -75,7 +75,7 @@ class PreProcessor:
         # current_date = int(df.loc[idx]['trade_date'])
         ret = {"stock_no": self.stock_no, "current_date":current_date}
         
-        (f_high_mean_rate,low1_high2,next_high_rate,next_low_rate,high2_rate) = (0.0,0.0,0.0,0.0,0.0)
+        (f_high_mean_rate,low1_high2,next_high_rate,next_low_rate,highN_rate) = (0.0,0.0,0.0,0.0,0.0)
         
         # 未来值,FUTURE_DAYS最高价，最低价？
         if idx>0: #train
@@ -100,6 +100,8 @@ class PreProcessor:
             lowest = df_future['LOW_price'].min()
             high_mean = df_future['HIGH_price'].mean()
             low_mean = df_future['LOW_price'].mean() 
+            
+            highN_rate = compute_rate(df.loc[idx-self.future_days]['HIGH_price'],buy_base) #保守点，把最高价作为买入价
             
             f_high_rate = compute_rate(highest,buy_base) #round((highest-buy_base)/buy_base,2)
             f_low_rate = compute_rate(lowest,buy_base)  #round((lowest-buy_base)/buy_base,2)
@@ -137,7 +139,7 @@ class PreProcessor:
             ret['f_low_mean_rate'] = f_low_mean_rate 
             ret['next_high_rate'] = next_high_rate 
             ret['next_low_rate'] = next_low_rate 
-            ret['high2_rate'] = high2_rate 
+            ret['highN_rate'] = highN_rate 
             ret['next_close_rate'] = next_close_rate 
             ret['next_open_rate'] = next_open_rate
             ret['val_label'] = val_label 
@@ -148,7 +150,7 @@ class PreProcessor:
             ret['f_low_mean_rate'] = 0.0 
             ret['next_high_rate'] = 0.0 
             ret['next_low_rate'] = 0.0 
-            ret['high2_rate'] = 0.0 
+            ret['highN_rate'] = 0.0 
             ret['next_close_rate'] = 0.0
             ret['next_open_rate'] = 0.0
             ret['val_label'] = 0
@@ -196,8 +198,8 @@ class PreProcessor:
         datestock_uid = str(ret["current_date"]) + ret['stock_no']
         if len(ret["past_days"]) == self.past_days:
             li = [str(item) for item in [datestock_uid,ret["current_date"],ret['stock_no'],0,
-                                    f_high_mean_rate,low1_high2,next_high_rate,next_low_rate,high2_rate,
-                                    ret['val_label'],json.dumps(ret)]] #
+                                    f_high_mean_rate,low1_high2,next_high_rate,next_low_rate,highN_rate,
+                                    ret['val_label'],""]] #json.dumps(ret)
             print(';'.join(li))
             
         

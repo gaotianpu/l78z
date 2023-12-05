@@ -21,7 +21,7 @@ from pytorchltr.loss import PairwiseHingeLoss
 # SEQUENCE_LENGTH = 20 #序列长度
 # D_MODEL = 9  #维度
 # MODEL_FILE = "model_list_stocks.pth"
-MODEL_FILE = "model_list.pth" #默认dates
+MODEL_FILE = "model_list_1.pth" #默认dates
 
 # https://blog.csdn.net/qq_36478718/article/details/122598406
 # ListNet ・ ListMLE ・ RankCosine ・ LambdaRank ・ ApproxNDCG ・ WassRank ・ STListNet ・ LambdaLoss
@@ -177,7 +177,7 @@ def training(field="f_high_mean_rate"):
 
     model.to(device)
     
-    epochs = 4
+    epochs = 3
     start = 0
     for t in range(epochs):
         current_epoch = t + start + 1
