@@ -98,7 +98,6 @@ def process_row(df,idx):
 
 def process():
     stocks = load_stocks(conn)
-    
     for i, stock in enumerate(stocks):
         stock_no = stock[0]
         fname = f"day_delta/{stock_no}.txt"
@@ -137,33 +136,11 @@ def process_predict():
             
     vdf = pd.DataFrame(stock_li)
     vdf = vdf.sort_values(by=[3],ascending=False)
-    vdf.to_csv(f"day_delta.{current_date}.txt",sep=";",index=False,header=None) 
-        
-        # 
-        
-        
-        # fname = f"day_delta/{stock_no}.txt"
-        # if os.path.exists(fname):
-        #     continue
-        
-        # print(stock_no)
-        # sql = f"select * from stock_raw_daily_2 where stock_no='{stock_no}' and OPEN_price>0 order by trade_date desc"
-        # df = pd.read_sql(sql, conn)
-        # end_idx = len(df) - past_days + 1
-        
-        # stock_li = []
-        # for idx in range(future_days, end_idx):
-        #     ret = process_row(df, idx)
-        #     if ret:
-        #         stock_li.append(ret)
-             
-        
-
-def cosine():
-    from sklearn.metrics.pairwise import cosine_similarity
-    scores = cosine_similarity([[1, 0, 0, 0],[2,1,1,1]], [[1, 0, 0, 0]])  
-    # 值越大，越相似     
+    vdf.to_csv(f"recall_vector/{current_date}.txt",sep=";",index=False,header=None) 
 
 if __name__ == "__main__":
-    process()
-    # process_predict()
+    data_type = sys.argv[1]
+    if data_type == "train": 
+        process()
+    if data_type == "predict":
+        process_predict()
