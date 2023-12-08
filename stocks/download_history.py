@@ -99,7 +99,7 @@ def download_all(processes_idx=-1):
     for i, stock in enumerate(load_stocks(conn)):
         if processes_idx < 0 or i % PROCESSES_NUM == processes_idx:
             dt = stock[1] #上市日？ 
-            last_date = get_max_trade_date(conn,stock[0])
+            last_date = get_max_trade_date(conn,stock[0]) #20231204
             if last_date: 
                 dt = datetime.datetime.strptime(str(last_date), "%Y%m%d")
                 dt = (dt+datetime.timedelta(days=1)).strftime("%Y%m%d")
