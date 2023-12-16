@@ -20,7 +20,7 @@ MAX_ROWS_COUNT = 3000 #从数据库中加载多少数据, 差不多8年的交易
 # select max(trade_date) from stock_for_transfomer;
 MIN_TRADE_DATE = 0 #20230825
 
-conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
 
 mean_std = {"OPEN_price_mean": 17.9043, "OPEN_price_std": 31.569, "CLOSE_price_mean": 17.9258, "CLOSE_price_std": 31.5798, "change_amount_mean": 0.0076, "change_amount_std": 1.1697, "change_rate_mean": 0.0529, "change_rate_std": 3.4192, "LOW_price_mean": 17.5473, "LOW_price_std": 30.9598, "HIGH_price_mean": 18.3079, "HIGH_price_std": 32.2353, "TURNOVER_mean": 157735.6861, "TURNOVER_std": 333532.135, "TURNOVER_amount_mean": 19274.754, "TURNOVER_amount_std": 42239.1776, "TURNOVER_rate_mean": 2.7719, "TURNOVER_rate_std": 4.2903}
 
@@ -159,7 +159,7 @@ class PreProcessor:
         
 
     def process_train_data(self):
-        sql = "select * from stock_raw_daily_1 where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,MAX_ROWS_COUNT)
+        sql = "select * from stock_raw_daily where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,MAX_ROWS_COUNT)
         df = pd.read_sql(sql, self.conn) 
         
         end_idx = len(df) - self.past_days + 1
@@ -183,7 +183,7 @@ class PreProcessor:
         # statistics = self.get_statistics() 
          
         # max_trade_date = self.get_max_trade_date() #
-        sql = "select * from stock_raw_daily_1 where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,self.past_days+self.future_days)
+        sql = "select * from stock_raw_daily where stock_no='%s' and OPEN_price>0 order by trade_date desc limit 0,%d"%(self.stock_no,self.past_days+self.future_days)
         df = pd.read_sql(sql, conn) 
         
         current_date = int(df.loc[0]['trade_date'])
@@ -239,21 +239,21 @@ def process_new_stocks(data_type):
             p.process() 
 
 def convert_stock_raw_daily(start_date=None):
-    '''基于stock_raw_daily_2，扩展出新的字段'''
+    '''基于stock_raw_daily，扩展出新的字段'''
     if not start_date:
-        sql = "select max(trade_date) as trade_date from stock_raw_daily_1"
+        sql = "select max(trade_date) as trade_date from stock_raw_daily"
         df = pd.read_sql(sql, conn)
         start_date = df['trade_date'][0]
         print(start_date) 
 
-    sql = "select distinct trade_date from stock_raw_daily_2 where trade_date>%s order by trade_date" % (start_date)
+    sql = "select distinct trade_date from stock_raw_daily where trade_date>%s order by trade_date" % (start_date)
     df = pd.read_sql(sql, conn)
     trade_dates = df['trade_date'].sort_values(ascending=False).tolist()
     print("len(trade_dates)=",len(trade_dates))
     
     for idx,date in enumerate(trade_dates):  
         print(idx,date)
-        sql = "select * from stock_raw_daily_2 where trade_date='%s' order by stock_no"%(date)
+        sql = "select * from stock_raw_daily where trade_date='%s' order by stock_no"%(date)
         df_date = pd.read_sql(sql, conn)
         
         cnt = len(df_date)

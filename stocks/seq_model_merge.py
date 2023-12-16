@@ -121,8 +121,8 @@ def merge_one(trade_date, df_predict, df_real, version="v2"):
 
 
 def merge_predict_true(start_date=20231017):
-    conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
-    sql = f"select distinct trade_date from stock_raw_daily_2 where trade_date>{start_date}"
+    conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
+    sql = f"select distinct trade_date from stock_raw_daily where trade_date>{start_date}"
     trade_dates = (
         pd.read_sql(sql, conn)["trade_date"].sort_values(ascending=True).tolist()
     )
@@ -135,21 +135,21 @@ def merge_predict_true(start_date=20231017):
 
         # 第一天，T 昨收，开盘价，最低价
         df_real = pd.read_sql(
-            f"select stock_no,OPEN_price as OPEN_1,LOW_price as LOW_1,HIGH_price as HIGH_1 from stock_raw_daily_2 where trade_date={trade_dates[idx+1]}",
+            f"select stock_no,OPEN_price as OPEN_1,LOW_price as LOW_1,HIGH_price as HIGH_1 from stock_raw_daily where trade_date={trade_dates[idx+1]}",
             conn,
         )
 
         # 第二天， T+1
         df_real = df_real.merge(
             pd.read_sql(
-                f"select stock_no,HIGH_price as high_2,LOW_price as low_2 from stock_raw_daily_2 where trade_date={trade_dates[idx+2]}",
+                f"select stock_no,HIGH_price as high_2,LOW_price as low_2 from stock_raw_daily where trade_date={trade_dates[idx+2]}",
                 conn,), on="stock_no", how="left",
         )
 
         # 第三天，T+2
         df_real = df_real.merge(
             pd.read_sql(
-                f"select stock_no,HIGH_price as high_3,LOW_price as low_3 from stock_raw_daily_2 where trade_date={trade_dates[idx+3]}",
+                f"select stock_no,HIGH_price as high_3,LOW_price as low_3 from stock_raw_daily where trade_date={trade_dates[idx+3]}",
                 conn,
             ), on="stock_no", how="left",
         )

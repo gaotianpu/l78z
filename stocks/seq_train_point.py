@@ -14,10 +14,13 @@ from torch.utils.data import DataLoader
 import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
-from seq_model_v3 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
+from seq_model_v4 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "high" #high,low,high1,low1  
+MODEL_TYPE = "low1" #high,low,high1,low1 
 MODEL_FILE = "model_point_%s.pth" % (MODEL_TYPE)
+
+def get_model_output_file(model_type=MODEL_TYPE,data_type="test",epoch=1):
+    return f"data4/model_evaluate/point_{model_type}_{epoch}_{data_type}.txt"
 
 # 4. train 函数
 def train(dataloader, model, loss_fn, optimizer,epoch): 
@@ -25,7 +28,8 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
     
     model.train() #训练模式
     total_loss = 0.0 
-    for batch, (pk_date_stock,true_scores,list_label,data) in enumerate(dataloader):         
+    # pk_date_stock,true_scores,list_labels,data
+    for batch, (pk_date_stock,true_scores,list_labels,data) in enumerate(dataloader):         
         output = model(data.to(device))
         loss = loss_fn(output,true_scores)   
         
@@ -73,17 +77,15 @@ def test(dataloader, model, loss_fn,data_type="test",epoch=0):
             
             # 准备计算分档loss，ndcg相关的数据
             ret = list(zip(pk_date_stock.tolist(), output.tolist(),true_scores.tolist(),list_label.tolist()))
-            all_ret = all_ret + ret      
+            all_ret = all_ret + ret    
     
     test_loss /= num_batches
     test_loss = test_loss ** 0.5
     print(f"\n{data_type} Avg loss: {test_loss:>8f}")
     
-    df = pd.DataFrame(all_ret,columns=["pk_date_stock","predict","true","label"])
-    df.to_csv(f"point_result_{MODEL_TYPE}_{data_type}_{epoch}.txt",sep=";",index=False)
-    # df["trade_date"] = df.apply(lambda x: str(x['pk_date_stock'])[:8] , axis=1)
-    df = evaluate_ndcg_and_scores(df)
-    evaluate_label_loss(df)
+    df = pd.DataFrame(all_ret,columns=['pk_date_stock','predict_score','true_score','list_label'])
+    df = df.sort_values(by=["predict"],ascending=False)
+    df.to_csv(get_model_output_file(MODEL_TYPE,data_type,epoch),sep=";",index=False)
     
 
 def evaluate_label_loss(df):
@@ -100,21 +102,21 @@ def adjust_learning_rate(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr        
 
-def training(field="f_high_mean_rate"):
+def training(field="highN_rate"):
     # 初始化
     train_data = StockPointDataset(datatype="train",field=field)
     train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
 
-    vali_data = StockPointDataset(datatype="validate",field=field)
-    vali_dataloader = DataLoader(vali_data, batch_size=128)  
+    # vali_data = StockPointDataset(datatype="validate",field=field)
+    # vali_dataloader = DataLoader(vali_data, batch_size=128)  
     
-    test_data = StockPointDataset(datatype="test",field=field)
-    test_dataloader = DataLoader(test_data, batch_size=128)  
+    # test_data = StockPointDataset(datatype="test",field=field)
+    # test_dataloader = DataLoader(test_data, batch_size=128)  
     
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL)
     
-    learning_rate = 0.000001 #0.000001 #0.000001  #0.000001  
+    learning_rate = 0.0000001 #0.0000001 #0.000001 #0.000001  #0.000001  
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -131,31 +133,51 @@ def training(field="f_high_mean_rate"):
         
     model.to(device)
 
-    epochs = 1
-    start = 4
+    epochs = 4
+    start = 0
     for t in range(epochs):
         current_epoch = t+1+start 
         
-        if current_epoch==2:
+        if current_epoch in [2,3]:
+            learning_rate = 0.0001
+        elif current_epoch in [4]:
             learning_rate = 0.00001
-        elif current_epoch in [3,4]:
-            learning_rate = 0.000001
         else:
-            learning_rate = 0.000001
+            learning_rate = 0.00001
         adjust_learning_rate(optimizer, learning_rate)
         
         print(f"Epoch={current_epoch}, lr={learning_rate} \n-------------------------------")   
         train(train_dataloader, model, criterion, optimizer,current_epoch)
-        if current_epoch>2:
-            test(vali_dataloader, model, criterion,"vaildate",current_epoch)
-            test(test_dataloader, model, criterion,"test",current_epoch)
+        # if current_epoch>3:
+        #     test(vali_dataloader, model, criterion,"vaildate",current_epoch)
+        #     test(test_dataloader, model, criterion,"test",current_epoch)
         # scheduler.step()
     
     torch.save(model.state_dict(), MODEL_FILE)
     print("Done!")
 
+def evaluate_low1(dataset_type="test"):
+    '''评估《最低价预测模型》 的效果
+    1. 按照预测的最低价买入，成功率多少； 
+    2. 成功部分，与实际的最低价比，平均差值多少
+    3. 指定条件下(例如，指定其他模型阈值下)，上述二者效果时多少
+    '''
+    t_data = StockPointDataset(dataset_type,field="next_low_rate")
+    t_dataloader = DataLoader(t_data, batch_size=128)
+    
+    for i in range(0,6):
+        df = None
+        output_file = output_file = get_model_output_file("low1",dataset_type,i)
+        if not os.path.exists(output_file):
+            print(output_file, "is not exist")
+        
+        df = pd.read_csv(output_file,sep=";",header=0)
+        df_buy_success = df[df['predict_score']>df['true_score']]
+        df_buy_success['diff'] = abs(df['predict_score']-df['true_score'])
+        print(dataset_type,i,len(df),len(df_buy_success),len(df_buy_success)/len(df),df_buy_success['diff'].mean())
+        
 
-def evaluate_model_checkpoints(field="f_high_mean_rate"):
+def evaluate_model_checkpoints(field="highN_rate"):
     '''用于检查哪个checkpoint效果更好些'''
     vali_data = StockPointDataset(datatype="validate",field=field)
     vali_dataloader = DataLoader(vali_data, batch_size=128)  
@@ -163,12 +185,14 @@ def evaluate_model_checkpoints(field="f_high_mean_rate"):
     test_data = StockPointDataset(datatype="test",field=field)
     test_dataloader = DataLoader(test_data, batch_size=128)
     
+    # high,low,high1,low1 
+    maps = {'highN_rate':'high','next_high_rate':'high1','next_low_rate':'low1'}
+    
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-    
-    for i in range(4,6): #32
-        # fname =  "%s.1.%s" % (MODEL_FILE,17)
-        fname = f"model_point_high_09_2.pth"
+    for i in range(4,6):
+        model_name = maps.get(field)
+        fname = f"model_point_{model_name}.pth.{i}"
         if not os.path.isfile(fname):
             print("\n### %s is not exist" % (fname))
             continue 
@@ -180,13 +204,13 @@ def evaluate_model_checkpoints(field="f_high_mean_rate"):
         break
                     
 
-# python seq_train_point.py training f_high_mean_rate
+# python seq_train_point.py training highN_rate
 if __name__ == "__main__":
     op_type = sys.argv[1]
-    field = sys.argv[2] ## f_high_mean_rate,f_low_mean_rate, next_low_rate, next_high_rate
+    field = sys.argv[2] ## highN_rate, next_low_rate, next_high_rate
     print(op_type)
     if op_type == "training":
         training(field)
     if op_type == "checkpoints": 
-        # python seq_train_point.py checkpoints f_high_mean_rate
+        # python seq_train_point.py checkpoints highN_rate
         evaluate_model_checkpoints(field)

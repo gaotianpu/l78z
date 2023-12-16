@@ -1,6 +1,6 @@
 import sqlite3
 
-conn = sqlite3.connect("file:data/stocks.db", uri=True)
+conn = sqlite3.connect("file:newdb/stocks.db", uri=True)
 
 def update_db(sql,data,conn=conn):
     cursor = conn.cursor()

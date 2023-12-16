@@ -224,7 +224,7 @@ def predict(trade_date=None):
     df_merged['top3'] = df_merged[[ model_name + '_top3' for model_name in order_models ]].sum(axis=1)
     df_merged['top5'] = df_merged[[ model_name + '_top5' for model_name in order_models ]].sum(axis=1)
                 
-    conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+    conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
     trade_date = str(df_merged["pk_date_stock"][0])[:8]
     # 当天的 CLOSE_price,LOW_price,HIGH_price，作为对比基线
     df_prices = load_prices(conn,trade_date)
@@ -260,8 +260,8 @@ def predict(trade_date=None):
 
 def predict_many():
     start_date=20231017
-    conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
-    sql = f"select distinct trade_date from stock_raw_daily_2 where trade_date>{start_date}"
+    conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
+    sql = f"select distinct trade_date from stock_raw_daily where trade_date>{start_date}"
     df = pd.read_sql(sql, conn)
     trade_dates = df['trade_date'].sort_values(ascending=True).tolist()
     for idx,trade_date in enumerate(trade_dates):

@@ -18,17 +18,17 @@ from common import load_trade_dates
 from seq_model_v3 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
 MODEL_TYPE = "date" # date,stock,date_stock
-MODEL_FILE = "model_pair_%s_r2.pth" % (MODEL_TYPE)
+MODEL_FILE = "model_pair.pth"  #% (MODEL_TYPE)
 
-conn = sqlite3.connect("file:data3/stocks_train_v3.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:data4/stocks_train_v4.db?mode=ro", uri=True)
 
 class StockPairDataset(Dataset):
-    def __init__(self, data_type="train", field="f_high_mean_rate"):
+    def __init__(self, data_type="train", field="highN_rate"):
         assert data_type in ("train", "validate", "test")
         # dtmap = {"train":0,"validate":1,"test":2}
         # dataset_type = dtmap.get(data_type)
-        self.df = pd.read_csv("data3/pair.%s.%s.txt" % (data_type,MODEL_TYPE), sep=";", header=None)
-        self.conn = sqlite3.connect("file:data3/stocks_train_v3.db?mode=ro", uri=True)
+        self.df = pd.read_csv("data4/pair.%s.%s.txt" % (data_type,MODEL_TYPE), sep=";", header=None)
+        self.conn = conn #sqlite3.connect("file:data4/stocks_train_v4.db?mode=ro", uri=True)
         self.field = field  # 基于哪个预测值做比较
 
     def __len__(self):
@@ -146,29 +146,27 @@ def estimate_ndcg_score(dataloader, model):
     
 def training(epoch=1):
     # 初始化
-    train_data = StockPairDataset("train","f_high_mean_rate")
+    train_data = StockPairDataset("train","highN_rate")
     train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
     # choose,reject = next(iter(train_dataloader))
     # print(choose.shape,reject.shape)
 
-    # validate_data = StockPairDataset("validate","f_high_mean_rate")
+    # validate_data = StockPairDataset("validate","highN_rate")
     # validate_dataloader = DataLoader(validate_data, batch_size=128)  
     
-    # test_data = StockPairDataset("test","f_high_mean_rate")
+    # test_data = StockPairDataset("test","highN_rate")
     # test_dataloader = DataLoader(test_data, batch_size=128)  
     
-    # ndcg_data = StockPointDataset(datatype="test",field="f_high_mean_rate")
+    # ndcg_data = StockPointDataset(datatype="test",field="highN_rate")
     # ndcg_dataloader = DataLoader(ndcg_data, batch_size=128)  
     
     criterion = LogExpLoss() #定义损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.00001 #0.0001 #0.00001 #0.000001  #0.0000001 
-    if epoch in [1]:
-        learning_rate = 0.0000001
-    elif epoch in [2]:
+    learning_rate = 0.0000001 #0.0001 #0.00001 #0.000001  #0.0000001 
+    if epoch in [2,3,4]:
         learning_rate = 0.00001
-    elif epoch in [3]:
+    elif epoch in [5,6]:
         learning_rate = 0.000001
     else:
         learning_rate = 0.000001
@@ -201,14 +199,14 @@ def training(epoch=1):
     torch.save(model.state_dict(), MODEL_FILE)
     print("Done!")
 
-def evaluate_model_checkpoints(field = "f_high_mean_rate"):
+def evaluate_model_checkpoints(field = "highN_rate"):
     test_data = StockPairDataset("test",field)
     test_dataloader = DataLoader(test_data, batch_size=128)   
     
     validate_data = StockPairDataset("validate",field)
     validate_dataloader = DataLoader(validate_data, batch_size=128)  
     
-    ndcg_data = StockPointDataset(datatype="test",field="f_high_mean_rate")
+    ndcg_data = StockPointDataset(datatype="test",field="highN_rate")
     ndcg_dataloader = DataLoader(ndcg_data, batch_size=128)  
     
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)

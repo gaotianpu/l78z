@@ -8,13 +8,13 @@ from common import load_stocks,load_trade_dates
 
 PROCESSES_NUM = 5
 
-MIN_RATE = 0.06
-DIFF_RATE = 0.06
+MIN_RATE = 0.15
+DIFF_RATE = 0.15 #06
 
-conn = sqlite3.connect("file:data3/stocks_train_v3.db", uri=True)
+conn = sqlite3.connect("file:data4/stocks_train_v4.db", uri=True)
 
-def load_by_date(date,dateset_type=0,field="high_rate"):
-    sql = f"select pk_date_stock,list_label,{field} from stock_for_transfomer where trade_date={date} and dataset_type={dateset_type}"
+def load_by_date(date,dateset_type=0,field="highN_rate"):
+    sql = f"select pk_date_stock,{field},list_label from stock_for_transfomer where trade_date={date} and dataset_type={dateset_type} order by {field} desc"
     df = pd.read_sql(sql, conn)
     
     # 因要两两构造pair对，加载jsons操作比较耗时，在这里做一次处理，可节省不少时间
@@ -28,8 +28,8 @@ def load_by_date(date,dateset_type=0,field="high_rate"):
     return ret 
 
       
-def load_by_stockno(stockno,dateset_type=0,field="high_rate"):
-    sql = f"select pk_date_stock,list_label,{field} from stock_for_transfomer where stock_no='{stockno}' and dataset_type={dateset_type}"
+def load_by_stockno(stockno,dateset_type=0,field="highN_rate"):
+    sql = f"select pk_date_stock,{field},list_label from stock_for_transfomer where stock_no='{stockno}' and dataset_type={dateset_type} order by {field} desc"
     df = pd.read_sql(sql, conn)
     
     ret = []
@@ -49,6 +49,9 @@ def make_pairs(rows):
         rate_i = rows[i][1] 
         list_label_i = rows[i][2]
         
+        if rate_i<MIN_RATE:
+            break
+        
         for j in range(i+1,count): 
             id_j = rows[j][0] #rows.loc[j]["pk_date_stock"]
             
@@ -57,7 +60,7 @@ def make_pairs(rows):
             
             # DIFF_RATE: 两个比较，数值上有一定的差别才能构成算成pair对？
             # MIN_RATE: 如果两个数值均小于MIN_RATE，不再关注二者大小
-            if (id_i == id_j) or (rate_i<MIN_RATE and rate_j<MIN_RATE) or (abs(rate_i-rate_j)<DIFF_RATE) :
+            if (id_i == id_j) or (abs(rate_i-rate_j)<DIFF_RATE) :
                 continue 
             
             # pk_date_stock_1,pk_date_stock_2,dataset_type(train|vaildate|test),field_1,field_2,field_3(0相等，1小于，2大于)
@@ -69,16 +72,16 @@ def make_pairs(rows):
             # 在这里把pair的choose,reject排好序。
             if rate_i>rate_j:
                 # map(lambda x:str(x), [id_i,id_j,list_label_i,list_label_j]) 
-                print(";".join([str(x) for x in [id_i,id_j,list_label_i,list_label_j]]))
+                print(";".join([str(x) for x in [id_i,id_j,rate_i,rate_j]]))
             else:
-                print(";".join([str(x) for x in [id_j,id_i,list_label_j,list_label_i]]))
+                print(";".join([str(x) for x in [id_j,id_i,rate_j,rate_i]]))
                     
         #     if j>10:
         #         break #debug
         # break #debug
             
 
-def process_pairs(dataset_type,pair_type="date",field="high_rate",process_idx=-1):
+def process_pairs(dataset_type,pair_type="date",field="highN_rate",process_idx=-1):
     if pair_type == "date":
         # 根据同一交易日下，不同股票构造pair对
         trade_dates = load_trade_dates(conn,0) # start_date=0
@@ -95,7 +98,7 @@ def process_pairs(dataset_type,pair_type="date",field="high_rate",process_idx=-1
             #增量的情况？新增一个交易日
     elif pair_type == "stock": 
         # 根据同一股票下，不同日期构造pair对
-        conn1 = sqlite3.connect("file:data/stocks.db", uri=True)
+        conn1 = sqlite3.connect("file:newdb/stocks.db", uri=True)
         stocks = load_stocks(conn1)
         for idx,stock in enumerate(stocks):
             if (process_idx < 0 or dataset_type!=0) or idx % PROCESSES_NUM == process_idx: 
@@ -103,8 +106,8 @@ def process_pairs(dataset_type,pair_type="date",field="high_rate",process_idx=-1
                 data_rows = load_by_stockno(stock[0],dataset_type,field)
                 make_pairs(data_rows)
                 
-                # break #debug
-                # 增量处理？
+            break #debug
+            # 增量处理？
     else:
         pass 
 
@@ -115,5 +118,5 @@ if __name__ == "__main__":
     dataset_type = int(sys.argv[1])
     pair_type = sys.argv[2]
     process_idx = -1 if len(sys.argv) != 4 else int(sys.argv[3])
-    process_pairs(dataset_type,pair_type,field="high_rate",process_idx=process_idx) #train=0,validate=1,test=2
+    process_pairs(dataset_type,pair_type,field="highN_rate",process_idx=process_idx) #train=0,validate=1,test=2
     conn.close()

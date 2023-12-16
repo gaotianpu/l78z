@@ -35,7 +35,7 @@ logging.basicConfig(filename=log_file,
                     level=logging.INFO,
                     format='%(levelname)s:%(asctime)s:%(lineno)d:%(funcName)s:%(message)s')
 
-conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
 
     
 def get_cache_file(stock_no):
@@ -59,6 +59,7 @@ def download(stock_no, start=None, allow_cache=True):
               "end": (datetime.datetime.now()+datetime.timedelta(1)).strftime("%Y%m%d"),
               "random": random.random()}
     source_url = HISTORY_DATA_URL.format(**params)
+    # print(source_url)
 
     resp = None
     for i in range(3):  # 失败最多重试3次

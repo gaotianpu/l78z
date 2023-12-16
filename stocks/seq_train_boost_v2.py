@@ -20,7 +20,7 @@ MODEL_FILE = "model_boost_point.pth" # model_boost_point,model_boost_point_high1
 
 D_MODEL = 8  #带true_open_rate
 
-# conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+# conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
 
 device = (
     "cuda"

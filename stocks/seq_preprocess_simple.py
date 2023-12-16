@@ -17,7 +17,7 @@ import pickle
 from threading import Thread
 from common import load_stocks,c_round
 
-conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
 
 past_days = 15 
 future_days = 5 
@@ -104,7 +104,7 @@ def process():
         if os.path.exists(fname):
             continue
         print(stock_no)
-        sql = f"select * from stock_raw_daily_2 where stock_no='{stock_no}' and OPEN_price>0 order by trade_date desc"
+        sql = f"select * from stock_raw_daily where stock_no='{stock_no}' and OPEN_price>0 order by trade_date desc"
         df = pd.read_sql(sql, conn)
         end_idx = len(df) - past_days + 1
         
@@ -140,7 +140,7 @@ def process_predict():
     for i, stock in enumerate(stocks):
         stock_no = stock[0]
         cnt = past_days + future_days
-        sql = f"select * from stock_raw_daily_2 where stock_no='{stock_no}' and OPEN_price>0 order by trade_date desc limit 0,{cnt}"
+        sql = f"select * from stock_raw_daily where stock_no='{stock_no}' and OPEN_price>0 order by trade_date desc limit 0,{cnt}"
         df = pd.read_sql(sql, conn) 
         current_date = int(df.loc[0]['trade_date'])
         ret = process_row(df, 0)

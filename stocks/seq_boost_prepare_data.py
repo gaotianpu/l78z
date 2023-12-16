@@ -118,7 +118,7 @@ def process_all(by="dates"): # by_dates():
             print(idx,date)
             process(models,"train",by, date)
     elif by == "stocks":
-        conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+        conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
         stocks = load_stocks(conn)
         for idx,stock in enumerate(stocks):
             print(idx,stock[0])

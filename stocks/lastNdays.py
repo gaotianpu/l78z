@@ -8,7 +8,7 @@ import pandas as pd
 from sqlalchemy import true
 
 trade_date = '20220410'
-conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
 
 # def get_std(trade_date):
 #     sql = "select stock_no,trade_date,TCLOSE,VOTURNOVER from stock_raw_daily where trade_date>'%s' and HIGH>0;"%(trade_date)

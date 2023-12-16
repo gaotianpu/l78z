@@ -20,7 +20,7 @@ PAST_DAYS = 20 #使用过去几天的数据做特征
 # select max(trade_date) from stock_for_transfomer;
 MIN_TRADE_DATE = 0 #20230825
 
-conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
 
 FIELDS_PRICE="OPEN_price;CLOSE_price;LOW_price;HIGH_price".split(";")
 FIELDS = "TURNOVER;TURNOVER_amount;TURNOVER_rate".split(";") #change_amount;
@@ -77,7 +77,7 @@ class PreProcessor:
         #         return i+1
         # return 8 
     
-    def process_row(self, df, idx,current_date):
+    def process_row(self, df, idx,current_date,need_print=True):
         # current_date = int(df.loc[idx]['trade_date'])
         ret = {"stock_no": self.stock_no, "current_date":current_date}
         
@@ -142,11 +142,11 @@ class PreProcessor:
                 feather_ret.append(minmax(row[field],min_max_rate[field][0],min_max_rate[field][1]))
             
             # 对成交金额，使用全局的minmax归一化？
-            # select max(TURNOVER_amount),min(TURNOVER_amount) from stock_raw_daily_2;
+            # select max(TURNOVER_amount),min(TURNOVER_amount) from stock_raw_daily;
             feather_ret.append(minmax(row["TURNOVER_amount"],0.01,4796717.0)) 
         
             # 对成交量，使用全局的minmax归一化？
-            # select max(TURNOVER),min(TURNOVER) from stock_raw_daily_2;
+            # select max(TURNOVER),min(TURNOVER) from stock_raw_daily;
             feather_ret.append(minmax(row["TURNOVER"],0.0,41144528.0))
             
             #与前一天对比
@@ -173,27 +173,43 @@ class PreProcessor:
             li = [str(item) for item in [datestock_uid,ret["current_date"],ret['stock_no'],0,
                                     highN_rate,next_high_rate,next_low_rate,
                                     ret['val_label'],json.dumps(ret)]] #
-            print(';'.join(li))
-            
+            if need_print:
+                print(';'.join(li))
+            return li
         
+        return False
 
     def process_train_data(self):
-        sql = "select * from stock_raw_daily_2 where stock_no='%s' and OPEN_price>0 order by trade_date desc"%(self.stock_no)
-        df = pd.read_sql(sql, self.conn)
+        sql = "select * from stock_raw_daily where stock_no='%s' and OPEN_price>0 order by trade_date desc"%(self.stock_no)
         
+        df = pd.read_sql(sql, self.conn) 
         
         end_idx = len(df) - self.past_days
-        # print(len(df),end_idx)
-        # return 
         for idx in range(self.future_days, end_idx):
             # try:
                 # 保证是增量生成
             current_date = int(df.loc[idx]['trade_date'])
-                # print(current_date,self.start_trade_date)
+            # print(current_date,self.start_trade_date)
                 # if current_date <= self.start_trade_date:
                 #     break
+            
+            # 排除某些停牌导致的时间间隔过大
+            future_date = df.loc[idx-self.future_days]['trade_date']
+            past_date = df.loc[idx+self.past_days]['trade_date']
+            
+            date0 = datetime.strptime(str(past_date), "%Y%m%d").date() 
+            date1 = datetime.strptime(str(current_date), "%Y%m%d").date()
+            date2 = datetime.strptime(str(future_date), "%Y%m%d").date() 
+                
+            past_days = (date1 - date0).days
+            future_days = (date2 - date1).days
+            if future_days>13 or past_days>34:
+                continue
+            
+            # print(past_date,current_date,future_date,past_days,future_days)
                     
             self.process_row(df, idx,current_date)
+            
             # except:
             #     logging.warning("process_train_data process_row error stock_no=%s,idx=%s" %(self.stock_no,idx) )
      
@@ -202,13 +218,15 @@ class PreProcessor:
         df = None  # 释放内存？
         del df  
         
-    def process_predict_data(self):
+    def process_predict_data(self,date=0):
         # statistics = self.get_statistics() 
          
         # max_trade_date = self.get_max_trade_date() #
-        sql = "select * from stock_raw_daily_1 where stock_no='%s' and OPEN_price>0 order by trade_date desc"%(self.stock_no)
-        df = pd.read_sql(sql, conn) 
+        sql = "select * from stock_raw_daily where stock_no='%s' and OPEN_price>0 order by trade_date desc"%(self.stock_no)
+        if date!=0:
+            sql = f"select * from stock_raw_daily where stock_no='{self.stock_no}' and trade_date<={date} and OPEN_price>0 order by trade_date desc"
         
+        df = pd.read_sql(sql, conn)
         current_date = int(df.loc[0]['trade_date'])
         self.process_row(df, 0,current_date)
         
@@ -219,7 +237,27 @@ class PreProcessor:
      
         
         df = None  # 释放内存？
-        del df  
+        del df
+    
+    def process_predict2(self,date=0):
+        sql = f"select * from stock_raw_daily where stock_no='{self.stock_no}' and trade_date<={date} and OPEN_price>0 order by trade_date desc"
+        
+        df = pd.read_sql(sql, conn)
+        
+        current_date = int(df.loc[self.future_days]['trade_date'])
+        ret = self.process_row(df, self.future_days,current_date,False)
+        
+        # try:
+        #     self.process_row(df, 0)
+        # except:
+        #     logging.warning("process_predict_data process_row error stock_no=%s" %(self.stock_no) )
+     
+        
+        df = None  # 释放内存？
+        del df
+        
+        return ret
+        
     
     def process(self):
         if self.data_type == "train":
@@ -252,6 +290,26 @@ def process_all_stocks(data_type="train", processes_idx=-1):
     # 2. 增量添加
     conn.close()
 
+def process_predict_by_date(date):
+    # 20231130
+    all_li = []
+    stocks = load_stocks(conn)
+    for i, stock in enumerate(stocks):
+        p = PreProcessor(conn,stock[0],FUTURE_DAYS,PAST_DAYS,data_type,MIN_TRADE_DATE)
+        p.process_predict_data(date)
+        
+        ret = p.process_predict2(date)
+        if ret:
+            all_li.append(ret)
+    
+    columns = "pk_date_stock;trade_date;stock_no;dataset_type;highN_rate;high1_rate;low1_rate;list_label;data_json".split(";")
+    df = pd.DataFrame(all_li,columns=columns)
+    df = df.sort_values(by=['highN_rate'],ascending=False)
+    trade_date = df['trade_date'].max()
+    df.to_csv(f"data4/seq_predict/f_{trade_date}.data",sep=";",header=None,index=None)
+    
+            
+
 def process_new_stocks(data_type):
     # stocks_statics = get_stocks_static()
     with open('uncollect_stock_no.txt','r') as f:
@@ -263,21 +321,21 @@ def process_new_stocks(data_type):
             p.process() 
 
 def convert_stock_raw_daily(start_date=None):
-    '''基于stock_raw_daily_2，扩展出新的字段'''
+    '''基于stock_raw_daily，扩展出新的字段'''
     if not start_date:
-        sql = "select max(trade_date) as trade_date from stock_raw_daily_1"
+        sql = "select max(trade_date) as trade_date from stock_raw_daily"
         df = pd.read_sql(sql, conn)
         start_date = df['trade_date'][0]
         print(start_date) 
 
-    sql = "select distinct trade_date from stock_raw_daily_2 where trade_date>%s order by trade_date" % (start_date)
+    sql = "select distinct trade_date from stock_raw_daily where trade_date>%s order by trade_date" % (start_date)
     df = pd.read_sql(sql, conn)
     trade_dates = df['trade_date'].sort_values(ascending=False).tolist()
     print("len(trade_dates)=",len(trade_dates))
     
     for idx,date in enumerate(trade_dates):  
         print(idx,date)
-        sql = "select * from stock_raw_daily_2 where trade_date='%s' order by stock_no"%(date)
+        sql = "select * from stock_raw_daily where trade_date='%s' order by stock_no"%(date)
         df_date = pd.read_sql(sql, conn)
         
         cnt = len(df_date)
@@ -312,7 +370,24 @@ if __name__ == "__main__":
     if data_type == "convert_stock_raw_daily":
         convert_stock_raw_daily()
     
+    if data_type == "predict_history":
+        date = int(sys.argv[2]) #>20231130 20231201
+        process_predict_by_date(date)
+        # python seq_preprocess_v4.py predict_history 20231201 > data4/seq_predict/20231201.data &
+        # python seq_preprocess_v4.py predict_history 20231204 > data4/seq_predict/20231204.data & 
+        # python seq_preprocess_v4.py predict_history 20231205 > data4/seq_predict/20231205.data &
+        # python seq_preprocess_v4.py predict_history 20231206 > data4/seq_predict/20231206.data & 
+        # python seq_preprocess_v4.py predict_history 20231207 > data4/seq_predict/20231207.data &
+        # python seq_preprocess_v4.py predict_history 20231208 > data4/seq_predict/20231208.data &
+        # python seq_preprocess_v4.py predict_history 20231211 > data4/seq_predict/20231211.data &
+        
+    if data_type == "tmp":
+        p = PreProcessor(conn,"000670",FUTURE_DAYS,PAST_DAYS,"train",MIN_TRADE_DATE)
+        p.process() 
+            
+        # p = PreProcessor(conn,"000001",FUTURE_DAYS,PAST_DAYS)
+         # p.process()
+    
     # process_new_stocks(data_type)
     
-    # p = PreProcessor(conn,"000001",FUTURE_DAYS,PAST_DAYS)
-    # p.process()
+    

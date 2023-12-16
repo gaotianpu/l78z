@@ -10,7 +10,7 @@ import json
 from common import load_stocks,c_round,load_trade_dates,get_max_trade_date
 
 MAX_ROWS_COUNT = 2000 #从数据库中加载多少数据, 差不多8年的交易日数。
-conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
 
 forecast_fields = 'f_high_mean_rate,f_high_rate,f_low_mean_rate,f_low_rate'.split(",")
 static_fields = 'mean,std,25%,50%,75%'.split(",")
@@ -24,31 +24,31 @@ def get_all_fields():
             fields.append("%s_%s"%(f1,f2))
     return fields
 
-#  select * from stock_raw_daily_2 order by RANDOM() limit 2;
-# select stock_no,round(avg(TURNOVER_rate),2) from stock_raw_daily_2 where stock_no in (300879,300880,300881,300882,300883,300884,300885,300886,300887,300889,300892,300893,300894,300895,300896,300897,300898,300899,300900,300901,300902,300910,300911,300912,300913,300915,300916,300919,300925,300928,300929,300935,300939,300940,300946,300948,300949,300951,300952,300953,300958,300959,300960,300961,300968,300971,300973,300999,301000,301001) and  TURNOVER_rate<>'-' group by stock_no;
-# update stock_raw_daily_2 set TURNOVER_rate=%s where stock_no='%s' and TURNOVER_rate='-';
+#  select * from stock_raw_daily order by RANDOM() limit 2;
+# select stock_no,round(avg(TURNOVER_rate),2) from stock_raw_daily where stock_no in (300879,300880,300881,300882,300883,300884,300885,300886,300887,300889,300892,300893,300894,300895,300896,300897,300898,300899,300900,300901,300902,300910,300911,300912,300913,300915,300916,300919,300925,300928,300929,300935,300939,300940,300946,300948,300949,300951,300952,300953,300958,300959,300960,300961,300968,300971,300973,300999,301000,301001) and  TURNOVER_rate<>'-' group by stock_no;
+# update stock_raw_daily set TURNOVER_rate=%s where stock_no='%s' and TURNOVER_rate='-';
 
 
 def get_update_sql():
-    sql = "select stock_no,round(avg(TURNOVER_rate),2) as TURNOVER_rate from stock_raw_daily_2 where stock_no in ('000596','000796','001914','002074','002789','002798','002801','002809','002819','002820','002821','002840','002893','002899','002900','002901','002923','002926','002937','002939','002950','002952','002953','002959','002961','002962','002963','002965','002966','002973','002976','002984','002987','002988','002990','002991','002992','002993','002997','002999','003000','003003','003006','003011','003012','003015','003016','003017','003018','003019','003026','003027','003030','003035','003036','003037','003040','003816') and  TURNOVER_rate<>'-' group by stock_no;"
+    sql = "select stock_no,round(avg(TURNOVER_rate),2) as TURNOVER_rate from stock_raw_daily where stock_no in ('000596','000796','001914','002074','002789','002798','002801','002809','002819','002820','002821','002840','002893','002899','002900','002901','002923','002926','002937','002939','002950','002952','002953','002959','002961','002962','002963','002965','002966','002973','002976','002984','002987','002988','002990','002991','002992','002993','002997','002999','003000','003003','003006','003011','003012','003015','003016','003017','003018','003019','003026','003027','003030','003035','003036','003037','003040','003816') and  TURNOVER_rate<>'-' group by stock_no;"
     df = pd.read_sql(sql, conn)
     # df.loc[idx]['trade_date']
     for index, row in df.iterrows():
-        usql = ("update stock_raw_daily_2 set TURNOVER_rate=%s where stock_no='%s' and TURNOVER_rate='-';" %(row["TURNOVER_rate"],row["stock_no"]))
+        usql = ("update stock_raw_daily set TURNOVER_rate=%s where stock_no='%s' and TURNOVER_rate='-';" %(row["TURNOVER_rate"],row["stock_no"]))
         print(usql)
 
 def fix_TURNOVER_rate():
-    conn = sqlite3.connect("file:data/stocks.db", uri=True)
+    conn = sqlite3.connect("file:newdb/stocks.db", uri=True)
     commit_id_list = []
     with open('uncollect_stock_no.txt','r') as f:
         for line in f:
             fields = line.strip().split(',') 
             stock_no = fields[0]
             # 
-            sql = "select stock_no,round(avg(TURNOVER_rate),2) as TURNOVER_rate from stock_raw_daily_2 where stock_no='%s' and  TURNOVER_rate<>'-'"%(stock_no)
-            # sql = "select TURNOVER_rate from stock_raw_daily_2 where stock_no='%s' and  TURNOVER_rate<>'-'"%(stock_no)
-            # sql = "select distinct stock_no from stock_raw_daily_2 where TURNOVER_rate='-'"
-            # sql = "select trade_date,stock_no from stock_raw_daily_2 where stock_no='%s' and  TURNOVER_rate='-'"%(stock_no)
+            sql = "select stock_no,round(avg(TURNOVER_rate),2) as TURNOVER_rate from stock_raw_daily where stock_no='%s' and  TURNOVER_rate<>'-'"%(stock_no)
+            # sql = "select TURNOVER_rate from stock_raw_daily where stock_no='%s' and  TURNOVER_rate<>'-'"%(stock_no)
+            # sql = "select distinct stock_no from stock_raw_daily where TURNOVER_rate='-'"
+            # sql = "select trade_date,stock_no from stock_raw_daily where stock_no='%s' and  TURNOVER_rate='-'"%(stock_no)
             df = pd.read_sql(sql, conn)
             # if len(df)>0:
             #     for index, row in df.iterrows():
@@ -59,7 +59,7 @@ def fix_TURNOVER_rate():
     # commit_id_list = [(dataset_type, sid) for sid in selected_ids] 
     cursor = conn.cursor()
     try:
-        sql = "update stock_raw_daily_2 set TURNOVER_rate=? where stock_no=? and TURNOVER_rate='-';"
+        sql = "update stock_raw_daily set TURNOVER_rate=? where stock_no=? and TURNOVER_rate='-';"
         cursor.executemany(sql, commit_id_list)  # commit_id_list上面已经说明
         conn.commit()
     except:
@@ -134,7 +134,7 @@ class StockStatics():
 
     def compute_mean_std(self,stock_no):
         '''抽样计算整体的均值和标准差'''
-        sql = "select * from stock_raw_daily_2 where stock_no='%s' "%(stock_no)
+        sql = "select * from stock_raw_daily where stock_no='%s' "%(stock_no)
         df = pd.read_sql(sql, self.conn)
 
         # if stock_no=="002913":
@@ -206,7 +206,7 @@ def test():
     stocks = load_stocks(conn) 
     for i, stock in enumerate(stocks):
         stock_no = stock[0]
-        sql = "select * from stock_raw_daily_1 where stock_no='%s'"%(stock_no)
+        sql = "select * from stock_raw_daily where stock_no='%s'"%(stock_no)
         df = pd.read_sql(sql, conn)
         describe = df.describe() 
         trade_date_max = df['trade_date'].max()
@@ -324,7 +324,7 @@ def compute_buy_price(df_predict=None):
 def hold_days(stock_no):
     data_file = "data/hold_days/%s.txt"%(stock_no)
     
-    sql = "select * from stock_raw_daily_2 where stock_no='%s' and OPEN_price>0 order by trade_date asc"%(stock_no)
+    sql = "select * from stock_raw_daily where stock_no='%s' and OPEN_price>0 order by trade_date asc"%(stock_no)
     df = pd.read_sql(sql, conn) 
     count = len(df)
     li = []

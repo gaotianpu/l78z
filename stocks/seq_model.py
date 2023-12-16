@@ -224,7 +224,7 @@ def predict():
     df_merged['top3'] = df_merged[[ model_name + '_top3' for model_name in order_models ]].sum(axis=1)
     df_merged['top5'] = df_merged[[ model_name + '_top5' for model_name in order_models ]].sum(axis=1)
                 
-    conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+    conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
     trade_date = str(df_merged["pk_date_stock"][0])[:8]
     df_prices = load_prices(conn,trade_date)
     df_merged = df_merged.merge(df_prices,on="pk_date_stock",how='left')

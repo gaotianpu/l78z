@@ -8,7 +8,7 @@ from common import load_trade_dates,c_round
 
 SAMPLE_COUNT_PER_DAY = 256  #每个交易日抽取多少条作为样本, 256*2=512,
 
-conn = sqlite3.connect("file:data3/stocks_train_v3.db", uri=True)
+conn = sqlite3.connect("file:data4/stocks_train_v4.db", uri=True)
 
 # 重置
 # update stock_for_transfomer set dataset_type=0 where dataset_type>0;
@@ -90,12 +90,12 @@ def validate_dataset_split(date):
         upate_dataset_type(selected_ids,1) #1=验证集
         
         
-def test_dataset_split(date): 
+def test_dataset_split(date,dataset_type=2): 
     '''分割出测试集数据，抽样分布和整体分布近似'''
     df = load_ids_by_date(date,0) #取dataset_type=0(默认值)的数据
     if len(df) > SAMPLE_COUNT_PER_DAY+1:
         selected_ids = df["pk_date_stock"].sample(n=SAMPLE_COUNT_PER_DAY).values.tolist()
-        upate_dataset_type(selected_ids,2) #2=测试集
+        upate_dataset_type(selected_ids,dataset_type) #2=测试集
     else:
         print("error test data cnt less",date)
              
@@ -104,8 +104,9 @@ def process_all():
     trade_dates = load_trade_dates(conn,start_date=1) #
     for date in trade_dates:  
         print("date:",date)
-        test_dataset_split(date)
-        validate_dataset_split(date)
+        test_dataset_split(date,2)
+        test_dataset_split(date,1)
+        # validate_dataset_split(date)
         # break 
 
 def update_dataset_type_from_file():
@@ -118,7 +119,7 @@ def update_dataset_type_from_file():
        upate_dataset_type([line.strip() for line in f.readlines()],2,conn=conn)
 
 # https://www.zditect.com/main-advanced/database/5-ways-to-run-sql-script-from-file-sqlite.html
-# sqlite3 data/stocks.db ".read validate.sql"
+# sqlite3 newdb/stocks.db ".read validate.sql"
 
 def gen_next_day_data(dataset_type=2):
     sql = 'select pk_date_stock,trade_date,stock_no from stock_for_transfomer where dataset_type=%s order by trade_date'%(dataset_type)
@@ -127,7 +128,7 @@ def gen_next_day_data(dataset_type=2):
     df_all = None
     for idx,row in df.iterrows():
         # print(row['pk_date_stock'])
-        sql = "select * from stock_raw_daily_2 where stock_no='%s' and trade_date>%s order by trade_date asc limit 1" % (row['stock_no'],row['trade_date'])
+        sql = "select * from stock_raw_daily where stock_no='%s' and trade_date>%s order by trade_date asc limit 1" % (row['stock_no'],row['trade_date'])
         df_p = pd.read_sql(sql, conn)
         df_p["pk_date_stock"] = row['pk_date_stock']
         # print(idx,row['stock_no'],row['trade_date'])

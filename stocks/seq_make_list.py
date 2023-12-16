@@ -78,7 +78,7 @@ def gen_date_list(cnt_type='22223355'):
         # break
 
 def gen_stock_list(cnt_type='22223355'):
-    conn1 = sqlite3.connect("file:data/stocks.db", uri=True)
+    conn1 = sqlite3.connect("file:newdb/stocks.db", uri=True)
     stocks = load_stocks(conn1) 
     for idx,stock in enumerate(stocks): 
         df = load_ids_by_stock(stock[0],0)
