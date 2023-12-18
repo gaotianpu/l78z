@@ -190,7 +190,7 @@ def predict(trade_date=None):
     
     # model_ 
     order_models = "cls3".split(",")
-    model_files = order_models  #+ "point_low1".split(",") #point_high1,
+    model_files = order_models  + "point_high1,point_low1".split(",") #point_high1,
     
     # 2.3153
     # models_threshold_values=[0.04,0.0361,2.3153,2.3701,3.354,2.9692,1.5939,0.9008]
@@ -205,6 +205,9 @@ def predict(trade_date=None):
         print(model_name)
         if model_name == "cls3":
             model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL,3)
+        else :
+            model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL)
+            
         mfile = "model_v4/model_%s.pth"%(model_name)
         if os.path.isfile(mfile):
             model.load_state_dict(torch.load(mfile)) 
@@ -231,7 +234,9 @@ def predict(trade_date=None):
                 
             df = pd.DataFrame(all_li,columns=columns)
             df = df.round({model_name: 4})
-            # df[model_name + '_idx'] = range(len(df)) 
+            if model_name=="cls3":
+                df = df.round({model_name+"_0": 4,model_name+"_2":4})
+            
             # 排序,标出top5，top3
             if model_name in order_models:
                 count = len(all_li)
@@ -268,17 +273,17 @@ def predict(trade_date=None):
     # df_merged = df_merged.merge(df_static_stocks_0,on="stock_no",how='left')
     
     # 计算买入价和卖出价格？
-    # point_low1_options = [-0.0299, -0.0158, 0, 0.0193, 0.025]
-    # df_merged['buy_prices'] = ''
-    # df_merged['buy_prices'] = df_merged.apply(
-    #     lambda x: ','.join([str(c_round((x['point_low1'] + p + 1) * x['CLOSE_price'],2)) for p in point_low1_options]),
-    #     axis=1)
+    df_merged['buy_prices'] = ''
+    point_low1_options = [-0.02, -0.01, 0, 0.01, 0.02]
+    df_merged['buy_prices'] = df_merged.apply(
+        lambda x: ','.join([str(c_round((x['point_low1'] + p + 1) * x['CLOSE_price'],2)) for p in point_low1_options]),
+        axis=1)
     
-    # point_high1_options = [-0.0266, -0.0158, 0, 0.0193, 0.0251]
-    # df_merged['sell_prices'] = ''
-    # df_merged['sell_prices'] = df_merged.apply(
-    #     lambda x:','.join([str(c_round((x['point_high1'] + p + 1) * x['CLOSE_price'],2)) for p in point_high1_options]),
-    #     axis=1)
+    df_merged['sell_prices'] = ''
+    point_high1_options = [-0.022, -0.012, 0, 0.012, 0.022]
+    df_merged['sell_prices'] = df_merged.apply(
+        lambda x:','.join([str(c_round((x['point_high1'] + p + 1) * x['CLOSE_price'],2)) for p in point_high1_options]),
+        axis=1)
     
     # point_high1 效果更好些？
     df_merged = df_merged.sort_values(by=["cls3"],ascending=False) # 
@@ -286,11 +291,11 @@ def predict(trade_date=None):
     df_merged.to_csv("data4/predict/predict_merged.txt",sep=";",index=False) 
     
     # 暂时先不关注科创板
-    df_merged = df_merged[ (df_merged['stock_no'].str.startswith('688') == False)]
+    # df_merged = df_merged[ (df_merged['stock_no'].str.startswith('688') == False)]
     
     sel_fields = "pk_date_stock,stock_no,top3,point_high,point_high1,pair_date,point_low1,CLOSE_price,LOW_price,HIGH_price,buy_prices,sell_prices".split(",")
-    sel_fields = "pk_date_stock,stock_no,cls3,cls3_0,cls3_2,cls3_idx,CLOSE_price,LOW_price,HIGH_price".split(",")
-    df_merged[sel_fields].to_csv("predict_merged_for_show_v4.txt",sep=";",index=False) 
+    sel_fields = "pk_date_stock,stock_no,cls3,cls3_0,cls3_2,cls3_idx,point_low1,point_high1,CLOSE_price,LOW_price,HIGH_price,buy_prices,sell_prices".split(",")
+    df_merged[sel_fields].to_csv("predict_merged_for_show_v4.txt",sep=";",index=False)
 
 def predict_many():
     start_date=20231017

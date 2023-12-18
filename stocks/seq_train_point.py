@@ -16,7 +16,7 @@ from sklearn.metrics import ndcg_score
 
 from seq_model_v4 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "low1" #high,low,high1,low1 
+MODEL_TYPE = "high1" #high,low,high1,low1 
 MODEL_FILE = "model_point_%s.pth" % (MODEL_TYPE)
 
 def get_model_output_file(model_type=MODEL_TYPE,data_type="test",epoch=1):
@@ -44,7 +44,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
             avg_loss = total_loss / (batch + 1) 
             loss, current = loss.item(), (batch + 1) * len(output)
             rate = round(current*100/size,2)
-            print(f"loss: {loss:>7f} , avg_loss: {avg_loss:>7f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate}%]") 
+            print(f"loss: {loss:>8f} , avg_loss: {avg_loss:>8f}  [{epoch:>5d}  {current:>5d}/{size:>5d} {rate}%]") 
             
         cp_save_n = 1280 #cp, checkpoint
         if batch % cp_save_n == 0:
@@ -134,16 +134,18 @@ def training(field="highN_rate"):
     model.to(device)
 
     epochs = 4
-    start = 0
+    start = 3
     for t in range(epochs):
         current_epoch = t+1+start 
         
-        if current_epoch in [2,3]:
-            learning_rate = 0.0001
-        elif current_epoch in [4]:
+        if current_epoch == 2:
             learning_rate = 0.00001
+        elif current_epoch == 3 :
+            learning_rate = 0.00001
+        elif current_epoch == 4 :
+            learning_rate = 0.000001
         else:
-            learning_rate = 0.00001
+            learning_rate = 0.0000001
         adjust_learning_rate(optimizer, learning_rate)
         
         print(f"Epoch={current_epoch}, lr={learning_rate} \n-------------------------------")   
@@ -173,6 +175,26 @@ def evaluate_low1(dataset_type="test"):
         
         df = pd.read_csv(output_file,sep=";",header=0)
         df_buy_success = df[df['predict_score']>df['true_score']]
+        df_buy_success['diff'] = abs(df['predict_score']-df['true_score'])
+        print(dataset_type,i,len(df),len(df_buy_success),len(df_buy_success)/len(df),df_buy_success['diff'].mean())
+
+def evaluate_high1(dataset_type="test"):
+    '''评估《最高价预测模型》 的效果
+    1. 按照预测的最高价卖出，成功率多少； 
+    2. 成功部分，与实际的最高价比，平均差值多少
+    3. 指定条件下(例如，指定其他模型阈值下)，上述二者效果时多少
+    '''
+    t_data = StockPointDataset(dataset_type,field="next_low_rate")
+    t_dataloader = DataLoader(t_data, batch_size=128)
+    
+    for i in range(0,6):
+        df = None
+        output_file = output_file = get_model_output_file("high1",dataset_type,i)
+        if not os.path.exists(output_file):
+            print(output_file, "is not exist")
+        
+        df = pd.read_csv(output_file,sep=";",header=0)
+        df_buy_success = df[df['predict_score']<df['true_score']]
         df_buy_success['diff'] = abs(df['predict_score']-df['true_score'])
         print(dataset_type,i,len(df),len(df_buy_success),len(df_buy_success)/len(df),df_buy_success['diff'].mean())
         

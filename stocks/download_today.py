@@ -144,7 +144,7 @@ def process_all(last_df,df_predict,one_time=False):
         print("cache shoot")
         today = datetime.today().strftime("%Y%m%d")
         cache_file = f"data/today/raw_{today}150.txt"
-        # cache_file = f"data/today/raw_20231201150.txt"
+        # cache_file = f"data/today/raw_20231215150.txt"
         df = pd.read_csv(cache_file,sep=";",header=0,dtype={'stock_no': str,'stock_name': str})
         df["rate_now"] = df["last_rate"]
     else:
@@ -203,11 +203,11 @@ def gen_buy_sell_prices(df_today,df_predict,version="",sort_field=""):
     df_predict['current_open'] = round(df_predict['rate_now'] - df_predict['open_rate'],4)  
     df_predict['rate_minmax'] = round((df_predict['current'] - df_predict['low'])/(df_predict['high'] - df_predict['low']),4) 
     # df_predict['open_rate_label'] = df_predict.apply(lambda x: 1 if x['open_rate'] < x['open_rate_25%'] else 2 if x['open_rate'] < x['open_rate_50%'] else 3 if x['open_rate'] < x['open_rate_75%'] else 4, axis=1)
-    # df_predict['in_hold'] = round(df_predict['rate_now'] - df_predict['point_low1'],4)
-    # df_predict['in_hold_2'] = round(df_predict['rate_now'] - df_predict['point_high1'],4)
+    df_predict['in_hold'] = round(df_predict['rate_now'] - df_predict['point_low1'],4)
+    df_predict['in_hold_2'] = round(df_predict['rate_now'] - df_predict['point_high1'],4)
     
-    # df_predict['lowest'] = round(df_predict['last_close'] * (1+df_predict['point_low1']),2)
-    # df_predict['high1_price'] = round(df_predict['last_close'] * (1+df_predict['point_high1']),2)
+    df_predict['lowest'] = round(df_predict['last_close'] * (1+df_predict['point_low1']),2)
+    df_predict['high1_price'] = round(df_predict['last_close'] * (1+df_predict['point_high1']),2)
     
     
     # 3. 获取统计数据
@@ -219,8 +219,8 @@ def gen_buy_sell_prices(df_today,df_predict,version="",sort_field=""):
     good_cnt = len(df_predict[df_predict['open_rate']>0])
     
     # 生成html数据
-    # open_rate_label,
-    sel_fields = "stock_no,stock_name,open_rate,rate_now,rate_minmax,rate_delta,low_rate,low,high,high_rate,cls3,cls3_0,cls3_2,cls3_idx".split(",")
+    # open_rate_label,cls3_idx,
+    sel_fields = "stock_no,stock_name,open_rate,rate_now,rate_minmax,rate_delta,low_rate,low,high,high_rate,cls3,cls3_0,cls3_2,point_low1,point_high1,buy_prices,sell_prices".split(",")
     df_html = df_predict[sel_fields]
     html_li = []
     html_li.append("<head>%s, count=%s %s</head>" % (datetime.today().strftime("%Y%m%d %H%M"),len(df_predict),good_cnt))
@@ -236,27 +236,27 @@ def gen_buy_sell_prices(df_today,df_predict,version="",sort_field=""):
         columns.append("<td>%s</td>"%(idx))
         for field in sel_fields:
             color = "None"
-            # if field == "buy_prices":
-            #     li = []
-            #     for x in row['buy_prices'].split(','):
-            #         if row["low"] < float(x) :
-            #             li.append('<font style="background-color:%s">%s</font>'%('#FFA500',x))
-            #         else:
-            #             li.append(x)
-            #     row['buy_prices'] = ",".join(li)
-            # if field == "sell_prices":
-            #     li = []
-            #     for x in row['sell_prices'].split(','):
-            #         if row["high"] >= float(x) :
-            #             li.append('<font style="background-color:%s">%s</font>'%('#FFA500',x))
-            #         else:
-            #             li.append(x)
-            #     row['sell_prices'] = ",".join(li)
-            # if field == "in_hold" : 
-            #     if row['in_hold'] < -0.0215:
-            #         color = 'green'
-            #     if row["low_rate"]<row["point_low1"]:
-            #         color = '#FFA500'
+            if field == "buy_prices":
+                li = []
+                for x in row['buy_prices'].split(','):
+                    if row["low"] < float(x) :
+                        li.append('<font style="background-color:%s">%s</font>'%('#FFA500',x))
+                    else:
+                        li.append(x)
+                row['buy_prices'] = ",".join(li)
+            if field == "sell_prices":
+                li = []
+                for x in row['sell_prices'].split(','):
+                    if row["high"] >= float(x) :
+                        li.append('<font style="background-color:%s">%s</font>'%('#FFA500',x))
+                    else:
+                        li.append(x)
+                row['sell_prices'] = ",".join(li)
+            if field == "in_hold" : 
+                if row['in_hold'] < -0.0215:
+                    color = 'green'
+                if row["low_rate"]<row["point_low1"]:
+                    color = '#FFA500'
             if field == "rate_delta":
                 if row['rate_delta'] < -0.001:
                     color = 'green'
@@ -272,15 +272,15 @@ def gen_buy_sell_prices(df_today,df_predict,version="",sort_field=""):
                     color = 'green'
                 if row['rate_now']>0.025:
                     color = '#FFA500'
-            # if field == "point_low1":
-            #     if row["low_rate"]<row["point_low1"]:
-            #         color = 'green'   
-            # if field == "stock_name":
-            #     if row["high_rate"] < 0 :
-            #         color = 'green'
-            # if field == "high_rate":
-            #     if row["high_rate"]>(row["point_high1"]-0.02): #0.0151
-            #         color = '#FFA500'
+            if field == "point_low1":
+                if row["low_rate"]<row["point_low1"]:
+                    color = 'green'   
+            if field == "stock_name":
+                if row["high_rate"] < 0 :
+                    color = 'green'
+            if field == "high_rate":
+                if row["high_rate"]>(row["point_high1"]-0.02): #0.0151
+                    color = '#FFA500'
             columns.append('<td style="background-color:%s">%s</td>'%(color,row[field]))
         html_li.append("<tr %s>%s</tr>\n" %(tr_color,"".join(columns)))
     html_li.append("</table>")
@@ -316,7 +316,8 @@ def run_no_stop(one_time=False):
     if os.path.exists(last_file):
         last_df = pd.read_csv(last_file,sep=";",header=0,dtype={'stock_no': str})
     
-    if one_time:    
+    if one_time:
+        # last_df = pd.read_csv("data/today/raw_20231215150.txt",sep=";",header=0,dtype={'stock_no': str})
         process_all(last_df,df_predict,one_time)
         return 
     

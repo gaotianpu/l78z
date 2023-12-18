@@ -15,7 +15,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 from sklearn.metrics import ndcg_score
 
 from common import load_trade_dates
-from seq_model_v3 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
+from seq_model_v4 import StockForecastModel,StockPointDataset,evaluate_ndcg_and_scores,SEQUENCE_LENGTH,D_MODEL,device
 
 MODEL_TYPE = "date" # date,stock,date_stock
 MODEL_FILE = "model_pair.pth"  #% (MODEL_TYPE)
@@ -164,13 +164,13 @@ def training(epoch=1):
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
     learning_rate = 0.0000001 #0.0001 #0.00001 #0.000001  #0.0000001 
-    if epoch in [2,3,4]:
+    if epoch in [2,3] :
         learning_rate = 0.00001
-    elif epoch in [5,6]:
-        learning_rate = 0.000001
-    else:
-        learning_rate = 0.000001
-         
+    elif epoch == 4 :
+        learning_rate = 0.00001 #000001
+    else :
+        learning_rate = 0.00001
+    
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法
@@ -189,7 +189,7 @@ def training(epoch=1):
     
     # epochs = 1
     # for t in range(epochs):
-    print(f"Epoch {epoch}\n-------------------------------")
+    print(f"Epoch={epoch}, lr={learning_rate}\n-------------------------------")
     train(train_dataloader, model, criterion, optimizer,epoch)
     # test(validate_dataloader, model, criterion, "validate")
     # test(test_dataloader, model, criterion, "test")
@@ -310,6 +310,10 @@ if __name__ == "__main__":
     if op_type == "training":
         epoch = int(sys.argv[2])
         training(epoch)
+        # training(4)
+        # training(5)
+        # training(6)
+        # training(7)
     if op_type == "evaluate_model_checkpoints":
         evaluate_model_checkpoints() 
     if op_type == "gen_date_predict_scores_all":

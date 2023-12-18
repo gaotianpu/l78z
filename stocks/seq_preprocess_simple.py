@@ -151,9 +151,36 @@ def process_predict():
     vdf = vdf.sort_values(by=[3],ascending=False)
     vdf.to_csv(f"recall_vector/{current_date}.txt",sep=";",index=False,header=None) 
 
+def process_days():
+    stocks = load_stocks(conn)
+    for i, stock in enumerate(stocks):
+        stock_no = stock[0]
+        # print(stock_no)
+        sql = f"select * from stock_raw_daily where stock_no='{stock_no}' and OPEN_price>0 order by trade_date desc"
+        df = pd.read_sql(sql, conn)
+        
+        for idx, row in df.iterrows():
+            if idx==0:
+                continue
+            today = df.loc[idx-1]['trade_date']
+            yestoday = row['trade_date']
+            
+            date0 = datetime.strptime(str(today), "%Y%m%d").date() 
+            date1 = datetime.strptime(str(yestoday), "%Y%m%d").date() 
+            days = (date0 - date1).days
+            if days>11:
+                print(stock_no,yestoday,today,days)
+            
+        # break 
+        
+        
+
 if __name__ == "__main__":
     data_type = sys.argv[1]
     if data_type == "train": 
         process()
     if data_type == "predict":
         process_predict()
+    if data_type == "days":
+        # newdb/special_days.txt
+        process_days()
