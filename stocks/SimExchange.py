@@ -161,7 +161,8 @@ class SimExchange():
         return True,"sucess"
     
     def order(self,tradeDate,orders):
-        '''挂单操作，操作类型：买入，卖出；订单状态：成功、失败
+        '''挂单操作
+        操作类型：买入，卖出；订单状态：成功、失败
         in: stock_no,op_type,price,stock_hands
         out: order_no,trade_date,stock_no,real_low,real_high,op_type,price,stock_hands,amount,order_status
         '''
@@ -177,12 +178,16 @@ class SimExchange():
         for order in orders:
             (stockNo,opType,price,stockHands) = tuple(order)
             
+            if opType>0 and remainingAmount < 99.0:
+                print(f"{tradeDate} {stockNo} remainingAmount < 99.0")
+                continue
+            
             r = random.randint(1,9999)
             orderNo = f"{tradeDate}{stockNo}{r}"
             rprice = realPrices.get(stockNo)
             if not rprice:
-                print("{tradeDate} {stockNo} cannot get real prices")
-                continue 
+                print(f"{tradeDate} {stockNo} cannot get real prices")
+                continue  
             
             # opType, 1买入，-1卖出， stockHands,1手=100股
             stockHands = opType*stockHands
@@ -194,6 +199,7 @@ class SimExchange():
             if opType>0 and price>rprice[0]: #买入操作时,出价比当日最低价要高
                 #验证账户余额是否大于amount
                 order_status = 1 
+                remainingAmount = remainingAmount - abs(amount)
             if opType<0 and price<rprice[1]: #卖出操作时,出价比当日最高价要低
                 #验证账号余票是否大于stockHands
                 order_status = 1 
@@ -214,6 +220,7 @@ def test():
     tradeDate = 20231214
     stocks = ['000001', '000002', '000004', '000005', '000006', '000007', '000008', '000009', '000010', '000011']
     ret = exchange.get_real_prices(tradeDate,stocks)
+    
     print(ret)
 
 if __name__ == "__main__":

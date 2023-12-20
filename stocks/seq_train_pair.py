@@ -165,7 +165,7 @@ def training(epoch=1):
     
     learning_rate = 0.0000001 #0.0001 #0.00001 #0.000001  #0.0000001 
     if epoch in [2,3] :
-        learning_rate = 0.00001
+        learning_rate = 0.0001
     elif epoch == 4 :
         learning_rate = 0.00001 #000001
     else :

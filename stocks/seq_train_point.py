@@ -84,7 +84,7 @@ def test(dataloader, model, loss_fn,data_type="test",epoch=0):
     print(f"\n{data_type} Avg loss: {test_loss:>8f}")
     
     df = pd.DataFrame(all_ret,columns=['pk_date_stock','predict_score','true_score','list_label'])
-    df = df.sort_values(by=["predict"],ascending=False)
+    df = df.sort_values(by=["predict_score"],ascending=False)
     df.to_csv(get_model_output_file(MODEL_TYPE,data_type,epoch),sep=";",index=False)
     
 
@@ -212,7 +212,7 @@ def evaluate_model_checkpoints(field="highN_rate"):
     
     criterion = nn.MSELoss() #均方差损失函数
     model = StockForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-    for i in range(4,6):
+    for i in range(1,5):
         model_name = maps.get(field)
         fname = f"model_point_{model_name}.pth.{i}"
         if not os.path.isfile(fname):
@@ -221,9 +221,9 @@ def evaluate_model_checkpoints(field="highN_rate"):
         
         print("\n###" + fname)
         model.load_state_dict(torch.load(fname))
-        test(vali_dataloader, model, criterion,"vaildate")
-        test(test_dataloader, model, criterion,"test")
-        break
+        test(vali_dataloader, model, criterion,"vaildate",i)
+        test(test_dataloader, model, criterion,"test",i)
+        # break
                     
 
 # python seq_train_point.py training highN_rate

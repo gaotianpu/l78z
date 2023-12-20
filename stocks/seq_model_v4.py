@@ -189,7 +189,7 @@ def predict(trade_date=None):
     df_merged = None 
     
     # model_ 
-    order_models = "cls3".split(",")
+    order_models = "cls3,pair".split(",")
     model_files = order_models  + "point_high1,point_low1".split(",") #point_high1,
     
     # 2.3153
@@ -230,7 +230,7 @@ def predict(trade_date=None):
             
             columns = ["pk_date_stock",model_name]
             if model_name=="cls3":
-                columns = ["pk_date_stock",model_name,model_name+"_0",model_name+"_2",model_name+"_idx"]
+                columns = ["pk_date_stock",model_name,model_name+"_0",model_name+"_2",model_name+"_no"]
                 
             df = pd.DataFrame(all_li,columns=columns)
             df = df.round({model_name: 4})
@@ -238,12 +238,14 @@ def predict(trade_date=None):
                 df = df.round({model_name+"_0": 4,model_name+"_2":4})
             
             # 排序,标出top5，top3
+            df[model_name + '_idx'] = 99999
             if model_name in order_models:
                 count = len(all_li)
-                top3 = int(count/12)  # =count*3/24
-                top5 = int(count/12) 
+                # top3 = int(count/12)  # =count*3/24
+                # top5 = int(count/12) 
                 
                 df = df.sort_values(by=[model_name],ascending=False) #
+                df[model_name + '_idx'] = range(count)
                 #[1 if i<top3 else 0 for i in range(count)]
                 # df[model_name + '_top3'] = [1 if i<top3 else 0 for i in range(count)]
                 # df[model_name + '_top5'] = [1 if i<top5 else 0 for i in range(count)]
@@ -294,7 +296,7 @@ def predict(trade_date=None):
     # df_merged = df_merged[ (df_merged['stock_no'].str.startswith('688') == False)]
     
     sel_fields = "pk_date_stock,stock_no,top3,point_high,point_high1,pair_date,point_low1,CLOSE_price,LOW_price,HIGH_price,buy_prices,sell_prices".split(",")
-    sel_fields = "pk_date_stock,stock_no,cls3,cls3_0,cls3_2,cls3_idx,point_low1,point_high1,CLOSE_price,LOW_price,HIGH_price,buy_prices,sell_prices".split(",")
+    sel_fields = "pk_date_stock,stock_no,cls3,cls3_0,cls3_2,cls3_no,pair,pair_idx,point_low1,point_high1,CLOSE_price,LOW_price,HIGH_price,buy_prices,sell_prices".split(",")
     df_merged[sel_fields].to_csv("predict_merged_for_show_v4.txt",sep=";",index=False)
 
 def predict_many():

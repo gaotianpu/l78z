@@ -81,6 +81,8 @@ class PreProcessor:
         # current_date = int(df.loc[idx]['trade_date'])
         ret = {"stock_no": self.stock_no, "current_date":current_date}
         
+        # 如果遇到第二天整天处于涨跌停状态的，也不考虑进入训练数据
+        
         (highN_rate,next_high_rate,next_low_rate) = (0.0,0.0,0.0)
         
         # 未来值,FUTURE_DAYS最高价，最低价？
@@ -88,7 +90,8 @@ class PreProcessor:
             buy_base = df.loc[idx-1]['OPEN_price'] # df_future.iloc[-1]['TOPEN']
             hold_base = df.loc[idx]['CLOSE_price'] #昨收价格
             
-            highN_rate = compute_rate(df.loc[idx-self.future_days]['HIGH_price'],buy_base) #保守点，把最高价?作为买入价            
+            #保守点，把最高价?作为买入价，用future_days的最低价减去当前的最高价
+            highN_rate = compute_rate(df.loc[idx-self.future_days]['HIGH_price'],buy_base)           
             #用于预测要买入的价位
             next_low_rate = compute_rate(df.loc[idx-1]['LOW_price'],hold_base)
             #用于预测要卖出的价位
