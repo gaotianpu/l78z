@@ -28,22 +28,27 @@ device = (
 # 1. 定义数据集
 class BtcPointDataset(Dataset):
     def __init__(self,datatype="train",field="highN_rate"):
+        self.field = field
         dtmap = {"train":0,"validate":1,"test":2,"predict":3}
         dataset_type = dtmap.get(datatype)
+        self.conn = sqlite3.connect("file:data/btc_train.db?mode=ro", uri=True)
         
-        self.field = field
-        
-        all_df = pd.read_csv('data/btc/all_train_data.csv', sep=";",header=0)
-        df = all_df[all_df['dataset_type']==dataset_type]
-        self.df = df.reset_index(drop=True)
-        
+        #预测不同的字段，可能需要不同的数据清洗逻辑，每种类型单独构建数据文件
+        self.df = pd.read_csv(f'data/point_{dataset_type}_{field}.csv', 
+                              sep=";",header=None,names=['pk_date_btc',field]) 
+    
     def __len__(self):
         return len(self.df)
 
     def __getitem__(self, idx):
         pk_date_btc = self.df.iloc[idx][0] 
         
-        data_json = json.loads(self.df.iloc[0]['data_json']) #.replace("'",'"'))
+        sql = f"select * from train_data where pk_date_btc={pk_date_btc}"
+        df_item = pd.read_sql(sql, self.conn)
+        if len(df_item)==0:
+            print(pk_date_btc)
+        
+        data_json = json.loads(df_item.iloc[0]['data_json'])
         true_score = torch.tensor(data_json.get(self.field))
         past_days = torch.tensor(data_json["past_days"])
         
@@ -92,16 +97,16 @@ class BtcForecastModel(nn.Module):
 def test():
     dataset = BtcPointDataset(datatype="train",field="highN_rate")
     pk_date_btc, true_score, past_days = next(iter(dataset))
-    # print(pk_date_btc, true_score, past_days) 
+    print(pk_date_btc, true_score, past_days) 
     
-    dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
+    # dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
     
-    model = BtcForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
-    model.train() #训练模式
-    for batch, (pk_date_stock,true_scores,data) in enumerate(dataloader):         
-        output = model(data.to(device))
-        print(output)
-        break
+    # model = BtcForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
+    # model.train() #训练模式
+    # for batch, (pk_date_stock,true_scores,data) in enumerate(dataloader):         
+    #     output = model(data.to(device))
+    #     print(output)
+    #     break
     
 if __name__ == "__main__":
     test()
