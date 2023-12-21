@@ -30,6 +30,7 @@ run(){
 
     ln -sf /mnt/d/github/l78z/stocks/data3/point_0_all.txt data3/point_0.txt
     ln -sf /mnt/d/github/l78z/stocks/data3/point_0_9.txt data3/point_0.txt
+    ln -sf /mnt/d/github/l78z/stocks/data3/point_0_0_9.txt data3/point_0.txt
     ln -sf /mnt/d/github/l78z/stocks/data3/point_0_10.txt data3/point_0.txt
     ln -sf /mnt/d/github/l78z/stocks/data3/point_0_11.txt data3/point_0.txt
     ln -sf /mnt/d/github/l78z/stocks/data3/point_0_12.txt data3/point_0.txt

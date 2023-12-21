@@ -104,11 +104,9 @@ def process_row(df, idx,current_date,need_print=True):
     
     return False
 
-def process():
-    df = pd.read_csv(f"data/btc/all_2014_2023.csv",sep=";",header=0,dtype={'trade_date':int})
-    end_idx = len(df) - PAST_DAYS
+def process_rows(df,start_idx,end_idx):
     all_rows = []
-    for idx in range(FUTURE_DAYS, end_idx):
+    for idx in range(start_idx, end_idx):
         current_date = int(df.loc[idx]['trade_date'])
         ret = process_row(df, idx,current_date,need_print=False)
         if ret:
@@ -116,20 +114,115 @@ def process():
     
     columns="pk_date_btc,trade_date,btc_no,dataset_type,highN_rate,lowN_rate,high1_rate,low1_rate,data_json".split(",")
     df = pd.DataFrame(all_rows,columns=columns)
-    df = df.astype({"pk_date_btc":int,"trade_date":int,"btc_no":int,"dataset_type":int})
-    
+    df = df.astype({"pk_date_btc":int,"trade_date":int,"btc_no":int,"dataset_type":int,
+                    "highN_rate":float,"lowN_rate":float,"high1_rate":float,"low1_rate":float})
+    return df
+
+def data_split(df):
     # 分割数据集，train,validate,test。 total=3612, validate/test各300？
     df_test = df.sample(300)
     for idx,rows in df_test.iterrows():
         df.loc[idx,'dataset_type'] = 2 
     
     df_tmp = df[df['dataset_type']==0]
-    df_validate = df_tmp.sample(300)
-    for idx,rows in df_validate.iterrows():
+    df_thresholdidate = df_tmp.sample(300)
+    for idx,rows in df_thresholdidate.iterrows():
         df.loc[idx,'dataset_type'] = 1 
+
+price_fields = "open,low,high,close".split(",")
+def compute_more_rate(df):
+    '''持有天数与收益情况
+    '''
+    for p1 in price_fields:
+        for p2 in price_fields:
+            df[f'delta_{p1}_{p2}']=0.0
+    df['delta_amount']=0.0
+    df['range_price']=0.0
     
-    df.to_csv("data/btc/all_train_data.csv",sep=";",index=None)
+    for i in range(1,7):     
+        df[f'rate_{i}']=0.0
+    
+    total_cnt = len(df)     
+    for idx,row in df.iterrows():
+        if idx+1<total_cnt:
+            for p1 in price_fields:
+                for p2 in price_fields:
+                    df.loc[idx,f'delta_{p1}_{p2}'] = round((row[p1] - df.loc[idx+1][p2])*100/df.loc[idx+1][p2],4)
+            df['delta_amount'] = round((row["amount"] - df.loc[idx+1]["amount"])*100/df.loc[idx+1]["amount"],4)
+            df.loc[idx,f'range_price'] = round((row["high"] - row["low"])*100/df.loc[idx+1]["close"],4) #波动幅度
+            
+            # 比特币24时小时连续交易，last_close==open, 下面股票里的似乎没必要？
+            # df.loc[idx,f'high_topen'] = round((row["high"] - row["open"])*100/row["open"],4) #波动幅度
+            # df.loc[idx,f'low_topen'] = round((row["low"] - row["open"])*100/row["open"],4) #波动幅度
+            # df.loc[idx,f'close_topen'] = round((row["close"] - row["open"])*100/row["open"],4) #波动幅度
+            
+           
+        for days in range(6):
+            day_span = days + 1
+            new_idx = idx + day_span
+            if (new_idx+1)>=total_cnt:
+                break 
+            rate = round((row['close'] - df.loc[new_idx]['open'])*100/df.loc[new_idx]['open'],4)
+            # 当日开盘价(和rate保持一致) new_idx？or 第二日开盘价(预测用) new_idx+1？
+            df.loc[new_idx+1,f'rate_{day_span}'] = rate
+            
+            # print(df.loc[new_idx]['trade_date'],df.loc[new_idx]['open'],row['trade_date'],row['close'],rate)
+    return df 
+        
+def process():
+    df_raw = pd.read_csv(f"data/btc/all_2014_2023.raw.csv",sep=";",header=0,dtype={'trade_date':int})
+    
+    df_raw = compute_more_rate(df_raw)
+    df_raw.to_csv(f"data/btc/all_2014_2023.csv",sep=";",index=None) #header=None,
+    
+    df = process_rows(df_raw,FUTURE_DAYS,len(df_raw) - PAST_DAYS)
+    
+    # 分割数据集
+    data_split(df)
+    df.to_csv("data/btc/all_train_data.csv",sep=";",index=None,header=None)
+    
+    #统计均值、标准差，2个标准差外的，被一般认为异常值
+    # 可对这些异常值人工分析，判断与什么类型的重大实践相关
+    static(df)
+    
+
+def static(df):
+    sel_fields = "highN_rate,lowN_rate,high1_rate,low1_rate".split(",")
+    df = df[sel_fields]
+    d = df.describe()
+    print(d)
+    total = len(df)
+    ret = {}
+    for field in sel_fields:
+        mean = d[field]['mean']
+        std = d[field]['std']
+        min_threshold = round(mean - std*2,4)
+        max_threshold = round(mean + std*2,4)
+        sel_count = len(df[ (df[field]>min_threshold) & (df[field]<max_threshold)])
+        print(field,min_threshold,max_threshold,sel_count,round(sel_count*100/total,2))
+        ret[field]=[min_threshold,max_threshold]
+    print(ret)
+    
+    '''
+    highN_rate    lowN_rate   high1_rate    low1_rate
+count  3612.000000  3612.000000  3612.000000  3612.000000
+mean      2.969649    -1.511789     2.250323    -2.219405
+std       8.221568     7.931796     2.851396     3.002024
+min     -31.949900   -49.366200    -7.287800   -38.565500
+25%      -1.393750    -5.115500     0.455300    -2.819750
+50%       1.772000    -0.953150     1.278900    -1.227900
+75%       6.533275     2.618025     2.989600    -0.431650
+max      62.198400    35.663000    28.618800     5.538200
+
+highN_rate -13.4735 19.4128 3406 94.3
+lowN_rate -17.3754 14.3518 3394 93.96
+high1_rate -3.4525 7.9531 3446 95.4
+low1_rate -8.2235 3.7846 3447 95.43
+    '''
 
 if __name__ == "__main__":
     # python preprocess.py > data/all_train.data
     process()
+    # sel_fields = "highN_rate,lowN_rate,high1_rate,low1_rate".split(",")
+    # df = pd.read_csv("data/btc/all_train_data.csv",sep=";",header=0,usecols=sel_fields)
+    # static(df)

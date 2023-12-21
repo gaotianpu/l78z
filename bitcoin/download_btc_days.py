@@ -70,50 +70,8 @@ def process():
     df = df.sort_values(by=["trade_date"],ascending=False)
     df = df.reset_index(drop=True) #排序后重置索引
     
-    df = compute_more_rate(df)
+    df.to_csv(f"data/btc/all_2014_2023.raw.csv",sep=";",header=None,index=None) 
     
-    df.to_csv(f"data/btc/all_2014_2023.csv",sep=";",index=None) #header=None,
-
-price_fields = "open,low,high,close".split(",")
-
-def compute_more_rate(df):
-    '''持有天数与收益情况
-    '''
-    for p1 in price_fields:
-        for p2 in price_fields:
-            df[f'delta_{p1}_{p2}']=0.0
-    df['delta_amount']=0.0
-    df['range_price']=0.0
-    
-    for i in range(1,7):     
-        df[f'rate_{i}']=0.0
-    
-    total_cnt = len(df)     
-    for idx,row in df.iterrows():
-        if idx+1<total_cnt:
-            for p1 in price_fields:
-                for p2 in price_fields:
-                    df.loc[idx,f'delta_{p1}_{p2}'] = round((row[p1] - df.loc[idx+1][p2])*100/df.loc[idx+1][p2],4)
-            df['delta_amount'] = round((row["amount"] - df.loc[idx+1]["amount"])*100/df.loc[idx+1]["amount"],4)
-            df.loc[idx,f'range_price'] = round((row["high"] - row["low"])*100/df.loc[idx+1]["close"],4) #波动幅度
-            
-            # 比特币24时小时连续交易，last_close==open, 下面股票里的似乎没必要？
-            # df.loc[idx,f'high_topen'] = round((row["high"] - row["open"])*100/row["open"],4) #波动幅度
-            # df.loc[idx,f'low_topen'] = round((row["low"] - row["open"])*100/row["open"],4) #波动幅度
-            # df.loc[idx,f'close_topen'] = round((row["close"] - row["open"])*100/row["open"],4) #波动幅度
-            
-           
-        for days in range(6):
-            day_span = days + 1
-            new_idx = idx + day_span
-            if (new_idx+1)>=total_cnt:
-                break 
-            rate = round((row['close'] - df.loc[new_idx]['open'])*100/df.loc[new_idx]['open'],4)
-            # 当日开盘价(和rate保持一致) new_idx？or 第二日开盘价(预测用) new_idx+1？
-            df.loc[new_idx+1,f'rate_{day_span}'] = rate
-            
-            # print(df.loc[new_idx]['trade_date'],df.loc[new_idx]['open'],row['trade_date'],row['close'],rate)
-    return df 
 
 def statics():
     df = pd.read_csv(f"data/btc/all_2014_2023.csv",sep=";",header=0,dtype={'trade_date':int})

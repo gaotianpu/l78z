@@ -93,7 +93,7 @@ def train(dataloader, model, loss_fn, optimizer,epoch):
     torch.save(model.state_dict(), MODEL_FILE)
 
 # 5. vaildate/test 函数
-def test(dataloader, model, loss_fn, data_type="test"):
+def test(dataloader, model, loss_fn, data_type="test",epoch=0):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     test_loss = 0
@@ -118,9 +118,7 @@ def adjust_learning_rate(optimizer, lr):
 def training():
     # 初始化
     train_data = BtcPairDataset("train","highN_rate")
-    train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True)
-    # choose,reject = next(iter(train_dataloader))
-    # print(choose.shape,reject.shape)
+    train_dataloader = DataLoader(train_data, batch_size=64, shuffle=True) 
 
     validate_data = BtcPairDataset("validate","highN_rate")
     validate_dataloader = DataLoader(validate_data, batch_size=128)  
@@ -131,7 +129,7 @@ def training():
     criterion = LogExpLoss() #定义损失函数
     model = BtcForecastModel(SEQUENCE_LENGTH,D_MODEL).to(device)
     
-    learning_rate = 0.0000001 #0.0001 #0.00001 #0.000001  #0.0000001
+    learning_rate = 0.00001 #0.0001 #0.00001 #0.000001
     optimizer = torch.optim.Adam(model.parameters(), 
                                 lr=learning_rate, betas=(0.9,0.98), 
                                 eps=1e-08) #定义最优化算法 
@@ -160,15 +158,14 @@ def training():
         
     print("Done!")
         
-def test():
+def test_tmp():
     dataset = BtcPairDataset("test",field="highN_rate")
     a_t, b_t = next(iter(dataset))
     print(a_t)
-    print(b_t) 
+    print(b_t)
     
 if __name__ == "__main__":
-    test()
-    # op_type = sys.argv[1]
-    # print(op_type)
-    # if op_type == "training":
-    #     training()
+    op_type = sys.argv[1]
+    print(op_type)
+    if op_type == "training":
+        training()
