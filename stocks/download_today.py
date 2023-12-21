@@ -220,7 +220,7 @@ def gen_buy_sell_prices(df_today,df_predict,version="",sort_field=""):
     
     # 生成html数据
     # open_rate_label,cls3_idx,
-    sel_fields = "stock_no,stock_name,open_rate,rate_now,rate_minmax,rate_delta,point_low1,buy_prices,low_rate,low,point_high1,sell_prices,high_rate,high,pair_idx,cls3,cls3_0,cls3_2,pair".split(",")
+    sel_fields = "stock_no,stock_name,open_rate,rate_now,rate_minmax,rate_delta,low,low_rate,point_low1,buy_prices,high,high_rate,point_high1,sell_prices,pair_idx,cls3,cls3_0,cls3_2,pair".split(",")
     df_html = df_predict[sel_fields]
     html_li = []
     html_li.append("<head>%s, count=%s %s</head>" % (datetime.today().strftime("%Y%m%d %H%M"),len(df_predict),good_cnt))
@@ -281,7 +281,12 @@ def gen_buy_sell_prices(df_today,df_predict,version="",sort_field=""):
             if field == "high_rate":
                 if row["high_rate"]>(row["point_high1"]-0.02): #0.0151
                     color = '#FFA500'
-            columns.append('<td style="background-color:%s">%s</td>'%(color,row[field]))
+            
+            val = row[field]
+            if field in ['open_rate','rate_now','rate_delta','point_low1','low_rate','point_high1','high_rate']:
+                val = str(round(row[field]*100,2))+"%"
+            
+            columns.append('<td style="background-color:%s">%s</td>'%(color,val))
         html_li.append("<tr %s>%s</tr>\n" %(tr_color,"".join(columns)))
     html_li.append("</table>")
     
