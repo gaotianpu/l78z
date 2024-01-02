@@ -16,8 +16,8 @@ from sklearn.metrics import ndcg_score
 
 from model_v1 import BtcForecastModel,BtcPointDataset,SEQUENCE_LENGTH,D_MODEL,device
 
-MODEL_TYPE = "high" #high,low,high1,low1 
-MODEL_FILE = "model_point_%s.pth" % (MODEL_TYPE)
+MODEL_TYPE = "high1" #high,low,high1,low1 
+MODEL_FILE = f"model_point_{MODEL_TYPE}.pth" 
 
 def get_model_output_file(model_type=MODEL_TYPE,data_type="test",epoch=1):
     return f"data/model_evaluate/point_{model_type}_{epoch}_{data_type}.txt"
@@ -71,8 +71,8 @@ def test(dataloader, model, loss_fn,data_type="test",epoch=0):
             all_ret = all_ret + ret    
     
     test_loss /= num_batches
-    test_loss = test_loss ** 0.5
-    print(f"\n{data_type} Avg loss: {test_loss:>8f}")
+    aft_test_loss = test_loss ** 0.5
+    print(f"\n{data_type} Avg loss: {aft_test_loss:>8f} -> {test_loss:>8f}")
     
     df = pd.DataFrame(all_ret,columns=['pk_date_btc','predict_score','true_score'])
     df = df.sort_values(by=["predict_score"],ascending=False)
@@ -83,7 +83,7 @@ def adjust_learning_rate(optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr  
         
-def training(field="highN_rate"):
+def training(field="highN"):
     train_dataset = BtcPointDataset("train",field)
     train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
     
@@ -102,7 +102,7 @@ def training(field="highN_rate"):
         print("load success")
     model.to(device)
 
-    epochs = 20
+    epochs = 5
     start = 0
     for t in range(epochs):
         current_epoch = t+1+start 
@@ -123,12 +123,14 @@ def training(field="highN_rate"):
     torch.save(model.state_dict(), MODEL_FILE)
     print("Done!")
     
-# python train_point.py training highN_rate
+# python train_point.py training highN
 if __name__ == "__main__":
     op_type = sys.argv[1]
-    field = sys.argv[2] ## highN_rate, next_low_rate, next_high_rate
+    field = sys.argv[2] ## highN, lowN, low1, high1,
     print(op_type)
     if op_type == "training":
+        MODEL_TYPE = field
+        MODEL_FILE = f"model_point_{field}.pth" 
         training(field)
     
     

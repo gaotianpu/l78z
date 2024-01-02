@@ -59,7 +59,14 @@ python seq_preprocess_v2.py train 2 > data3/seq_train_2.txt &
 python seq_preprocess_v2.py train 3 > data3/seq_train_3.txt &
 python seq_preprocess_v2.py train 4 > data3/seq_train_4.txt &
 
-
+# 全量
+python compute_day_delta.py history 0
+python compute_day_delta.py history 1
+python compute_day_delta.py history 2
+python compute_day_delta.py history 3
+python compute_day_delta.py history 4
+# 增量
+python compute_day_delta.py incremental  
 
 sqlite3 data/stocks_train_3.db <<EOF
 .separator ";"

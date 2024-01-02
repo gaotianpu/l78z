@@ -40,7 +40,7 @@ def compute_rate(x,base): #计算涨跌幅度
 
 def process_row(df, idx,current_date,need_print=True):
     ret = {"btc_no": "1", "current_date":current_date}
-    (highN_rate,next_high_rate,next_low_rate) = (0.0,0.0,0.0)
+    (highN_rate,high1_rate,low1_rate) = (0.0,0.0,0.0)
     
     # 未来值,FUTURE_DAYS最高价，最低价？
     if idx>0: #train
@@ -52,19 +52,19 @@ def process_row(df, idx,current_date,need_print=True):
         lowN_rate = compute_rate(df.loc[idx-FUTURE_DAYS]['low'],buy_base)     
               
         #用于预测要买入的价位
-        next_low_rate = compute_rate(df.loc[idx-1]['low'],hold_base)
+        low1_rate = compute_rate(df.loc[idx-1]['low'],hold_base)
         #用于预测要卖出的价位
-        next_high_rate = compute_rate(df.loc[idx-1]['high'],hold_base)
+        high1_rate = compute_rate(df.loc[idx-1]['high'],hold_base)
 
         ret['highN_rate'] = highN_rate 
         ret['lowN_rate'] = lowN_rate  #做空机制
-        ret['next_high_rate'] = next_high_rate 
-        ret['next_low_rate'] = next_low_rate
+        ret['high1_rate'] = high1_rate
+        ret['low1_rate'] = low1_rate
     else: #predict
         ret['highN_rate'] = highN_rate 
         ret['lowN_rate'] = lowN_rate
-        ret['next_high_rate'] = next_high_rate 
-        ret['next_low_rate'] = next_low_rate
+        ret['high1_rate'] = high1_rate 
+        ret['low1_rate'] = low1_rate
     
     # 获取过去所有交易日的min,max, 均值/标准差,z-score?
     # 特征值归一化
@@ -97,7 +97,7 @@ def process_row(df, idx,current_date,need_print=True):
     datestock_uid = str(ret["current_date"]) + ret['btc_no']
     if len(ret["past_days"]) == PAST_DAYS:
         li = [str(item) for item in [datestock_uid,ret["current_date"],ret['btc_no'],0,
-                                highN_rate,lowN_rate,next_high_rate,next_low_rate,json.dumps(ret)]] #
+                                highN_rate,lowN_rate,high1_rate,low1_rate,json.dumps(ret)]] #
         if need_print:
             print(';'.join(li))
         return li
@@ -131,7 +131,8 @@ def data_split(df):
 
 price_fields = "open,low,high,close".split(",")
 def compute_more_rate(df):
-    '''持有天数与收益情况
+    '''1. 相邻交易日，价格，成交量delta值
+    2.持有天数与收益情况
     '''
     for p1 in price_fields:
         for p2 in price_fields:
@@ -185,6 +186,12 @@ def process():
     # 可对这些异常值人工分析，判断与什么类型的重大实践相关
     static(df)
     
+
+def better(trade_date):
+    '''给定日期, 加载60+1天的数据，先计算相邻delta值，再生成训练/预测用到的数值；如果能算出要预测的未来值，则给出
+    计算相邻delta值，存在重复计算？提前计算好更稳妥？
+    '''
+    pass 
 
 def static(df):
     sel_fields = "highN_rate,lowN_rate,high1_rate,low1_rate".split(",")

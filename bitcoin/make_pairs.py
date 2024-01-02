@@ -21,7 +21,7 @@ minmax_threshold={'highN_rate': [-13.4735, 19.4128], 'lowN_rate': [-17.3754, 14.
 
 def process(dataset_type,field="highN_rate",diff_val_thr=8.0):
     """
-    field:highN_rate,lowN_rate,next_high_rate,next_low_rate
+    field:highN_rate,lowN_rate,high1_rate,low1_rate
     """
     dtmap = {"train":0,"validate":1,"test":2,"predict":3}
     dstype = dtmap.get(dataset_type)

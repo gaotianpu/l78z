@@ -10,6 +10,40 @@ CREATE TABLE stock_basic_info(
    is_drop        INT2  DEFAULT 0
 ); 
 
+/* DROP TABLE stock_raw_daily_2; 
+update stock_raw_daily_2 set change_rate=replace(change_rate,'%',''),TURNOVER_rate=replace(TURNOVER_rate,'%','') where stock_no='002913' and trade_date='20171201'
+TURNOVER_rate = '-' 的情况？
+select trade_date,stock_no,OPEN_price,CLOSE_price,change_amount,change_rate,LOW_price,HIGH_price,TURNOVER,TURNOVER_amount,TURNOVER_rate from stock_raw_daily_2 order by trade_date,stock_no;
+*/
+CREATE TABLE stock_raw_daily_2(
+    trade_date  INT    NOT NULL,
+    stock_no    CHAR(6)    NOT NULL,
+    OPEN_price  DECIMAL(10,2) NOT NULL,  
+    CLOSE_price DECIMAL(10,2) NOT NULL,  
+    change_amount   DECIMAL(10,2) NOT NULL,
+    change_rate     DECIMAL(10,2) NOT NULL,
+    LOW_price       DECIMAL(10,2) NOT NULL,
+    HIGH_price      DECIMAL(10,2) NOT NULL,
+    TURNOVER    UNSIGNED BIG INT NOT NULL,   /*成交量*/ 
+    TURNOVER_amount  FLOAT NOT NULL, /*成交金额*/
+    TURNOVER_rate   DECIMAL(10,2) NOT NULL, /*换手率*/
+    primary key (trade_date,stock_no)
+);
+CREATE INDEX idx_stock_raw_daily_2_2 on stock_raw_daily_2 (stock_no, trade_date);
+
+CREATE TABLE stock_minmax(
+    stock_no    CHAR(6)    NOT NULL,
+    trade_date  INT    NOT NULL,
+    next_date  INT    NOT NULL,
+    min_or_max TINYINT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    price_rate DECIMAL(10,4) NOT NULL
+);
+CREATE INDEX idx_stock_minmax_1 on stock_minmax (stock_no,trade_date,min_or_max);
+CREATE INDEX idx_stock_minmax_2 on stock_minmax (trade_date,stock_no,min_or_max);
+CREATE INDEX idx_stock_minmax_3 on stock_minmax (price_rate);
+
+
 /* 存放从网站上下载到的数据，last_close以后的数据是需要加工的
 DROP TABLE stock_raw_daily; */
 CREATE TABLE stock_raw_daily(
@@ -73,25 +107,6 @@ CREATE TABLE stock_raw_daily_1(
 );
 CREATE INDEX idx_stock_raw_daily_1_0 on stock_raw_daily_1 (stock_no, trade_date);
 
-/* DROP TABLE stock_raw_daily_2; 
-update stock_raw_daily_2 set change_rate=replace(change_rate,'%',''),TURNOVER_rate=replace(TURNOVER_rate,'%','') where stock_no='002913' and trade_date='20171201'
-TURNOVER_rate = '-' 的情况？
-*/
-CREATE TABLE stock_raw_daily_2(
-    trade_date  INT    NOT NULL,
-    stock_no    CHAR(6)    NOT NULL,
-    OPEN_price  DECIMAL(10,2) NOT NULL,  
-    CLOSE_price DECIMAL(10,2) NOT NULL,  
-    change_amount   DECIMAL(10,2) NOT NULL,
-    change_rate     DECIMAL(10,2) NOT NULL,
-    LOW_price       DECIMAL(10,2) NOT NULL,
-    HIGH_price      DECIMAL(10,2) NOT NULL,
-    TURNOVER    UNSIGNED BIG INT NOT NULL,   /*成交量*/ 
-    TURNOVER_amount  FLOAT NOT NULL, /*成交金额*/
-    TURNOVER_rate   DECIMAL(10,2) NOT NULL, /*换手率*/
-    primary key (trade_date,stock_no)
-);
-CREATE INDEX idx_stock_raw_daily_2_2 on stock_raw_daily_2 (stock_no, trade_date);
 
 
 /*stock的统计信息，价格，成交量等均值和标准差，4分位，极值，用于对数据的标准化处理*/
@@ -123,8 +138,7 @@ CREATE TABLE stock_for_transfomer(
     trade_date  INT    NOT NULL,
     stock_no    CHAR(6)    NOT NULL,
     dataset_type TINYINT NOT NULL DEFAULT 0,  
-    high_rate     DECIMAL(10,2) NOT NULL,
-    low_rate     DECIMAL(10,2) NOT NULL,
+    highN_rate     DECIMAL(10,2) NOT NULL,
     high1_rate     DECIMAL(10,2) NOT NULL,
     low1_rate     DECIMAL(10,2) NOT NULL,
     list_label TINYINT NOT NULL DEFAULT 0,    
@@ -135,6 +149,36 @@ CREATE INDEX idx_stock_for_transfomer_2 on stock_for_transfomer (stock_no, trade
 CREATE INDEX idx_stock_for_transfomer_3 on stock_for_transfomer (stock_no,dataset_type,list_label);
 CREATE INDEX idx_stock_for_transfomer_4 on stock_for_transfomer (trade_date,dataset_type,list_label);
 CREATE INDEX idx_stock_for_transfomer_5 on stock_for_transfomer (dataset_type,list_label);
+CREATE INDEX idx_stock_for_transfomer_6 on stock_for_transfomer (trade_date,highN_rate);
+CREATE INDEX idx_stock_for_transfomer_7 on stock_for_transfomer (highN_rate,dataset_type);
+
+/*
+  #是否为关键帧
+label TINYINT NOT NULL DEFAULT 0,     #人工标注的数据类型
+*/
+CREATE TABLE stock_simple_feathers(
+    pk_date_stock UNSIGNED BIG INT NOT NULL,
+    trade_date  INT    NOT NULL,
+    stock_no    CHAR(6)    NOT NULL,
+    high_rate     DECIMAL(10,2) NOT NULL,  
+    data_json   TEXT    NOT NULL,
+    primary key (pk_date_stock)
+);
+CREATE INDEX idx_stock_simple_feathers on stock_simple_feathers (trade_date,high_rate);
+CREATE INDEX idx_stock_simple_feathers_1 on stock_simple_feathers (stock_no,high_rate);
+
+CREATE TABLE stock_labels(
+    pk_date_stock UNSIGNED BIG INT NOT NULL,
+    trade_date  INT    NOT NULL,
+    stock_no    CHAR(6)    NOT NULL,
+    high_rate     DECIMAL(10,2) NOT NULL,  
+    is_keypoint TINYINT NOT NULL DEFAULT 0, 
+    label TINYINT NOT NULL DEFAULT 0,
+    data_json   TEXT    NOT NULL,
+    primary key (pk_date_stock)
+);
+CREATE INDEX idx_stock_labels on stock_labels (trade_date,is_keypoint,label,high_rate);
+CREATE INDEX idx_stock_labels_1 on stock_labels (stock_no,is_keypoint,label,high_rate);
 
 /* data/stocks_train_4.db */
 CREATE TABLE stock_for_boost_v2(

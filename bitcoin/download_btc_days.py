@@ -18,6 +18,9 @@ from multiprocessing import Pool
 from itertools import islice
 import sqlite3  
 
+# https://sapi.coincarp.com/api/v1/his/coin/histicker?code=bitcoin&begintime=1672070400&endtime=1703606400&lang=en-US&_=1703681080067
+
+
 def download(year=2023):
     cache_file = f"data/btc/{year}.html"
     if os.path.exists(cache_file):

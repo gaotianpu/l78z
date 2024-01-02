@@ -10,7 +10,7 @@ import pandas as pd
 # label,idx_1,idx_2
 # 注意label的样本均衡问题
 
-conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
 
 def get_max_trade_date(conn):
     trade_date = 0

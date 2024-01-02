@@ -42,14 +42,16 @@ class BtcPointDataset(Dataset):
 
     def __getitem__(self, idx):
         pk_date_btc = self.df.iloc[idx][0] 
+        true_score = torch.tensor(float(self.df.iloc[idx][1]))
         
         sql = f"select * from train_data where pk_date_btc={pk_date_btc}"
         df_item = pd.read_sql(sql, self.conn)
         if len(df_item)==0:
             print(pk_date_btc)
+            return 
         
         data_json = json.loads(df_item.iloc[0]['data_json'])
-        true_score = torch.tensor(data_json.get(self.field))
+        # true_score = torch.tensor(data_json.get(self.field))
         past_days = torch.tensor(data_json["past_days"])
         
         return pk_date_btc, true_score, past_days 

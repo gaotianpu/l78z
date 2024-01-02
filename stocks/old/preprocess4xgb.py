@@ -18,7 +18,7 @@ MAX_ROWS_COUNT = 1000
 max_high,min_high,max_low,min_low = 0.818,-0.6,0.668,-0.6
 
 # 只读方式打开 ?mode=ro
-conn = sqlite3.connect("file:data/stocks.db?mode=ro", uri=True)
+conn = sqlite3.connect("file:newdb/stocks.db?mode=ro", uri=True)
 
 def get_max_trade_date(conn):
     trade_date = 0

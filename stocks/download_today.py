@@ -141,9 +141,9 @@ def after_download(last_df):
 def process_all(last_df,df_predict,one_time=False):
     df = None
     if one_time:
-        print("cache shoot")
         today = datetime.today().strftime("%Y%m%d")
         cache_file = f"data/today/raw_{today}150.txt"
+        print(f"cache shoot: {cache_file}")
         # cache_file = f"data/today/raw_20231215150.txt"
         df = pd.read_csv(cache_file,sep=";",header=0,dtype={'stock_no': str,'stock_name': str})
         df["rate_now"] = df["last_rate"]
@@ -220,7 +220,7 @@ def gen_buy_sell_prices(df_today,df_predict,version="",sort_field=""):
     
     # 生成html数据
     # open_rate_label,cls3_idx,
-    sel_fields = "stock_no,stock_name,open_rate,rate_now,rate_minmax,rate_delta,low,low_rate,point_low1,buy_prices,high,high_rate,point_high1,sell_prices,pair_idx,cls3,cls3_0,cls3_2,pair".split(",")
+    sel_fields = "stock_no,stock_name,open_rate,rate_now,rate_minmax,rate_delta,low_rate,point_low1,low,buy_prices,high_rate,point_high1,high,sell_prices,pair_idx,cls3,cls3_0,cls3_2,pair".split(",")
     df_html = df_predict[sel_fields]
     html_li = []
     html_li.append("<head>%s, count=%s %s</head>" % (datetime.today().strftime("%Y%m%d %H%M"),len(df_predict),good_cnt))
