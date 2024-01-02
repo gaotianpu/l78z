@@ -68,6 +68,12 @@ python compute_day_delta.py history 4
 # 增量
 python compute_day_delta.py incremental  
 
+# cat data5/day_delta/* > day_delta.csv
+sqlite3 newdb/stocks.db <<EOF
+.separator ";"
+.import day_delta.csv stock_with_delta_daily
+EOF
+
 sqlite3 data/stocks_train_3.db <<EOF
 .separator ";"
 .import data3/seq_train_0.txt stock_for_transfomer

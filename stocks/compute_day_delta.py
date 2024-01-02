@@ -83,10 +83,10 @@ def compute_delta(df,date_statics,need_save=True):
             df[f'delta_{tp1}_{tp2}']=0.0
     for f in FIELDS:
         df[f'delta_{f}']=0.0
-    df[f'range_base_lastclose']=0.0
-    df[f'range_base_open']=0.0
-    df[f'zscore_TURNOVER']=0.0
-    df[f'zscore_amount']=0.0
+    df['range_base_lastclose']=0.0
+    df['range_base_open']=0.0
+    df['zscore_TURNOVER']=0.0
+    df['zscore_amount']=0.0
     
     # 计算相邻2日，各个字段的delta值        
     total_cnt = len(df)     
@@ -118,13 +118,13 @@ def compute_delta(df,date_statics,need_save=True):
         
         TURNOVER_mean = statics[1]
         TURNOVER_std = statics[2]
-        df.loc[idx,f'zscore_TURNOVER'] = zscore(row["TURNOVER"],TURNOVER_mean,TURNOVER_std)
+        df.loc[idx,'zscore_TURNOVER'] = zscore(row["TURNOVER"],TURNOVER_mean,TURNOVER_std)
         
         amount_mean = statics[5]
         amount_std = statics[6]
-        df.loc[idx,f'zscore_amount'] = zscore(row["TURNOVER_amount"],amount_mean,amount_std)
+        df.loc[idx,'zscore_amount'] = zscore(row["TURNOVER_amount"],amount_mean,amount_std)
         
-    #field count=32: 
+    #field count=32: stock_with_delta_daily
     #trade_date;stock_no;OPEN_price;CLOSE_price;LOW_price;HIGH_price;TURNOVER;TURNOVER_amount;TURNOVER_rate;delta_OPEN_OPEN;delta_OPEN_CLOSE;delta_OPEN_LOW;delta_OPEN_HIGH;delta_CLOSE_OPEN;delta_CLOSE_CLOSE;delta_CLOSE_LOW;delta_CLOSE_HIGH;delta_LOW_OPEN;delta_LOW_CLOSE;delta_LOW_LOW;delta_LOW_HIGH;delta_HIGH_OPEN;delta_HIGH_CLOSE;delta_HIGH_LOW;delta_HIGH_HIGH;delta_TURNOVER;delta_TURNOVER_amount;delta_TURNOVER_rate;range_base_lastclose;range_base_open;zscore_TURNOVER;zscore_amount
     if need_save:
         df.to_csv(f"data5/day_delta/{stock_no}.csv",sep=";",index=None,header=None) # 
@@ -135,13 +135,20 @@ def get_sql_base():
     return f"select trade_date,stock_no,{str_fields} from stock_raw_daily" 
     
 def process_incremental_delta():
-    last_date=20231227 #实际从delta表中取最大值
+    sql = "select max(trade_date) as max_trade_date from stock_with_delta_daily where trade_date>20240101"
+    df = pd.read_sql(sql, conn)
+    last_date = df['max_trade_date'][0]
     
-    str_sqlbase = get_sql_base() # ",".join(FIELDS_PRICE + FIELDS)
+    str_sqlbase = get_sql_base()
     sql = f"{str_sqlbase} where trade_date>={last_date} order by stock_no,trade_date desc"
     df = pd.read_sql(sql, conn)
     
-    date_statics = get_date_statics(last_date)
+    dstatics = {}
+    dates = df['trade_date'].unique()
+    for date in dates:
+        ddf = df[df['trade_date']==date].copy()
+        ddf = ddf.reset_index(drop=True)
+        dstatics[date] = date_statics(ddf)
     
     df_final = pd.DataFrame() 
     stocks = load_stocks(conn)
@@ -152,7 +159,7 @@ def process_incremental_delta():
         if len(df_stock)==0:
             print(stock_no)
             continue
-        df_tmp = compute_delta(df_stock,date_statics,need_save=False)
+        df_tmp = compute_delta(df_stock,dstatics,need_save=False)
         if df_final.empty:
             df_final = df_tmp
         else: 
@@ -160,8 +167,9 @@ def process_incremental_delta():
     
     df_final = df_final[df_final['trade_date']>last_date]
     df_final = df_final.reset_index(drop=True)
-    current_date = df_final['trade_date'][0]
-    df_final.to_csv(f"data5/day_delta/d_{current_date}.csv",sep=";",index=None,header=None)
+    df_final.to_csv(f"data5/day_delta/d_{last_date}.csv",sep=";",index=None,header=None)
+    df_final.to_csv(f"day_delta_new.csv",sep=";",index=None,header=None)
+
 
 def process_history_delta(processes_idx=-1):
     date_statics = get_date_statics()
@@ -186,8 +194,8 @@ if __name__ == "__main__":
     if data_type == "incremental":
         # 每日增量
         process_incremental_delta()
-    if data_type == "date_statics":    
+    if data_type == "date_statics":
         gen_all_date_statics()
         
-    if data_type == "tmp": 
+    if data_type == "tmp":
         get_date_statics()

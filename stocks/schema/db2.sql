@@ -31,14 +31,15 @@ CREATE TABLE stock_raw_daily(
 );
 CREATE INDEX idx_stock_raw_daily on stock_raw_daily (stock_no, trade_date);
 
-/*stock_with_delta_daily*/
+/*stock_with_delta_daily
+change_amount   DECIMAL(10,2) NOT NULL,
+change_rate     DECIMAL(10,2) NOT NULL,
+*/
 CREATE TABLE stock_with_delta_daily(
     trade_date  INT    NOT NULL,
     stock_no    CHAR(6)    NOT NULL,
     OPEN_price  DECIMAL(10,2) NOT NULL,  
-    CLOSE_price DECIMAL(10,2) NOT NULL,  
-    change_amount   DECIMAL(10,2) NOT NULL,
-    change_rate     DECIMAL(10,2) NOT NULL,
+    CLOSE_price DECIMAL(10,2) NOT NULL,
     LOW_price       DECIMAL(10,2) NOT NULL,
     HIGH_price      DECIMAL(10,2) NOT NULL,
     TURNOVER    UNSIGNED BIG INT NOT NULL,   /*成交量*/ 
